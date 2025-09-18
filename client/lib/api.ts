@@ -1051,15 +1051,13 @@ async getJobSummary(jobId: string): Promise<{
 export const apiService = new ApiService();
 export default apiService;
 
-// Convenience exports for direct use
-export const {
-  uploadSingleFile,
-  uploadBulkFiles,
-  createJob,
-  getJob,
-  updateJob,
-  deleteJob,
-  getJobs,
-  parseResume,
-  getParsedResume
-} = apiService;
+// Convenience exports for direct use - properly bound to maintain 'this' context
+export const uploadSingleFile = apiService.uploadSingleFile.bind(apiService);
+export const uploadBulkFiles = apiService.uploadBulkFiles.bind(apiService);
+export const createJob = apiService.createJob.bind(apiService);
+export const getJob = apiService.getJob.bind(apiService);
+export const updateJob = apiService.updateJob.bind(apiService);
+export const deleteJob = apiService.deleteJob.bind(apiService);
+export const getJobs = apiService.getJobs.bind(apiService);
+export const parseResume = apiService.parseResume.bind(apiService);
+export const getParsedResume = apiService.getParsedResume.bind(apiService);

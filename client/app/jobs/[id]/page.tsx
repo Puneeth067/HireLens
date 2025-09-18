@@ -482,7 +482,7 @@ function JobDetailPageContent() {
               <h3 className="ml-3 text-lg font-medium text-gray-900">Delete Job</h3>
             </div>
             <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to delete "{job.title}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{job.title}&quot;? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
