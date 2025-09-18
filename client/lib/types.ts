@@ -113,8 +113,8 @@ export type JobStatus = 'active' | 'paused' | 'closed' | 'draft';
 // Update JobType enum to match backend
 export type JobType = 'full_time' | 'part_time' | 'contract' | 'internship';
 
-// Update ExperienceLevel enum to match backend  
-export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'executive';
+// Update ExperienceLevel enum to match backend exactly
+export type ExperienceLevel = 'entry' | 'junior' | 'middle' | 'senior' | 'lead' | 'executive';
 // Core job description interface
 // Add these to your existing types.ts file:
 
@@ -123,42 +123,71 @@ export interface Job {
   id: string;
   title: string;
   company: string;
-  location: string;
-  job_type: JobType;
-  experience_level: ExperienceLevel;
-  description: string;
-  salary_min: number;
-  salary_max: number;
-  required_skills: string[];
-  preferred_skills: string[];
-  ats_weights: {
-    skills_weight: number;
-    experience_weight: number;
-    education_weight: number;
-    keywords_weight: number;
-  };
-  status: JobStatus;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CreateJobRequest {
-  title: string;
-  company: string;
+  department?: string; // Added missing field
   location: string;
   job_type: JobType;
   experience_level: ExperienceLevel;
   description: string;
   salary_min?: number;
   salary_max?: number;
+  currency?: string; // Added missing field
+  
+  // Backend structure - flat weight fields instead of nested object
+  weight_skills: number; // Fixed: was ats_weights.skills_weight
+  weight_experience: number; // Fixed: was ats_weights.experience_weight  
+  weight_education: number; // Fixed: was ats_weights.education_weight
+  weight_keywords: number; // Fixed: was ats_weights.keywords_weight
+  
+  // Core job content
+  responsibilities: string[]; // Added missing required field
+  requirements: string[]; // Added missing required field
+  nice_to_have?: string[]; // Added missing field
+  
+  // Skills and qualifications
   required_skills: string[];
   preferred_skills?: string[];
-  ats_weights?: {
-    skills_weight: number;
-    experience_weight: number;
-    education_weight: number;
-    keywords_weight: number;
-  };
+  education_requirements?: string[]; // Added missing field
+  certifications?: string[]; // Added missing field
+  keywords?: string[]; // Added missing field
+  
+  status: JobStatus;
+  created_at: string;
+  updated_at: string;
+  posted_date?: string; // Added missing field
+  application_deadline?: string; // Added missing field
+  created_by?: string; // Added missing field
+}
+
+export interface CreateJobRequest {
+  title: string;
+  company: string;
+  department?: string; // Added missing field
+  location: string;
+  job_type: JobType;
+  experience_level: ExperienceLevel;
+  description: string;
+  salary_min?: number;
+  salary_max?: number;
+  currency?: string; // Added missing field
+  
+  // Core job content
+  responsibilities: string[]; // Required by backend
+  requirements: string[]; // Required by backend
+  nice_to_have?: string[]; // Added missing field
+  
+  required_skills: string[];
+  preferred_skills?: string[];
+  education_requirements?: string[]; // Added missing field
+  certifications?: string[]; // Added missing field
+  keywords?: string[]; // Added missing field
+  
+  // Backend uses flat weight fields
+  weight_skills?: number;
+  weight_experience?: number;
+  weight_education?: number;
+  weight_keywords?: number;
+  
+  application_deadline?: string; // Added missing field
 }
 
 export interface UpdateJobRequest extends Partial<CreateJobRequest> {
@@ -328,11 +357,11 @@ export interface ATSScore {
   skills_score: number;
   experience_score: number;
   education_score: number;
-  keyword_score: number;
+  keywords_score: number; // Fixed: was keyword_score
   recommendations: string[];
   matched_skills: string[];
   missing_skills: string[];
-  matched_keywords: string[];
+  keyword_matches: string[]; // Fixed: was matched_keywords
   created_at: string;
 }
 
@@ -341,14 +370,17 @@ export interface ResumeJobComparison {
   id: string;
   resume_id: string;
   job_id: string;
-  resume_name: string;
+  resume_filename: string; // Fixed: was resume_name
+  candidate_name?: string; // Added missing field
   job_title: string;
-  company_name: string;
+  company: string; // Fixed: was company_name
   ats_score?: ATSScore;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message?: string;
   created_at: string;
   updated_at: string;
+  completed_at?: string; // Added missing field
+  processing_time_seconds?: number; // Added missing field
 }
 
 // Batch processing types
@@ -727,13 +759,48 @@ export interface SystemHealth {
     disk_percent: number;
     python_version: string;
   };
+  services: Record<string, string>;
   directories: {
     upload_dir: boolean;
     data_dir: boolean;
+    upload_path: string;
   };
   dependencies: {
     status: string;
+    spacy: boolean;
+    nltk: boolean;
+    sklearn: boolean;
     missing: string[];
+  };
+  statistics: {
+    files?: {
+      total_files?: number;
+      parsed_files?: number;
+      processing_files?: number;
+      failed_files?: number;
+    };
+    jobs?: {
+      total_jobs?: number;
+      active_jobs?: number;
+      draft_jobs?: number;
+    };
+    comparisons?: {
+      total_comparisons?: number;
+      completed?: number;
+      pending?: number;
+      failed?: number;
+    };
+    analytics?: {
+      total_candidates?: number;
+      average_score?: number;
+      top_score?: number;
+    };
+  };
+  configuration: {
+    max_file_size_mb: number;
+    async_processing: boolean;
+    max_concurrent_processes: number;
+    allowed_extensions: string[];
   };
 }
 
@@ -743,6 +810,23 @@ export interface SystemInfo {
   max_file_size: number;
   allowed_extensions: string[];
   cors_origins: string[];
+  system: {
+    cpu_usage_percent: number;
+    memory: {
+      usage_percent: number;
+      total_gb: number;
+      available_gb: number;
+    };
+    disk: {
+      usage_percent: number;
+      total_gb: number;
+      used_gb: number;
+      free_gb: number;
+    };
+  };
+  application: {
+    upload_directory_size_mb: number;
+  };
 }
 
 // Form validation types

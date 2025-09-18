@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { 
   PlusIcon, 
@@ -16,14 +16,19 @@ import {
 } from 'lucide-react';
 
 import { JobDescriptionList, JobStats } from '@/lib/types';
-import apiService from '@/lib/api';
+import { cachedApiService } from '@/lib/cached-api';
+import { useLogger, LoggerUtils } from '@/lib/logger';
+import { LoadingWrapper, useLoadingState } from '@/components/ui/page-wrapper';
+import { JobsPageSkeleton, AnalyticsCardSkeleton } from '@/components/ui/skeleton';
+import ErrorBoundary from '@/components/error-boundary';
 
 
-export default function JobsPage() {
+function JobsPageContent() {
+  const logger = useLogger('JobsPage');
+  const { loading, error, startLoading, stopLoading, setError, clearError } = useLoadingState('JobsPage');
+  
   const [jobs, setJobs] = useState<JobDescriptionList | null>(null);
   const [stats, setStats] = useState<JobStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   // Filters and search
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,11 +36,22 @@ export default function JobsPage() {
   const [companyFilter, setCompanyFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   
+  // Use refs to store stable references to loading functions
+  const loadingFunctionsRef = useRef<{
+    startLoading: () => void;
+    stopLoading: () => void;
+    setError: (error: string) => void;
+    clearError: () => void;
+  }>({ startLoading: () => {}, stopLoading: () => {}, setError: () => {}, clearError: () => {} });
+  
+  // Update refs when loading functions change
+  React.useEffect(() => {
+    loadingFunctionsRef.current = { startLoading, stopLoading, setError, clearError };
+  }, [startLoading, stopLoading, setError, clearError]);
+
   // UI states
   const [showFilters, setShowFilters] = useState(false);
   const [companies, setCompanies] = useState<string[]>([]);
-
-  // Simple API function since we may not have the full api utility yet
   const apiCall = async (endpoint: string, options?: RequestInit) => {
     const response = await fetch(`http://localhost:8000${endpoint}`, {
       headers: {
@@ -54,71 +70,118 @@ export default function JobsPage() {
 
   const loadJobs = useCallback(async () => {
     try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        per_page: '12'
-      });
+      loadingFunctionsRef.current.startLoading();
+      loadingFunctionsRef.current.clearError();
+      const params: {
+        skip?: number;
+        limit?: number;
+        search?: string;
+        status?: string;
+        company?: string;
+      } = {
+        skip: (currentPage - 1) * 12,
+        limit: 12
+      };
       
-      if (searchTerm) params.append('search', searchTerm);
-      if (statusFilter) params.append('status', statusFilter);
-      if (companyFilter) params.append('company', companyFilter);
+      if (searchTerm) params.search = searchTerm;
+      if (statusFilter) params.status = statusFilter;
+      if (companyFilter) params.company = companyFilter;
       
-      const data = await apiCall(`/api/jobs?${params.toString()}`);
+      logger.info('Loading jobs', { params });
+      const data = await cachedApiService.getJobs(params);
+      
       setJobs(data);
-      setError(null);
+      logger.info('Jobs loaded successfully', { count: data.jobs?.length || 0 });
     } catch (err) {
-      setError('Failed to load jobs');
-      console.error('Error loading jobs:', err);
+      const errorMessage = 'Failed to load jobs';
+      logger.error(errorMessage, { error: err });
+      loadingFunctionsRef.current.setError(errorMessage);
     } finally {
-      setLoading(false);
+      loadingFunctionsRef.current.stopLoading();
     }
   }, [currentPage, searchTerm, statusFilter, companyFilter]);
 
+  // Use ref to ensure stable reference for one-time load
+  const hasLoadedStatsRef = useRef(false);
+  
   const loadStats = useCallback(async () => {
     try {
-      const data = await apiCall('/api/jobs/stats');
+      logger.info('Loading job stats');
+      const data = await cachedApiService.getJobStats();
       setStats(data);
+      logger.info('Job stats loaded successfully');
+      hasLoadedStatsRef.current = true;
     } catch (err) {
-      console.error('Error loading stats:', err);
+      logger.error('Error loading job stats', { error: err });
     }
   }, []);
 
+  // Use ref to ensure stable reference for one-time load
+  const hasLoadedCompaniesRef = useRef(false);
+  
   const loadCompanies = useCallback(async () => {
+    if (hasLoadedCompaniesRef.current) return;
+    
     try {
-      const data = await apiCall('/api/jobs/companies');
-      setCompanies(data);
+      logger.info('Loading companies');
+      // Note: Using a placeholder method - update with actual API when available
+      const data = await cachedApiService.getJobs({ limit: 1000 });
+      const uniqueCompanies = [...new Set(data.jobs.map(job => job.company).filter(Boolean))];
+      setCompanies(uniqueCompanies);
+      logger.info('Companies loaded successfully', { count: uniqueCompanies.length });
+      hasLoadedCompaniesRef.current = true;
     } catch (err) {
-      console.error('Error loading companies:', err);
+      logger.error('Error loading companies', { error: err });
     }
   }, []);
 
+  // Separate effect for initial load (run once)
+  useEffect(() => {
+    logger.lifecycle('mount');
+    LoggerUtils.logPageChange('', 'jobs');
+    
+    // Load stats and companies only once
+    if (!hasLoadedStatsRef.current) {
+      loadStats();
+    }
+    loadCompanies();
+    
+    return () => {
+      logger.lifecycle('unmount');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
+  
+  // Separate effect for jobs (run when filters change)
   useEffect(() => {
     loadJobs();
-    loadStats();
-    loadCompanies();
-  }, [loadJobs, loadStats, loadCompanies]);
+  }, [loadJobs]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    LoggerUtils.logSearch(searchTerm, undefined, { statusFilter, companyFilter });
     setCurrentPage(1);
-    loadJobs();
-  };
+    // loadJobs will be called automatically via useEffect when currentPage changes
+  }, [searchTerm, statusFilter, companyFilter]);
 
-  const handleDeleteJob = async (jobId: string) => {
+  const handleDeleteJob = useCallback(async (jobId: string) => {
     if (!confirm('Are you sure you want to delete this job?')) return;
     
     try {
-      await apiService.deleteJobDescription(jobId);
+      LoggerUtils.logButtonClick('delete_job', { jobId });
+      await cachedApiService.deleteJob(jobId);
+      logger.info('Job deleted successfully', { jobId });
       loadJobs();
       loadStats();
-    } catch {
+    } catch (err) {
+      logger.error('Failed to delete job', { jobId, error: err });
       alert('Failed to delete job');
     }
-  };
+  }, [loadJobs, loadStats]);
 
-  const handleDuplicateJob = async (jobId: string) => {
+  const handleDuplicateJob = useCallback(async (jobId: string) => {
     try {
+      LoggerUtils.logButtonClick('duplicate_job', { jobId });
       // Direct API call for duplication since it's not in the main API service
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/jobs/${jobId}/duplicate`, {
         method: 'POST',
@@ -131,12 +194,19 @@ export default function JobsPage() {
         throw new Error('Failed to duplicate job');
       }
       
+      logger.info('Job duplicated successfully', { jobId });
       loadJobs();
       loadStats();
-    } catch {
+    } catch (err) {
+      logger.error('Failed to duplicate job', { jobId, error: err });
       alert('Failed to duplicate job');
     }
-  };
+  }, [loadJobs, loadStats]);
+
+  // Enhanced click handlers with logging
+  const handleJobClick = useCallback((jobId: string, action: string) => {
+    LoggerUtils.logButtonClick(`job_${action}`, { jobId });
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -163,46 +233,32 @@ export default function JobsPage() {
     return level.charAt(0).toUpperCase() + level.slice(1).replace('_', ' ');
   };
 
-  if (loading && !jobs) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
-              ))}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-64 bg-gray-200 rounded-lg"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Job Descriptions</h1>
-            <p className="text-gray-600 mt-1">Manage your job postings and requirements</p>
+    <LoadingWrapper
+      loading={loading}
+      error={error}
+      onRetry={loadJobs}
+      skeleton={<JobsPageSkeleton />}
+      componentName="JobsPage"
+    >
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Job Descriptions</h1>
+              <p className="text-gray-600 mt-1">Manage your job postings and requirements</p>
+            </div>
+            <Link
+              href="/jobs/create"
+              onClick={() => LoggerUtils.logButtonClick('create_job')}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Create Job
+            </Link>
           </div>
-          <Link
-            href="/jobs/create"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Create Job
-          </Link>
-        </div>
 
         {/* Stats Cards */}
         {stats && (
@@ -387,6 +443,7 @@ export default function JobsPage() {
                     <div className="flex gap-1">
                       <Link
                         href={`/jobs/${job.id}`}
+                        onClick={() => handleJobClick(job.id, 'view')}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="View job"
                       >
@@ -394,6 +451,7 @@ export default function JobsPage() {
                       </Link>
                       <Link
                         href={`/jobs/${job.id}/edit`}
+                        onClick={() => handleJobClick(job.id, 'edit')}
                         className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                         title="Edit job"
                       >
@@ -481,7 +539,20 @@ export default function JobsPage() {
             )}
           </>
         )}
+        </div>
       </div>
-    </div>
+    </LoadingWrapper>
+  );
+}
+
+// Main JobsPage component with error boundary
+export default function JobsPage() {
+  return (
+    <ErrorBoundary
+      errorBoundaryName="JobsPage"
+      showErrorDetails={process.env.NODE_ENV === 'development'}
+    >
+      <JobsPageContent />
+    </ErrorBoundary>
   );
 }

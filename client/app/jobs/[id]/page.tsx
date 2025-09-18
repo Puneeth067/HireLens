@@ -1,13 +1,20 @@
 // client/src/app/jobs/[id]/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Job } from '@/lib/types';
 import { getJob, deleteJob } from '@/lib/api';
+import ErrorBoundary from '@/components/error-boundary';
+import { useLogger, logger } from '@/lib/logger';
+import { jobsCache, CacheKeys, CacheInvalidation } from '@/lib/cache';
+import { CardSkeleton, DashboardSkeleton } from '@/components/ui/skeleton';
+import { XCircle, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-export default function JobDetailPage() {
+function JobDetailPageContent() {
+  const componentLogger = useLogger('JobDetailPage');
   const params = useParams();
   const router = useRouter();
   const [job, setJob] = useState<Job | null>(null);
@@ -16,39 +23,110 @@ export default function JobDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Performance tracking
   useEffect(() => {
-    const fetchJob = async () => {
-      try {
-        if (params.id) {
-          const jobData = await getJob(params.id as string);
-          setJob(jobData);
-        }
-      } catch (err) {
-        setError('Failed to load job details. Please try again.');
-        console.error('Error fetching job:', err);
-      } finally {
-        setLoading(false);
-      }
+    componentLogger.lifecycle('mount');
+    logger.startPerformanceTimer('job_detail_page_load');
+    
+    return () => {
+      componentLogger.lifecycle('unmount');
+      logger.endPerformanceTimer('job_detail_page_load');
     };
+  }, [componentLogger]);
 
+  const fetchJob = useCallback(async () => {
+    try {
+      if (!params.id) {
+        setError('Job ID not provided');
+        setLoading(false);
+        return;
+      }
+
+      setError(null);
+      componentLogger.debug('Loading job details', { jobId: params.id });
+      
+      // Try cache first
+      const cacheKey = CacheKeys.JOB_DETAIL(params.id as string);
+      const cachedJob = jobsCache.get<Job>(cacheKey);
+      
+      if (cachedJob) {
+        componentLogger.debug('Job loaded from cache', { jobId: params.id });
+        setJob(cachedJob);
+        setLoading(false);
+        return;
+      }
+      
+      const jobData = await getJob(params.id as string);
+      setJob(jobData);
+      
+      // Cache the job data
+      jobsCache.set(cacheKey, jobData, 300000); // 5 minutes cache
+      
+      componentLogger.info('Job details loaded', { 
+        jobId: params.id, 
+        jobTitle: jobData.title,
+        company: jobData.company 
+      });
+    } catch (err) {
+      const errorDetails = {
+        message: err instanceof Error ? err.message : String(err),
+        name: err instanceof Error ? err.name : 'Error', 
+        jobId: params.id,
+        url: `http://localhost:8000/api/jobs/${params.id}`,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Log the stack trace separately if available
+      if (err instanceof Error && err.stack) {
+        console.error('Job fetch error stack:', err.stack);
+      }
+      
+      componentLogger.error('Error fetching job', errorDetails);
+      
+      // More specific error message for user
+      let userMessage = 'Failed to load job details. Please try again.';
+      if (err instanceof Error) {
+        if (err.message.includes('404')) {
+          userMessage = 'Job not found. It may have been deleted or moved.';
+        } else if (err.message.includes('500')) {
+          userMessage = 'Server error occurred. Please try again in a moment.';
+        } else if (err.message.includes('Network')) {
+          userMessage = 'Network error. Please check your connection and try again.';
+        }
+      }
+      
+      setError(userMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [params.id, componentLogger]);
+
+  useEffect(() => {
     fetchJob();
-  }, [params.id]);
+  }, [fetchJob]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!job) return;
     
+    componentLogger.userAction('delete_job_initiated', { jobId: job.id, jobTitle: job.title });
     setIsDeleting(true);
+    
     try {
       await deleteJob(job.id);
+      
+      // Invalidate related caches
+      CacheInvalidation.onJobDelete(job.id);
+      
+      componentLogger.userAction('job_deleted', { jobId: job.id });
       router.push('/jobs');
     } catch (err) {
+      componentLogger.error('Error deleting job', { error: err, jobId: job.id });
       setError('Failed to delete job. Please try again.');
-      console.error('Error deleting job:', err);
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
     }
-  };
+  }, [job, router, componentLogger]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -72,10 +150,45 @@ export default function JobDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading job details...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          {/* Header Skeleton */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+                </div>
+                <div className="h-8 w-96 bg-gray-200 rounded animate-pulse mb-2"></div>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+                <div className="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-10 w-20 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Main Content Skeleton */}
+            <div className="lg:col-span-2 space-y-6">
+              <CardSkeleton showHeader={true} showContent={true} lines={6} />
+              <CardSkeleton showHeader={true} showContent={true} lines={3} />
+            </div>
+            
+            {/* Sidebar Skeleton */}
+            <div className="space-y-6">
+              <CardSkeleton showHeader={true} showContent={true} lines={5} />
+              <CardSkeleton showHeader={true} showContent={true} lines={4} />
+              <CardSkeleton showHeader={true} showContent={true} lines={2} showActions={true} />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -84,19 +197,35 @@ export default function JobDetailPage() {
   if (error || !job) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto">
           <div className="text-red-500 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+            {error ? (
+              <XCircle className="h-12 w-12 mx-auto" />
+            ) : (
+              <AlertCircle className="h-12 w-12 mx-auto" />
+            )}
           </div>
-          <p className="text-gray-600 mb-4">{error || 'Job not found'}</p>
-          <Link
-            href="/jobs"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Back to Jobs
-          </Link>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            {error ? 'Something went wrong' : 'Job not found'}
+          </h2>
+          <p className="text-gray-600 mb-4">{error || 'The job you are looking for does not exist.'}</p>
+          <div className="flex gap-2 justify-center">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                fetchJob();
+              }}
+            >
+              Try Again
+            </Button>
+            <Link href="/jobs">
+              <Button>
+                Back to Jobs
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -148,9 +277,9 @@ export default function JobDetailPage() {
                   {formatExperienceLevel(job.experience_level)}
                 </span>
               </div>
-              {(job.salary_min > 0 || job.salary_max > 0) && (
+              {((job.salary_min && job.salary_min > 0) || (job.salary_max && job.salary_max > 0)) && (
                 <div className="text-lg font-semibold text-gray-900">
-                  ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}
+                  ${job.salary_min?.toLocaleString() || 0} - ${job.salary_max?.toLocaleString() || 0}
                 </div>
               )}
             </div>
@@ -158,11 +287,15 @@ export default function JobDetailPage() {
               <Link
                 href={`/jobs/${job.id}/edit`}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
+                onClick={() => componentLogger.userAction('edit_job_button_clicked', { jobId: job.id })}
               >
                 Edit Job
               </Link>
               <button
-                onClick={() => setShowDeleteModal(true)}
+                onClick={() => {
+                  componentLogger.userAction('delete_job_button_clicked', { jobId: job.id });
+                  setShowDeleteModal(true);
+                }}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500"
               >
                 Delete
@@ -201,11 +334,11 @@ export default function JobDetailPage() {
                   </div>
                 </div>
 
-                {job.preferred_skills.length > 0 && (
+                {job.preferred_skills && job.preferred_skills.length > 0 && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Preferred Skills</h3>
                     <div className="flex flex-wrap gap-2">
-                      {job.preferred_skills.map((skill) => (
+                      {job.preferred_skills?.map((skill) => (
                         <span
                           key={skill}
                           className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
@@ -261,10 +394,10 @@ export default function JobDetailPage() {
                     <div className="w-16 bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${job.ats_weights.skills_weight}%` }}
+                        style={{ width: `${job.weight_skills * 100}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{job.ats_weights.skills_weight}%</span>
+                    <span className="text-sm font-medium text-gray-900">{(job.weight_skills * 100).toFixed(0)}%</span>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
@@ -273,10 +406,10 @@ export default function JobDetailPage() {
                     <div className="w-16 bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-green-600 h-2 rounded-full" 
-                        style={{ width: `${job.ats_weights.experience_weight}%` }}
+                        style={{ width: `${job.weight_experience * 100}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{job.ats_weights.experience_weight}%</span>
+                    <span className="text-sm font-medium text-gray-900">{(job.weight_experience * 100).toFixed(0)}%</span>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
@@ -285,10 +418,10 @@ export default function JobDetailPage() {
                     <div className="w-16 bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-yellow-600 h-2 rounded-full" 
-                        style={{ width: `${job.ats_weights.education_weight}%` }}
+                        style={{ width: `${job.weight_education * 100}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{job.ats_weights.education_weight}%</span>
+                    <span className="text-sm font-medium text-gray-900">{(job.weight_education * 100).toFixed(0)}%</span>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
@@ -297,10 +430,10 @@ export default function JobDetailPage() {
                     <div className="w-16 bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-purple-600 h-2 rounded-full" 
-                        style={{ width: `${job.ats_weights.keywords_weight}%` }}
+                        style={{ width: `${job.weight_keywords * 100}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{job.ats_weights.keywords_weight}%</span>
+                    <span className="text-sm font-medium text-gray-900">{(job.weight_keywords * 100).toFixed(0)}%</span>
                   </div>
                 </div>
               </div>
@@ -313,15 +446,19 @@ export default function JobDetailPage() {
                 <Link
                   href={`/compare?job=${job.id}`}
                   className="w-full px-4 py-2 bg-green-600 text-white text-center rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 block"
+                  onClick={() => componentLogger.userAction('compare_resumes_clicked', { jobId: job.id })}
                 >
                   Compare Resumes
                 </Link>
                 <button
-                  onClick={() => navigator.share && navigator.share({
-                    title: job.title,
-                    text: `${job.title} at ${job.company}`,
-                    url: window.location.href
-                  })}
+                  onClick={() => {
+                    componentLogger.userAction('share_job_clicked', { jobId: job.id });
+                    navigator.share && navigator.share({
+                      title: job.title,
+                      text: `${job.title} at ${job.company}`,
+                      url: window.location.href
+                    });
+                  }}
                   className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:ring-2 focus:ring-gray-500"
                 >
                   Share Job
@@ -345,7 +482,7 @@ export default function JobDetailPage() {
               <h3 className="ml-3 text-lg font-medium text-gray-900">Delete Job</h3>
             </div>
             <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to delete &quot;{job.title}&quoat;? This action cannot be undone.
+              Are you sure you want to delete "{job.title}"? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -367,5 +504,21 @@ export default function JobDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Main component wrapped with error boundary
+export default function JobDetailPage() {
+  useEffect(() => {
+    logger.pageView('/jobs/[id]');
+  }, []);
+
+  return (
+    <ErrorBoundary
+      errorBoundaryName="JobDetailPage"
+      showErrorDetails={process.env.NODE_ENV === 'development'}
+    >
+      <JobDetailPageContent />
+    </ErrorBoundary>
   );
 }

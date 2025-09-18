@@ -4,13 +4,18 @@ FastAPI endpoints for resume parsing functionality
 """
 import os
 import json
+import uuid
 import logging
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-from app.models.resume import ParsedResume, ParseResponse, BatchParseResponse, ParseStatus
+from app.models.resume import (
+    ParsedResume, ParseResponse, BatchParseResponse, ParseStatus as ParseStatusEnum,
+    PersonalInfo, Experience, Education, Skills, ParsedData, ResumeFileMetadata
+)
 from app.services.resume_parser_service import ResumeParserService
 from app.services.file_service import FileService
 from app.config import settings
@@ -19,7 +24,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/parse", tags=["parsing"])
 
-# Dependency to get services
+# Import BaseModel for the response class
+from pydantic import BaseModel
+
+# Create a ParseStatus response model
+class ParseStatusResponse(BaseModel):
+    file_id: str
+    status: str
+    message: str = ""
+    parsed_at: Optional[datetime] = None
+    filename: str = ""
 def get_resume_parser() -> ResumeParserService:
     return ResumeParserService()
 
@@ -62,10 +76,14 @@ async def parse_single_resume(
             file_service.update_file_status(file_id, "completed")
             
             return ParseResponse(
+                success=True,
                 file_id=file_id,
-                status="completed",
-                parsed_resume=parsed_resume,
-                message="Resume parsed successfully"
+                filename=file_metadata['original_filename'],
+                status=ParseStatusEnum.COMPLETED,
+                parsed_data=parsed_resume.parsed_data if hasattr(parsed_resume, 'parsed_data') else None,
+                raw_text=parsed_resume.raw_text if hasattr(parsed_resume, 'raw_text') else None,
+                metadata=parsed_resume.metadata if hasattr(parsed_resume, 'metadata') else None,
+                confidence_score=0.85  # Default confidence score
             )
             
         except Exception as e:
@@ -95,14 +113,18 @@ async def parse_batch_resumes(
         failed_parses = 0
         
         for file_id in file_ids:
+            file_metadata = None  # Initialize to avoid unbound variable
             try:
                 # Get file metadata
                 file_metadata = file_service.get_file_metadata(file_id)
                 if not file_metadata:
                     results.append(ParseResponse(
+                        success=False,
                         file_id=file_id,
-                        status="error",
-                        message="File metadata not found"
+                        filename="unknown",
+                        status=ParseStatusEnum.FAILED,
+                        error_message="File metadata not found",
+                        confidence_score=0.0
                     ))
                     failed_parses += 1
                     continue
@@ -111,9 +133,12 @@ async def parse_batch_resumes(
                 
                 if not os.path.exists(file_path):
                     results.append(ParseResponse(
+                        success=False,
                         file_id=file_id,
-                        status="error",
-                        message="File not found on disk"
+                        filename=file_metadata.get('original_filename', 'unknown'),
+                        status=ParseStatusEnum.FAILED,
+                        error_message="File not found on disk",
+                        confidence_score=0.0
                     ))
                     failed_parses += 1
                     continue
@@ -132,35 +157,48 @@ async def parse_batch_resumes(
                 file_service.update_file_status(file_id, "completed")
                 
                 results.append(ParseResponse(
+                    success=True,
                     file_id=file_id,
-                    status="completed",
-                    parsed_resume=parsed_resume,
-                    message="Resume parsed successfully"
+                    filename=file_metadata['original_filename'],
+                    status=ParseStatusEnum.COMPLETED,
+                    parsed_data=parsed_resume.parsed_data if hasattr(parsed_resume, 'parsed_data') else None,
+                    raw_text=parsed_resume.raw_text if hasattr(parsed_resume, 'raw_text') else None,
+                    metadata=parsed_resume.metadata if hasattr(parsed_resume, 'metadata') else None,
+                    confidence_score=0.85  # Default confidence score
                 ))
                 successful_parses += 1
                 
             except Exception as e:
                 # Update status to error
                 file_service.update_file_status(file_id, "error", str(e))
+                # Get filename before potential error
+                filename = file_metadata.get('original_filename', 'unknown') if file_metadata else 'unknown'
                 results.append(ParseResponse(
+                    success=False,
                     file_id=file_id,
-                    status="error",
-                    message=f"Parsing failed: {str(e)}"
+                    filename=filename,
+                    status=ParseStatusEnum.FAILED,
+                    error_message=f"Parsing failed: {str(e)}",
+                    confidence_score=0.0
                 ))
                 failed_parses += 1
         
         return BatchParseResponse(
+            success=True,
+            batch_id=str(uuid.uuid4()),
             total_files=len(file_ids),
+            processed_files=successful_parses + failed_parses,
             successful_parses=successful_parses,
             failed_parses=failed_parses,
-            results=results
+            results=results,
+            overall_status=ParseStatusEnum.COMPLETED if failed_parses == 0 else ParseStatusEnum.PARTIAL
         )
         
     except Exception as e:
         logger.error(f"Unexpected error in batch parsing: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/status/{file_id}", response_model=ParseStatus)
+@router.get("/status/{file_id}", response_model=ParseStatusResponse)
 async def get_parse_status(
     file_id: str,
     file_service: FileService = Depends(get_file_service)
@@ -173,7 +211,7 @@ async def get_parse_status(
         if not file_metadata:
             raise HTTPException(status_code=404, detail="File not found")
         
-        return ParseStatus(
+        return ParseStatusResponse(
             file_id=file_id,
             status=file_metadata.get('status', 'pending'),
             message=file_metadata.get('error_message', ''),
@@ -229,6 +267,42 @@ async def delete_parsed_resume(
     except Exception as e:
         logger.error(f"Error deleting file {file_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/parsed-resumes")
+async def get_all_parsed_resumes(
+    file_service: FileService = Depends(get_file_service)
+):
+    """
+    Get all parsed resumes (completed files with parsed data)
+    """
+    try:
+        all_files = file_service.get_all_files()
+        parsed_resumes = []
+        
+        for file_data in all_files:
+            if file_data.get('status') == 'completed':
+                parsed_data = file_service.get_parsed_data(file_data['file_id'])
+                if parsed_data:
+                    parsed_resumes.append(ParsedResume(**parsed_data))
+        
+        return {
+            "parsed_resumes": parsed_resumes,
+            "total": len(parsed_resumes)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting parsed resumes: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/parsed-resumes/{file_id}", response_model=ParsedResume)
+async def get_parsed_resume_by_id(
+    file_id: str,
+    file_service: FileService = Depends(get_file_service)
+):
+    """
+    Alias for get_parsed_resume for backward compatibility
+    """
+    return await get_parsed_resume(file_id, file_service)
 
 @router.get("/stats")
 async def get_parsing_stats(

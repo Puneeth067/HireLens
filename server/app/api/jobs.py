@@ -3,9 +3,9 @@ from typing import List, Optional, Dict, Any
 
 from ..models.job import (
     JobDescription, JobDescriptionCreate, JobDescriptionUpdate,
-    JobDescriptionList, JobStats, JobStatus, JobType, ExperienceLevel
+    JobDescriptionList, JobStats, JobStatus, JobType, ExperienceLevel, BulkDeleteRequest
 )
-from ..services.job_service import JobService
+from app.services.job_service import JobService
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -20,9 +20,12 @@ async def create_job(
 ):
     """Create a new job description"""
     try:
+        print(f"Received job creation request: {job_data.dict()}")
         job = service.create_job(job_data, created_by)
+        print(f"Job created successfully: {job.id}")
         return job
     except Exception as e:
+        print(f"Error creating job: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to create job: {str(e)}")
 
 @router.get("/", response_model=JobDescriptionList)
@@ -168,12 +171,12 @@ async def bulk_update_status(
 
 @router.delete("/bulk")
 async def bulk_delete_jobs(
-    job_ids: List[str],
+    request: BulkDeleteRequest,
     service: JobService = Depends(get_job_service)
 ):
     """Delete multiple jobs"""
     results = []
-    for job_id in job_ids:
+    for job_id in request.job_ids:
         try:
             success = service.delete_job(job_id)
             results.append({"job_id": job_id, "success": success})

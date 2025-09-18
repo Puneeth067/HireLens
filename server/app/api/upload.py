@@ -26,6 +26,10 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 def validate_file(file: UploadFile) -> bool:
     """Validate uploaded file type and size."""
+    # Check if filename exists
+    if not file.filename:
+        return False
+    
     # Check file extension
     file_extension = os.path.splitext(file.filename)[1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
@@ -65,6 +69,8 @@ async def upload_single_resume(file: UploadFile = File(...)):
         
         # Generate unique filename
         file_id = str(uuid.uuid4())
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Filename is required")
         file_extension = os.path.splitext(file.filename)[1].lower()
         unique_filename = f"{file_id}{file_extension}"
         
@@ -83,19 +89,23 @@ async def upload_single_resume(file: UploadFile = File(...)):
             original_filename=file.filename,
             file_path=file_path,
             file_size=file_size,
-            mime_type=file.content_type,
+            mime_type=file.content_type or "application/octet-stream",
             uploaded_at=datetime.now(),
             status="uploaded"
         )
         
-        # Store metadata (in a real app, this would go to a database)
-        file_service.store_metadata(metadata)
+        # Store file using file service
+        file_content = file.file.read()
+        file.file.seek(0)  # Reset for potential reuse
+        saved_metadata = file_service.save_file(file_content, file.filename)
         
         return UploadResponse(
             success=True,
             message="File uploaded successfully",
-            file_id=file_id,
-            metadata=metadata
+            file_id=saved_metadata['file_id'],
+            filename=file.filename,
+            file_size=file_size,
+            status="uploaded"
         )
         
     except HTTPException:
@@ -128,6 +138,9 @@ async def upload_bulk_resumes(files: List[UploadFile] = File(...)):
                 
                 # Generate unique filename
                 file_id = str(uuid.uuid4())
+                if not file.filename:
+                    errors.append("File missing filename")
+                    continue
                 file_extension = os.path.splitext(file.filename)[1].lower()
                 unique_filename = f"{file_id}{file_extension}"
                 
@@ -146,13 +159,15 @@ async def upload_bulk_resumes(files: List[UploadFile] = File(...)):
                     original_filename=file.filename,
                     file_path=file_path,
                     file_size=file_size,
-                    mime_type=file.content_type,
+                    mime_type=file.content_type or "application/octet-stream",
                     uploaded_at=datetime.now(),
                     status="uploaded"
                 )
                 
-                file_service.store_metadata(metadata)
-                uploaded_files.append(metadata)
+                file_content = file.file.read()
+                file.file.seek(0)  # Reset for potential reuse
+                saved_metadata = file_service.save_file(file_content, file.filename)
+                uploaded_files.append(saved_metadata)
                 
             except Exception as e:
                 errors.append(f"{file.filename}: {str(e)}")
@@ -160,12 +175,17 @@ async def upload_bulk_resumes(files: List[UploadFile] = File(...)):
         if not uploaded_files:
             raise HTTPException(status_code=400, detail="No files were successfully uploaded")
         
-        return UploadResponse(
-            success=True,
-            message=f"Successfully uploaded {len(uploaded_files)} files",
-            files=uploaded_files,
-            errors=errors if errors else None
-        )
+        return {
+            "uploaded_files": [{
+                "file_id": f['file_id'],
+                "filename": f['original_filename'],
+                "file_size": f['file_size'],
+                "status": f['status']
+            } for f in uploaded_files],
+            "total_files": len(files),
+            "successful_uploads": len(uploaded_files),
+            "failed_uploads": len(errors)
+        }
         
     except HTTPException:
         raise
@@ -176,15 +196,15 @@ async def upload_bulk_resumes(files: List[UploadFile] = File(...)):
 async def get_upload_status(file_id: str):
     """Get the status of an uploaded file."""
     try:
-        metadata = file_service.get_metadata(file_id)
+        metadata = file_service.get_file_metadata(file_id)
         if not metadata:
             raise HTTPException(status_code=404, detail="File not found")
         
         return {
             "file_id": file_id,
-            "status": metadata.status,
-            "filename": metadata.filename,
-            "uploaded_at": metadata.uploaded_at
+            "status": metadata.get('status', 'unknown'),
+            "filename": metadata.get('original_filename', ''),
+            "message": "File status retrieved"
         }
     except HTTPException:
         raise
@@ -195,16 +215,14 @@ async def get_upload_status(file_id: str):
 async def delete_uploaded_file(file_id: str):
     """Delete an uploaded file."""
     try:
-        metadata = file_service.get_metadata(file_id)
+        metadata = file_service.get_file_metadata(file_id)
         if not metadata:
             raise HTTPException(status_code=404, detail="File not found")
         
-        # Delete physical file
-        if os.path.exists(metadata.file_path):
-            os.remove(metadata.file_path)
-        
-        # Delete metadata
-        file_service.delete_metadata(file_id)
+        # Delete file using file service
+        success = file_service.delete_file(file_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="File not found")
         
         return {"message": "File deleted successfully"}
         
@@ -213,11 +231,23 @@ async def delete_uploaded_file(file_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
 
-@router.get("/list")
+@router.get("/files")
 async def list_uploaded_files():
+    """List all uploaded files"""
+    try:
+        files = file_service.get_all_files()
+        return {
+            "files": files,
+            "total": len(files)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"List files failed: {str(e)}")
+
+@router.get("/list")
+async def list_uploaded_files_legacy():
     """List all uploaded files."""
     try:
-        files = file_service.list_files()
+        files = file_service.get_all_files()
         return {
             "files": files,
             "total": len(files)

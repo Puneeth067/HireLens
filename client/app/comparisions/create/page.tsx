@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Users, Briefcase, Zap, Upload, CheckCircle } from 'lucide-react';
-import { Job, ParsedResume } from '@/lib/types';
+import { JobDescriptionResponse, ParsedResume } from '@/lib/types';
 import { apiService } from '@/lib/api';
 
 interface ComparisonMode {
@@ -16,7 +16,7 @@ interface ComparisonMode {
 export default function CreateComparisonPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'single' | 'bulk' | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<JobDescriptionResponse[]>([]);
   const [resumes, setResumes] = useState<ParsedResume[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   const [selectedResumeIds, setSelectedResumeIds] = useState<string[]>([]);
@@ -222,8 +222,8 @@ export default function CreateComparisonPage() {
                           <h3 className="font-medium text-gray-900">{job.title}</h3>
                           <p className="text-sm text-gray-600">{job.company} • {job.location}</p>
                           <p className="text-xs text-gray-500 mt-1">
-                            {job.required_skills?.length || 0} required skills • 
-                            {job.preferred_skills?.length || 0} preferred skills
+                            {job.required_skills_count || 0} required skills • 
+                            {job.total_requirements || 0} total requirements
                           </p>
                         </div>
                         {selectedJobId === job.id && (

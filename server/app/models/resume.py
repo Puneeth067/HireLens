@@ -89,6 +89,9 @@ class UploadResponse(BaseModel):
     success: bool
     message: str
     file_id: Optional[str] = None
+    filename: Optional[str] = None
+    file_size: Optional[int] = None
+    status: Optional[str] = None
     metadata: Optional[FileMetadata] = None
     files: Optional[List[FileMetadata]] = None
     errors: Optional[List[str]] = None

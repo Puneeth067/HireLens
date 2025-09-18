@@ -7,6 +7,7 @@ aiofiles==23.2.1
 # Resume parsing dependencies
 PyPDF2==3.0.1
 pdfplumber==0.10.3
+PyMuPDF==1.23.8
 python-docx==1.1.0
 mammoth==1.6.0
 
@@ -17,9 +18,10 @@ textstat==0.7.3
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.23.0
 
-# Data processing
+# Data processing and analytics
 pandas==2.1.3
 numpy==1.24.3
+scikit-learn==1.3.2
 
 # Validation and serialization
 pydantic==2.5.0
@@ -27,6 +29,10 @@ pydantic-settings==2.1.0
 
 # Environment and configuration
 python-dotenv==1.0.0
+psutil==5.9.6
+
+# Logging and monitoring
+structlog==23.2.0
 
 # CORS handling
 # Use FastAPI's built-in middleware; no need for separate package
@@ -35,3 +41,7 @@ python-dotenv==1.0.0
 # Optional: For advanced NLP features
 # transformers==4.35.2
 # torch==2.1.0
+
+# Development and testing
+pytest==7.4.3
+pytest-asyncio==0.21.1

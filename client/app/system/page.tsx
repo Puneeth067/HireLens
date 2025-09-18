@@ -1,11 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cachedApiService } from '@/lib/cached-api'
+import { useLogger, LoggerUtils } from '@/lib/logger'
+import { LoadingWrapper, useLoadingState } from '@/components/ui/page-wrapper'
+import { DashboardSkeleton } from '@/components/ui/skeleton'
+import ErrorBoundary from '@/components/error-boundary'
+import { SystemHealth, SystemInfo } from '@/lib/types'
 import { 
   Server,  
   Activity, 
@@ -21,122 +27,74 @@ import {
   Settings
 } from 'lucide-react'
 
-interface SystemHealth {
-  status: string
-  timestamp: number
-  version: string
-  system: {
-    cpu_percent: number
-    memory_percent: number
-    disk_percent: number
-    python_version: string
-  }
-  directories: {
-    upload_dir: boolean
-    resumes_dir: boolean
-    temp_dir: boolean
-    data_dir: boolean
-    upload_path: string
-  }
-  services: {
-    file_service: string
-    job_service: string
-    comparison_service: string
-    analytics_service: string
-    ranking_service: string
-    ats_scoring: string
-  }
-  dependencies: {
-    status: string
-    spacy: boolean
-    nltk: boolean
-    sklearn: boolean
-    missing: string[]
-  }
-  statistics: {
-    files: Record<string, unknown>
-    jobs: Record<string, unknown>
-    comparisons: Record<string, unknown>
-    analytics: Record<string, unknown>
-    rankings: Record<string, unknown>
-  }
-  configuration: {
-    max_file_size_mb: number
-    allowed_extensions: string[]
-    async_processing: boolean
-    max_concurrent_processes: number
-  }
-}
-
-interface SystemInfo {
-  system: {
-    cpu_usage_percent: number
-    memory: {
-      total_gb: number
-      available_gb: number
-      usage_percent: number
-    }
-    disk: {
-      total_gb: number
-      used_gb: number
-      free_gb: number
-      usage_percent: number
-    }
-  }
-  application: {
-    upload_directory_size_mb: number
-    configuration: {
-      max_file_size_mb: number
-      allowed_extensions: string[]
-      async_processing: boolean
-      max_concurrent_processes: number
-    }
-    files: Record<string, unknown>
-    jobs: Record<string, unknown>
-    comparisons: Record<string, unknown>
-    analytics: Record<string, unknown>
-  }
-  timestamp: number
-}
-
-export default function SystemPage() {
+function SystemPageContent() {
+  const logger = useLogger('SystemPage');
+  const { loading, error, startLoading, stopLoading, setError, clearError } = useLoadingState('SystemPage');
+  
   const [health, setHealth] = useState<SystemHealth | null>(null)
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null)
-  const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [isClient, setIsClient] = useState(false)
 
+  // Ensure client-side rendering for time display
   useEffect(() => {
-    fetchSystemData()
-    const interval = setInterval(fetchSystemData, 30000) // Update every 30 seconds
-    return () => clearInterval(interval)
+    setIsClient(true)
   }, [])
 
-  const fetchSystemData = async () => {
-    setRefreshing(true)
+  useEffect(() => {
+    logger.lifecycle('mount');
+    LoggerUtils.logPageChange('', 'system');
+    fetchSystemData();
+    
+    const interval = setInterval(() => {
+      fetchSystemData();
+    }, 30000); // Update every 30 seconds
+    
+    return () => {
+      clearInterval(interval);
+      logger.lifecycle('unmount');
+    };
+  }, []); // Empty dependency array to prevent infinite loop
+
+  const fetchSystemData = useCallback(async () => {
+    setRefreshing(true);
+    if (!health && !systemInfo) {
+      startLoading();
+    }
+    clearError();
+    
     try {
-      // Fetch health data
-      const healthResponse = await fetch('/api/health')
-      if (healthResponse.ok) {
-        const healthData = await healthResponse.json()
-        setHealth(healthData)
-      }
+      logger.info('Fetching system data');
+      const startTime = performance.now();
+      
+      // Use cached API service for better performance
+      const healthData = await cachedApiService.healthCheck();
+      setHealth(healthData);
 
       // Fetch detailed system info
-      const infoResponse = await fetch('/api/system/info')
-      if (infoResponse.ok) {
-        const infoData = await infoResponse.json()
-        setSystemInfo(infoData)
-      }
+      const infoData = await cachedApiService.getSystemInfo();
+      setSystemInfo(infoData);
 
-      setLastUpdated(new Date())
-    } catch (error) {
-      console.error('Failed to fetch system data:', error)
+      const loadTime = performance.now() - startTime;
+      logger.info('System data loaded', { loadTime: Math.round(loadTime) });
+      
+      setLastUpdated(new Date());
+    } catch (err) {
+      const errorMessage = 'Failed to fetch system data';
+      logger.error(errorMessage, { error: err });
+      setError(errorMessage);
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      stopLoading();
+      setRefreshing(false);
     }
-  }
+  }, []); // Remove dependencies to prevent infinite loop
+
+  // Enhanced refresh handler with logging
+  const handleRefresh = useCallback(() => {
+    LoggerUtils.logButtonClick('refresh_system');
+    fetchSystemData();
+  }, []); // Remove dependency to prevent infinite loop
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
@@ -181,49 +139,43 @@ export default function SystemPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
   }
 
-  if (loading && !health) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className="text-gray-600">Loading system information...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">System Health</h1>
-            <p className="text-gray-600">
-              Monitor system performance, health status, and service availability
-            </p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500">
-              Last updated: {lastUpdated.toLocaleTimeString()}
+    <LoadingWrapper
+      loading={loading}
+      error={error}
+      onRetry={fetchSystemData}
+      skeleton={<DashboardSkeleton showStats={true} showCharts={false} showTable={false} />}
+      componentName="SystemPage"
+    >
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">System Health</h1>
+              <p className="text-gray-600">
+                Monitor system performance, health status, and service availability
+              </p>
             </div>
-            <Button 
-              onClick={fetchSystemData} 
-              disabled={refreshing}
-              variant="outline"
-              size="sm"
-            >
-              {refreshing ? (
-                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Refresh
-            </Button>
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-500">
+                {isClient ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Last updated: --:--:--'}
+              </div>
+              <Button 
+                onClick={handleRefresh} 
+                disabled={refreshing}
+                variant="outline"
+                size="sm"
+              >
+                {refreshing ? (
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
       {health && (
         <>
@@ -760,6 +712,19 @@ export default function SystemPage() {
           </Tabs>
         </>
       )}
-    </div>
+      </div>
+    </LoadingWrapper>
+  )
+}
+
+// Main SystemPage component with error boundary
+export default function SystemPage() {
+  return (
+    <ErrorBoundary
+      errorBoundaryName="SystemPage"
+      showErrorDetails={process.env.NODE_ENV === 'development'}
+    >
+      <SystemPageContent />
+    </ErrorBoundary>
   )
 }

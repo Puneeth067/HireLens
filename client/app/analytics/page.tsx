@@ -1,6 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { 
+  AnalyticsPageSkeleton, 
+  AnalyticsCardSkeleton, 
+  DashboardSkeleton, 
+  ChartSkeleton 
+} from '@/components/ui/skeleton';
+import ErrorBoundary from '@/components/error-boundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +16,7 @@ import {
   Download, RefreshCw, Target, Brain,
   AlertTriangle, CheckCircle, Activity
 } from 'lucide-react';
-import { apiService } from '@/lib/api';
+import cachedApiService from '@/lib/cached-api';
 import {
   OverviewMetrics,
   ScoreDistribution,
@@ -45,12 +52,12 @@ export default function AnalyticsPage() {
         jobsData,
         insightsData
       ] = await Promise.allSettled([
-        apiService.getOverviewMetrics(),
-        apiService.getScoreDistribution(),
-        apiService.getSkillsAnalytics(),
-        apiService.getHiringTrends(),
-        apiService.getJobPerformanceMetrics(),
-        apiService.getRecruiterInsights()
+        cachedApiService.getOverviewMetrics(),
+        cachedApiService.getScoreDistribution(),
+        cachedApiService.getSkillsAnalytics(),
+        cachedApiService.getHiringTrends(),
+        cachedApiService.getJobPerformanceMetrics(),
+        cachedApiService.getRecruiterInsights()
       ]);
 
       if (overviewData.status === 'fulfilled') {
@@ -109,7 +116,7 @@ export default function AnalyticsPage() {
         sections: ['overview', 'score_distribution', 'skills', 'trends', 'job_performance', 'insights']
       };
 
-      const data = await apiService.exportAnalyticsData(exportConfig);
+      const data = await cachedApiService.exportAnalyticsData(exportConfig);
       
       const blob = new Blob([data.content], { type: data.content_type });
       const url = window.URL.createObjectURL(blob);
@@ -142,14 +149,9 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <span className="ml-4 text-lg text-gray-600">Loading analytics...</span>
-          </div>
-        </div>
-      </div>
+      <ErrorBoundary errorBoundaryName="AnalyticsPageLoading">
+        <AnalyticsPageSkeleton />
+      </ErrorBoundary>
     );
   }
 

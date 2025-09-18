@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 import json
 import os
@@ -9,6 +10,7 @@ import calendar
 from app.models.comparison import ResumeJobComparison, ATSScore
 from app.models.resume import ParsedResume
 from app.models.job import JobDescription
+from app.models.analytics import ScoreStatistics
 from app.config import settings
 
 class AnalyticsService:
@@ -74,7 +76,7 @@ class AnalyticsService:
             "top_performing_score": max([c['ats_score']['total_score'] for c in comparisons], default=0)
         }
     
-    def get_score_distribution(self) -> Dict[str, List]:
+    def get_score_distribution(self) -> Dict[str, Any]:
         """Get ATS score distribution data for charts"""
         comparisons = self._load_comparisons()
         completed_comparisons = [c for c in comparisons if c['status'] == 'completed']
@@ -106,13 +108,13 @@ class AnalyticsService:
                 {"range": k, "count": v, "percentage": round(v/max(len(scores), 1)*100, 1)}
                 for k, v in ranges.items()
             ],
-            "statistics": {
-                "mean": round(mean(scores), 2) if scores else 0,
-                "median": round(median(scores), 2) if scores else 0,
-                "min": min(scores) if scores else 0,
-                "max": max(scores) if scores else 0,
-                "total_candidates": len(scores)
-            }
+            "statistics": ScoreStatistics(
+                mean=round(mean(scores), 2) if scores else 0,
+                median=round(median(scores), 2) if scores else 0,
+                min=min(scores) if scores else 0,
+                max=max(scores) if scores else 0,
+                total_candidates=len(scores)
+            )
         }
     
     def get_skills_analytics(self) -> Dict[str, Any]:
@@ -121,7 +123,7 @@ class AnalyticsService:
         jobs = self._load_jobs()
         
         # Most demanded skills from jobs
-        job_skills = defaultdict(int)
+        job_skills = defaultdict(float)  # Changed to float to handle 0.5 weights
         for job in jobs:
             if job['status'] == 'active':
                 for skill in job.get('required_skills', []):
@@ -167,7 +169,7 @@ class AnalyticsService:
             }
         }
     
-    def get_hiring_trends(self, months: int = 12) -> Dict[str, List]:
+    def get_hiring_trends(self, months: int = 12) -> Dict[str, Any]:
         """Get hiring trends over time"""
         comparisons = self._load_comparisons()
         jobs = self._load_jobs()

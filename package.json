@@ -1,0 +1,32 @@
+{
+  "name": "hirelens",
+  "version": "1.0.0",
+  "description": "AI-powered resume parsing and ATS scoring platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "./scripts/dev.sh",
+    "dev:client": "npm run dev --workspace=apps/client",
+    "dev:server": "npm run dev --workspace=apps/server",
+    "build": "npm run build --workspace=apps/client && npm run build --workspace=apps/server",
+    "build:client": "npm run build --workspace=apps/client",
+    "build:server": "npm run build --workspace=apps/server",
+    "start": "npm run start --workspace=apps/client & npm run start --workspace=apps/server",
+    "lint": "npm run lint --workspace=apps/client",
+    "type-check": "npm run type-check --workspace=packages/shared-types",
+    "install-deps": "npm install && npm run install-deps --workspace=apps/server",
+    "clean": "npm run clean --workspace=apps/client && npm run clean --workspace=apps/server"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "concurrently": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

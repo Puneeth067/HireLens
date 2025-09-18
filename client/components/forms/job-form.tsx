@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Job, CreateJobRequest, JobType, ExperienceLevel } from '@/lib/types';
-import { createJob, updateJob } from '@/lib/api';
+import { apiService } from '@/lib/api';
 
 interface JobFormProps {
   job?: Job;
@@ -23,41 +23,64 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
   const [formData, setFormData] = useState({
     title: job?.title || '',
     company: job?.company || '',
+    department: job?.department || '',
     location: job?.location || '',
     job_type: job?.job_type || 'full_time' as JobType,
-    experience_level: job?.experience_level || 'mid' as ExperienceLevel,
+    experience_level: job?.experience_level || 'middle' as ExperienceLevel,
     description: job?.description || '',
     salary_min: job?.salary_min || 0,
     salary_max: job?.salary_max || 0,
-    ats_weights: {
-      skills_weight: job?.ats_weights?.skills_weight || 40,
-      experience_weight: job?.ats_weights?.experience_weight || 30,
-      education_weight: job?.ats_weights?.education_weight || 15,
-      keywords_weight: job?.ats_weights?.keywords_weight || 15
-    }
+    currency: job?.currency || 'USD',
+    // Use direct weight fields from backend
+    weight_skills: (job?.weight_skills || 0.4) * 100, // Convert to percentage
+    weight_experience: (job?.weight_experience || 0.3) * 100,
+    weight_education: (job?.weight_education || 0.2) * 100,
+    weight_keywords: (job?.weight_keywords || 0.1) * 100,
+    responsibilities: job?.responsibilities || [''],
+    requirements: job?.requirements || [''],
+    nice_to_have: job?.nice_to_have || [''],
+    education_requirements: job?.education_requirements || [''],
+    certifications: job?.certifications || [''],
+    keywords: job?.keywords || []
   });
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    // Required field validations
     if (!formData.title.trim()) newErrors.title = 'Job title is required';
     if (!formData.company.trim()) newErrors.company = 'Company name is required';
     if (!formData.location.trim()) newErrors.location = 'Location is required';
     if (!formData.description.trim()) newErrors.description = 'Job description is required';
     
+    // Salary validations
     if (formData.salary_min < 0) newErrors.salary_min = 'Minimum salary cannot be negative';
     if (formData.salary_max < 0) newErrors.salary_max = 'Maximum salary cannot be negative';
-    if (formData.salary_max > 0 && formData.salary_min > formData.salary_max) {
-      newErrors.salary_max = 'Maximum salary must be greater than minimum';
+    if (formData.salary_max > 0 && formData.salary_min > 0 && formData.salary_min > formData.salary_max) {
+      newErrors.salary_max = 'Maximum salary must be greater than or equal to minimum salary';
     }
 
-    const totalWeight = Object.values(formData.ats_weights).reduce((sum, weight) => sum + weight, 0);
-    if (totalWeight !== 100) {
-      newErrors.ats_weights = 'ATS weights must sum to 100%';
+    // Weight validation
+    const totalWeight = formData.weight_skills + formData.weight_experience + formData.weight_education + formData.weight_keywords;
+    if (Math.abs(totalWeight - 100) > 0.01) { // Allow for floating point precision
+      newErrors.weights = `ATS weights must sum to 100% (currently ${totalWeight.toFixed(1)}%)`;
     }
 
+    // Skills validation
     if (requiredSkills.length === 0) {
       newErrors.required_skills = 'At least one required skill is needed';
+    }
+    
+    // Responsibilities validation
+    const validResponsibilities = formData.responsibilities.filter(r => r.trim());
+    if (validResponsibilities.length === 0) {
+      newErrors.responsibilities = 'At least one responsibility is required';
+    }
+    
+    // Requirements validation
+    const validRequirements = formData.requirements.filter(r => r.trim());
+    if (validRequirements.length === 0) {
+      newErrors.requirements = 'At least one requirement is required';
     }
 
     setErrors(newErrors);
@@ -66,25 +89,80 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    console.log('Form submitted!');
+    console.log('Form data:', formData);
+    console.log('Required skills:', requiredSkills);
+    console.log('Preferred skills:', preferredSkills);
+    
+    if (!validateForm()) {
+      console.log('Form validation failed:', errors);
+      return;
+    }
 
     setIsLoading(true);
     try {
       const jobData: CreateJobRequest = {
-        ...formData,
+        title: formData.title,
+        company: formData.company,
+        location: formData.location,
+        job_type: formData.job_type,
+        experience_level: formData.experience_level,
+        description: formData.description,
+        salary_min: Number(formData.salary_min) || 0,
+        salary_max: Number(formData.salary_max) || 0,
         required_skills: requiredSkills,
-        preferred_skills: preferredSkills
+        preferred_skills: preferredSkills,
+        responsibilities: formData.responsibilities.filter(r => r.trim()),
+        requirements: formData.requirements.filter(r => r.trim()),
+        nice_to_have: formData.nice_to_have?.filter(n => n.trim()) || [],
+        education_requirements: formData.education_requirements?.filter(e => e.trim()) || [],
+        certifications: formData.certifications?.filter(c => c.trim()) || [],
+        keywords: formData.keywords?.filter(k => k.trim()) || [],
+        // Convert percentage weights to decimals
+        weight_skills: formData.weight_skills / 100,
+        weight_experience: formData.weight_experience / 100,
+        weight_education: formData.weight_education / 100,
+        weight_keywords: formData.weight_keywords / 100
       };
 
+      console.log('Submitting job data:', JSON.stringify(jobData, null, 2));
+
+      let result;
       if (isEdit && job) {
-        await updateJob(job.id, jobData);
+        console.log('Updating existing job:', job.id);
+        result = await apiService.updateJob(job.id, jobData);
       } else {
-        await createJob(jobData);
+        console.log('Creating new job');
+        result = await apiService.createJob(jobData);
       }
 
+      console.log('Job creation result:', result);
+      console.log('Redirecting to /jobs');
       router.push('/jobs');
     } catch (error) {
-      setErrors({ submit: 'Failed to save job. Please try again.' });
+      console.error('Job creation/update error:', error);
+      let errorMessage = 'Unknown error';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        // Parse API error details if available
+        try {
+          if (error.message.includes('422')) {
+            const match = error.message.match(/API Error \(422\): (.+)/);
+            if (match) {
+              const apiError = JSON.parse(match[1]);
+              if (apiError.detail && Array.isArray(apiError.detail)) {
+                errorMessage = apiError.detail.map((err: { msg: string }) => err.msg).join(', ');
+              }
+            }
+          }
+        } catch (parseError) {
+          console.error('Error parsing API error:', parseError);
+        }
+      }
+      
+      console.error('Error details:', errorMessage);
+      setErrors({ submit: `Failed to save job: ${errorMessage}` });
     } finally {
       setIsLoading(false);
     }
@@ -102,16 +180,13 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
     }
   };
 
-  const handleWeightChange = (weight: keyof typeof formData.ats_weights, value: number) => {
+  const handleWeightChange = (weight: 'weight_skills' | 'weight_experience' | 'weight_education' | 'weight_keywords', value: number) => {
     setFormData(prev => ({
       ...prev,
-      ats_weights: {
-        ...prev.ats_weights,
-        [weight]: value
-      }
+      [weight]: value
     }));
-    if (errors.ats_weights) {
-      setErrors(prev => ({ ...prev, ats_weights: '' }));
+    if (errors.weights) {
+      setErrors(prev => ({ ...prev, weights: '' }));
     }
   };
 
@@ -143,7 +218,7 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
     }
   };
 
-  const totalWeight = Object.values(formData.ats_weights).reduce((sum, weight) => sum + weight, 0);
+  const totalWeight = formData.weight_skills + formData.weight_experience + formData.weight_education + formData.weight_keywords;
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -236,8 +311,10 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
                 aria-label="Select experience level"
               >
                 <option value="entry">Entry Level</option>
-                <option value="mid">Mid Level</option>
+                <option value="junior">Junior Level</option>
+                <option value="middle">Mid Level</option>
                 <option value="senior">Senior Level</option>
+                <option value="lead">Lead Level</option>
                 <option value="executive">Executive</option>
               </select>
             </div>
@@ -388,28 +465,99 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
-              {Object.entries(formData.ats_weights).map(([key, value]) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={value}
-                      onChange={(e) => handleWeightChange(key as keyof typeof formData.ats_weights, parseInt(e.target.value))}
-                      className="flex-1"
-                      title={`${key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Weight`}
-                      aria-label={`${key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Weight`}
-                    />
-                    <span className="w-12 text-sm font-medium text-gray-600">{value}%</span>
+              {[
+                { key: 'weight_skills', label: 'Skills Weight' },
+                { key: 'weight_experience', label: 'Experience Weight' },
+                { key: 'weight_education', label: 'Education Weight' },
+                { key: 'weight_keywords', label: 'Keywords Weight' }
+              ].map(({ key, label }) => {
+                const value = formData[key as keyof typeof formData] as number;
+                return (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {label}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={value}
+                        onChange={(e) => handleWeightChange(key as 'weight_skills' | 'weight_experience' | 'weight_education' | 'weight_keywords', parseInt(e.target.value))}
+                        className="flex-1"
+                        title={label}
+                        aria-label={label}
+                      />
+                      <span className="w-12 text-sm font-medium text-gray-600">{value}%</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            {errors.ats_weights && <p className="mt-1 text-sm text-red-600">{errors.ats_weights}</p>}
+            {errors.weights && <p className="mt-1 text-sm text-red-600">{errors.weights}</p>}
+          </div>
+
+          {/* Job Requirements - Add missing required fields */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Job Details</h3>
+            
+            {/* Responsibilities */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Key Responsibilities *
+              </label>
+              <textarea
+                value={formData.responsibilities.join('\n')}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData(prev => ({
+                    ...prev,
+                    responsibilities: value ? value.split('\n') : ['']
+                  }));
+                }}
+                onKeyDown={(e) => {
+                  // Allow Enter key to create new lines
+                  if (e.key === 'Enter') {
+                    e.stopPropagation();
+                  }
+                }}
+                rows={4}
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.responsibilities ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter each responsibility on a new line...\n• Develop and maintain software applications\n• Collaborate with cross-functional teams\n• Write clean, efficient code"
+              />
+              {errors.responsibilities && <p className="mt-1 text-sm text-red-600">{errors.responsibilities}</p>}
+            </div>
+
+            {/* Requirements */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Job Requirements *
+              </label>
+              <textarea
+                value={formData.requirements.join('\n')}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData(prev => ({
+                    ...prev,
+                    requirements: value ? value.split('\n') : ['']
+                  }));
+                }}
+                onKeyDown={(e) => {
+                  // Allow Enter key to create new lines
+                  if (e.key === 'Enter') {
+                    e.stopPropagation();
+                  }
+                }}
+                rows={4}
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.requirements ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter each requirement on a new line...\n• Bachelor's degree in Computer Science or related field\n• 3+ years of experience in software development\n• Experience with React and Node.js"
+              />
+              {errors.requirements && <p className="mt-1 text-sm text-red-600">{errors.requirements}</p>}
+            </div>
           </div>
 
           {/* Form Actions */}

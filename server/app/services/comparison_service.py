@@ -77,7 +77,7 @@ class ComparisonService:
     ) -> ResumeJobComparison:
         """Create a new resume-job comparison"""
         # Validate resume and job exist
-        resume_data = self.file_service.get_parsed_resume(resume_id)
+        resume_data = self.file_service.get_parsed_data(resume_id)
         if not resume_data:
             raise ValueError(f"Resume not found: {resume_id}")
         
@@ -92,10 +92,14 @@ class ComparisonService:
             resume_id=resume_id,
             job_id=job_id,
             resume_filename=resume_data.get('filename', 'Unknown'),
-            candidate_name=resume_data.get('parsed_data', {}).get('name', 'Unknown'),
+            candidate_name=resume_data.get('name', 'Unknown'),
             job_title=job_data.title,
             company=job_data.company,
-            status=ComparisonStatus.PENDING
+            status=ComparisonStatus.PENDING,
+            ats_score=None,
+            completed_at=None,
+            processing_time_seconds=None,
+            error_message=None
         )
         
         # Store in cache and save
@@ -109,11 +113,11 @@ class ComparisonService:
     
     async def _process_comparison(self, comparison_id: str):
         """Process a single comparison asynchronously"""
+        comparison = self._comparison_cache.get(comparison_id)
+        if not comparison:
+            return
+        
         try:
-            comparison = self._comparison_cache.get(comparison_id)
-            if not comparison:
-                return
-            
             start_time = time.time()
             
             # Update status to processing
@@ -121,14 +125,14 @@ class ComparisonService:
             self._save_comparisons()
             
             # Get resume and job data
-            resume_data = self.file_service.get_parsed_resume(comparison.resume_id)
+            resume_data = self.file_service.get_parsed_data(comparison.resume_id)
             job_data = self.job_service.get_job(comparison.job_id)
             
             if not resume_data or not job_data:
                 raise ValueError("Resume or job data not found")
             
             # Parse resume data
-            parsed_resume = ParsedResume(**resume_data['parsed_data'])
+            parsed_resume = ParsedResume(**resume_data)
             
             # Calculate ATS score
             scoring_result = calculate_ats_score(parsed_resume, job_data)
@@ -181,7 +185,9 @@ class ComparisonService:
                     company=job_data.company,
                     status=ComparisonStatus.FAILED,
                     error_message=str(e),
-                    completed_at=datetime.utcnow()
+                    completed_at=datetime.utcnow(),
+                    ats_score=None,
+                    processing_time_seconds=None
                 )
                 self._comparison_cache[comparison_id] = failed_comparison
                 comparisons.append(failed_comparison)
@@ -192,7 +198,8 @@ class ComparisonService:
             batch_id=batch_id,
             total_comparisons=len(comparisons),
             comparisons=comparisons,
-            status=ComparisonStatus.PROCESSING
+            status=ComparisonStatus.PROCESSING,
+            completed_at=None
         )
     
     def get_comparison(self, comparison_id: str) -> Optional[ResumeJobComparison]:
@@ -296,19 +303,19 @@ class ComparisonService:
         failed = len([c for c in comparisons if c.status == ComparisonStatus.FAILED])
         
         # Calculate average scores for completed comparisons
-        completed_comparisons = [c for c in comparisons if c.status == ComparisonStatus.COMPLETED and c.ats_score]
+        completed_comparisons = [c for c in comparisons if c.status == ComparisonStatus.COMPLETED and c.ats_score is not None]
         
         if completed_comparisons:
-            avg_overall = sum(c.ats_score.overall_score for c in completed_comparisons) / len(completed_comparisons)
-            avg_skills = sum(c.ats_score.skills_score for c in completed_comparisons) / len(completed_comparisons)
-            avg_experience = sum(c.ats_score.experience_score for c in completed_comparisons) / len(completed_comparisons)
-            avg_education = sum(c.ats_score.education_score for c in completed_comparisons) / len(completed_comparisons)
-            avg_keywords = sum(c.ats_score.keywords_score for c in completed_comparisons) / len(completed_comparisons)
+            avg_overall = sum(c.ats_score.overall_score for c in completed_comparisons if c.ats_score is not None) / len(completed_comparisons)
+            avg_skills = sum(c.ats_score.skills_score for c in completed_comparisons if c.ats_score is not None) / len(completed_comparisons)
+            avg_experience = sum(c.ats_score.experience_score for c in completed_comparisons if c.ats_score is not None) / len(completed_comparisons)
+            avg_education = sum(c.ats_score.education_score for c in completed_comparisons if c.ats_score is not None) / len(completed_comparisons)
+            avg_keywords = sum(c.ats_score.keywords_score for c in completed_comparisons if c.ats_score is not None) / len(completed_comparisons)
             
             # Get top candidates
             top_candidates = sorted(
                 completed_comparisons, 
-                key=lambda x: x.ats_score.overall_score, 
+                key=lambda x: x.ats_score.overall_score if x.ats_score is not None else 0, 
                 reverse=True
             )[:10]
             
@@ -316,7 +323,7 @@ class ComparisonService:
                 {
                     'comparison_id': c.id,
                     'candidate_name': c.candidate_name,
-                    'overall_score': c.ats_score.overall_score,
+                    'overall_score': c.ats_score.overall_score if c.ats_score is not None else 0,
                     'job_title': c.job_title,
                     'company': c.company
                 }
@@ -326,7 +333,8 @@ class ComparisonService:
             # Analyze missing skills
             all_missing_skills = []
             for c in completed_comparisons:
-                all_missing_skills.extend(c.ats_score.missing_skills)
+                if c.ats_score is not None:
+                    all_missing_skills.extend(c.ats_score.missing_skills)
             
             skill_counts = Counter(all_missing_skills)
             most_common_missing = [
@@ -356,15 +364,15 @@ class ComparisonService:
         """Get advanced analytics for all comparisons"""
         completed_comparisons = [
             c for c in self._comparison_cache.values() 
-            if c.status == ComparisonStatus.COMPLETED and c.ats_score
+            if c.status == ComparisonStatus.COMPLETED and c.ats_score is not None
         ]
         
         if not completed_comparisons:
             return ComparisonAnalytics()
         
         # Score distribution
-        overall_scores = [c.ats_score.overall_score for c in completed_comparisons]
-        skills_scores = [c.ats_score.skills_score for c in completed_comparisons]
+        overall_scores = [c.ats_score.overall_score for c in completed_comparisons if c.ats_score is not None]
+        skills_scores = [c.ats_score.skills_score for c in completed_comparisons if c.ats_score is not None]
         
         score_distribution = self._calculate_score_distribution(overall_scores)
         skills_distribution = self._calculate_score_distribution(skills_scores)
@@ -372,15 +380,15 @@ class ComparisonService:
         # Top performers
         top_performers = sorted(
             completed_comparisons,
-            key=lambda x: x.ats_score.overall_score,
+            key=lambda x: x.ats_score.overall_score if x.ats_score is not None else 0,
             reverse=True
         )[:10]
         
         top_performing_data = [
             {
                 'candidate_name': c.candidate_name,
-                'overall_score': c.ats_score.overall_score,
-                'skills_score': c.ats_score.skills_score,
+                'overall_score': c.ats_score.overall_score if c.ats_score is not None else 0,
+                'skills_score': c.ats_score.skills_score if c.ats_score is not None else 0,
                 'job_title': c.job_title,
                 'company': c.company,
                 'comparison_id': c.id
@@ -391,7 +399,8 @@ class ComparisonService:
         # Skill gap analysis
         all_missing_skills = []
         for c in completed_comparisons:
-            all_missing_skills.extend(c.ats_score.missing_skills)
+            if c.ats_score is not None:
+                all_missing_skills.extend(c.ats_score.missing_skills)
         
         skill_gaps = Counter(all_missing_skills).most_common(15)
         skill_gap_data = [
@@ -410,14 +419,14 @@ class ComparisonService:
         ]
         
         if processing_times:
-            processing_stats = {
+            processing_stats: Dict[str, float] = {
                 'average': sum(processing_times) / len(processing_times),
                 'minimum': min(processing_times),
                 'maximum': max(processing_times),
-                'count': len(processing_times)
+                'count': float(len(processing_times))
             }
         else:
-            processing_stats = {'average': 0, 'minimum': 0, 'maximum': 0, 'count': 0}
+            processing_stats = {'average': 0.0, 'minimum': 0.0, 'maximum': 0.0, 'count': 0.0}
         
         return ComparisonAnalytics(
             total_comparisons=len(completed_comparisons),
@@ -477,3 +486,10 @@ class ComparisonService:
             c for c in self._comparison_cache.values() 
             if c.resume_id == resume_id
         ]
+    
+    def get_comparison_by_resume_and_job(self, resume_id: str, job_id: str) -> Optional[ResumeJobComparison]:
+        """Get a specific comparison by resume ID and job ID"""
+        for comparison in self._comparison_cache.values():
+            if comparison.resume_id == resume_id and comparison.job_id == job_id:
+                return comparison
+        return None

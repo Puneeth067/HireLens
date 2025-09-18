@@ -18,7 +18,7 @@ class RankingService:
     def __init__(self):
         self.data_dir = "data/rankings"
         os.makedirs(self.data_dir, exist_ok=True)
-        self.comparison_service = ComparisonService()
+        self.comparison_service: ComparisonService = ComparisonService()
     
     def create_ranking(self, request: RankingRequest) -> CandidateRanking:
         """Create a new candidate ranking"""
@@ -63,11 +63,14 @@ class RankingService:
             # Calculate composite score
             composite_score = self._calculate_composite_score(comparison, criteria)
             
-            # Calculate individual metrics
-            skills_score = comparison.ats_score.skills_score
-            experience_score = comparison.ats_score.experience_score
-            education_score = comparison.ats_score.education_score
-            keyword_score = comparison.ats_score.keyword_score
+            # Calculate individual metrics (with null safety checks)
+            if comparison.ats_score:
+                skills_score = comparison.ats_score.skills_score
+                experience_score = comparison.ats_score.experience_score
+                education_score = comparison.ats_score.education_score
+                keyword_score = comparison.ats_score.keywords_score
+            else:
+                skills_score = experience_score = education_score = keyword_score = 0.0
             
             # Calculate skill match percentage
             skill_match_percentage = self._calculate_skill_match_percentage(comparison)
@@ -103,11 +106,15 @@ class RankingService:
     def _calculate_composite_score(self, comparison: ResumeJobComparison, 
                                  criteria: RankingCriteria) -> float:
         """Calculate weighted composite score"""
+        # Add null safety check for ats_score
+        if not comparison.ats_score:
+            return 0.0
+            
         scores = [
             WeightedScore(comparison.ats_score.skills_score, criteria.skills_weight, 0),
             WeightedScore(comparison.ats_score.experience_score, criteria.experience_weight, 0),
             WeightedScore(comparison.ats_score.education_score, criteria.education_weight, 0),
-            WeightedScore(comparison.ats_score.keyword_score, criteria.keyword_weight, 0)
+            WeightedScore(comparison.ats_score.keywords_score, criteria.keyword_weight, 0)
         ]
         
         total_weighted_score = 0
@@ -138,7 +145,7 @@ class RankingService:
         checks = []
         
         if criteria.min_overall_score is not None:
-            checks.append(comparison.ats_score.total_score >= criteria.min_overall_score)
+            checks.append(comparison.ats_score.overall_score >= criteria.min_overall_score)
         
         if criteria.min_skills_score is not None:
             checks.append(comparison.ats_score.skills_score >= criteria.min_skills_score)
@@ -211,18 +218,18 @@ class RankingService:
             return {"error": "No comparisons found for specified candidates"}
         
         # Calculate comparison metrics
-        scores = [c.ats_score.total_score for c in comparisons if c.ats_score]
+        scores = [c.ats_score.overall_score for c in comparisons if c.ats_score]
         
         return {
             "candidates": [
                 {
                     "resume_id": c.resume_id,
                     "filename": c.resume_filename,
-                    "total_score": c.ats_score.total_score if c.ats_score else 0,
+                    "total_score": c.ats_score.overall_score if c.ats_score else 0,
                     "skills_score": c.ats_score.skills_score if c.ats_score else 0,
                     "experience_score": c.ats_score.experience_score if c.ats_score else 0,
                     "education_score": c.ats_score.education_score if c.ats_score else 0,
-                    "keyword_score": c.ats_score.keyword_score if c.ats_score else 0,
+                    "keyword_score": c.ats_score.keywords_score if c.ats_score else 0,
                     "recommendations": c.ats_score.recommendations if c.ats_score else []
                 }
                 for c in comparisons

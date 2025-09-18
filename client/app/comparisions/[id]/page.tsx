@@ -122,7 +122,7 @@ export default function ComparisonDetailPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Comparison Details</h1>
               <p className="text-gray-600 mt-1">
-                {comparison.resume_name} vs {comparison.job_title}
+                {comparison.candidate_name || comparison.resume_filename} vs {comparison.job_title}
               </p>
             </div>
           </div>
@@ -220,7 +220,7 @@ export default function ComparisonDetailPage() {
                     { label: 'Skills Match', score: atsScore.skills_score, icon: Target },
                     { label: 'Experience', score: atsScore.experience_score, icon: Briefcase },
                     { label: 'Education', score: atsScore.education_score, icon: GraduationCap },
-                    { label: 'Keywords', score: atsScore.keyword_score, icon: FileText }
+                    { label: 'Keywords', score: atsScore.keywords_score, icon: FileText }
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -463,7 +463,7 @@ export default function ComparisonDetailPage() {
                         { name: 'Skills', score: atsScore.skills_score },
                         { name: 'Experience', score: atsScore.experience_score },
                         { name: 'Education', score: atsScore.education_score },
-                        { name: 'Keywords', score: atsScore.keyword_score }
+                        { name: 'Keywords', score: atsScore.keywords_score }
                       ]
                         .filter(item => item.score >= 60)
                         .map((item, index) => (
@@ -482,7 +482,7 @@ export default function ComparisonDetailPage() {
                         { name: 'Skills', score: atsScore.skills_score },
                         { name: 'Experience', score: atsScore.experience_score },
                         { name: 'Education', score: atsScore.education_score },
-                        { name: 'Keywords', score: atsScore.keyword_score }
+                        { name: 'Keywords', score: atsScore.keywords_score }
                       ]
                         .filter(item => item.score < 60)
                         .map((item, index) => (

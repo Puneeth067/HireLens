@@ -1,0 +1,38 @@
+{
+  "id": "b44630f4-cc59-40cb-b9a0-67707513ec2c",
+  "filename": "Puneeth_K_Resume.pdf",
+  "raw_text": "",
+  "parsed_data": {
+    "personal_info": {
+      "name": null,
+      "email": null,
+      "phone": null,
+      "location": null,
+      "linkedin": null,
+      "github": null,
+      "portfolio": null
+    },
+    "education": [],
+    "experience": [],
+    "skills": {
+      "technical": [],
+      "soft": [],
+      "tools": [],
+      "frameworks": [],
+      "languages": []
+    },
+    "certifications": [],
+    "languages": []
+  },
+  "metadata": {
+    "file_size": 0,
+    "file_type": "pdf",
+    "pages": null,
+    "upload_date": "2025-09-17 22:52:17.605410",
+    "processing_time": null
+  },
+  "status": "completed",
+  "error_message": null,
+  "file_id": "e664c4c2-7811-480f-a093-3b8bc9df4679",
+  "saved_at": "2025-09-17T22:52:17.607298"
+}

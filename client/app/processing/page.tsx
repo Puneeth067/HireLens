@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FileText, Brain, CheckCircle2, XCircle, Clock, Eye, Trash2, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,14 +10,41 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiService } from '@/lib/api';
 import { ParsedResume, FileMetadata, ProcessingStats, Skill, } from '@/lib/types';
+import ErrorBoundary from '@/components/error-boundary';
+import { useLogger, logger } from '@/lib/logger';
+import { apiCache, systemCache, CacheKeys, CacheInvalidation } from '@/lib/cache';
+import { 
+  DashboardSkeleton, 
+  ListSkeleton, 
+  TableSkeleton,
+  CardSkeleton 
+} from '@/components/ui/skeleton';
 
-export default function ProcessingPage() {
+function ProcessingPageContent() {
+  const componentLogger = useLogger('ProcessingPage');
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [stats, setStats] = useState<ProcessingStats | null>(null);
   const [selectedResume, setSelectedResume] = useState<ParsedResume | null>(null);
   const [loading, setLoading] = useState(true);
   const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('overview');
+  const [error, setError] = useState<string | null>(null);
+  const processingFilesRef = useRef<Set<string>>(new Set());
+
+  // Update ref when processingFiles changes
+  useEffect(() => {
+    processingFilesRef.current = processingFiles;
+  }, [processingFiles]);
+
+  // Performance tracking
+  useEffect(() => {
+    componentLogger.lifecycle('mount');
+    logger.startPerformanceTimer('processing_page_load');
+    
+    return () => {
+      componentLogger.lifecycle('unmount');
+    };
+  }, [componentLogger]);
 
   useEffect(() => {
     loadFiles();
@@ -25,18 +52,51 @@ export default function ProcessingPage() {
     
     // Set up polling for processing files
     const interval = setInterval(() => {
-      if (processingFiles.size > 0) {
+      if (processingFilesRef.current.size > 0) {
+        componentLogger.debug('Polling for processing files update', { processingCount: processingFilesRef.current.size });
         loadFiles();
       }
     }, 3000);
 
-    return () => clearInterval(interval);
-  }, [processingFiles]);
+    return () => {
+      clearInterval(interval);
+      logger.endPerformanceTimer('processing_page_load');
+    };
+  }, []); // Empty dependency array to prevent infinite loop
 
-  const loadFiles = async () => {
+  const loadFiles = useCallback(async () => {
     try {
+      setError(null);
+      componentLogger.debug('Loading files');
+      
+      // Try cache first
+      const cacheKey = CacheKeys.FILTERED_DATA('files', 'all');
+      const cachedFiles = apiCache.get<{ files: FileMetadata[] }>(cacheKey);
+      
+      if (cachedFiles) {
+        componentLogger.debug('Files loaded from cache');
+        setFiles(cachedFiles.files);
+        
+        // Update processing files set
+        const processing = new Set(
+          cachedFiles.files
+            .filter(f => f.status === 'processing')
+            .map(f => f.file_id)
+        );
+        setProcessingFiles(processing);
+        
+        // Still fetch fresh data in background if there are processing files
+        if (processing.size === 0) {
+          setLoading(false);
+          return;
+        }
+      }
+      
       const response = await apiService.getFiles();
       setFiles(response.files);
+      
+      // Cache the response
+      apiCache.set(cacheKey, response, 30000); // 30 seconds for file list
       
       // Update processing files set
       const processing = new Set(
@@ -45,56 +105,138 @@ export default function ProcessingPage() {
           .map(f => f.file_id)
       );
       setProcessingFiles(processing);
+      
+      componentLogger.info('Files loaded successfully', { 
+        totalFiles: response.files.length,
+        processingFiles: processing.size 
+      });
     } catch (error) {
-      console.error('Error loading files:', error);
+      componentLogger.error('Error loading files', { error });
+      setError('Failed to load files. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Remove componentLogger dependency to prevent infinite loop
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
+      componentLogger.debug('Loading processing stats');
+      
+      // Try cache first
+      const cacheKey = CacheKeys.SYSTEM_INFO();
+      const cachedStats = systemCache.get<ProcessingStats>(cacheKey);
+      
+      if (cachedStats) {
+        componentLogger.debug('Stats loaded from cache');
+        setStats(cachedStats);
+        return;
+      }
+      
       const stats = await apiService.getParsingStats();
-      setStats(stats);
+      
+      // Ensure stats has required properties with defaults
+      const safeStats: ProcessingStats = {
+        total_files: stats?.total_files || 0,
+        completed: stats?.completed || 0,
+        processing: stats?.processing || 0,
+        pending: stats?.pending || 0,
+        error: stats?.error || 0,
+        recent_activity: Array.isArray(stats?.recent_activity) ? stats.recent_activity : []
+      };
+      
+      setStats(safeStats);
+      
+      // Cache the stats
+      systemCache.set(cacheKey, safeStats, 60000); // 1 minute cache
+      
+      componentLogger.info('Processing stats loaded', { stats: safeStats });
     } catch (error) {
-      console.error('Error loading stats:', error);
+      componentLogger.error('Error loading stats', { error });
+      
+      // Set fallback stats to prevent crashes
+      const fallbackStats: ProcessingStats = {
+        total_files: 0,
+        completed: 0,
+        processing: 0,
+        pending: 0,
+        error: 0,
+        recent_activity: []
+      };
+      setStats(fallbackStats);
     }
-  };
+  }, []); // Remove componentLogger dependency to prevent infinite loop
 
-  const parseFile = async (fileId: string) => {
+  const parseFile = useCallback(async (fileId: string) => {
     try {
+      componentLogger.userAction('parse_file_initiated', { fileId });
       setProcessingFiles(prev => new Set([...prev, fileId]));
+      
       await apiService.parseResume(fileId);
+      
       await loadFiles();
       await loadStats();
+      
+      // Invalidate cache
+      CacheInvalidation.onUserAction();
+      
+      componentLogger.userAction('parse_file_completed', { fileId });
     } catch (error) {
-      console.error('Error parsing file:', error);
+      componentLogger.error('Error parsing file', { error, fileId });
       setProcessingFiles(prev => {
         const newSet = new Set(prev);
         newSet.delete(fileId);
         return newSet;
       });
+      setError('Failed to parse file. Please try again.');
     }
-  };
+  }, []); // Remove dependencies to prevent infinite loop
 
-  const viewParsedResume = async (fileId: string) => {
+  const viewParsedResume = useCallback(async (fileId: string) => {
     try {
+      componentLogger.userAction('view_resume', { fileId });
+      
+      // Try cache first
+      const cacheKey = `parsed_resume_${fileId}`;
+      const cachedResume = apiCache.get<ParsedResume>(cacheKey);
+      
+      if (cachedResume) {
+        componentLogger.debug('Resume loaded from cache', { fileId });
+        setSelectedResume(cachedResume);
+        return;
+      }
+      
       const resume = await apiService.getParsedResume(fileId);
       setSelectedResume(resume);
+      
+      // Cache the resume
+      apiCache.set(cacheKey, resume, 300000); // 5 minutes cache
+      
+      componentLogger.info('Resume viewed', { fileId, resumeId: resume.id });
     } catch (error) {
-      console.error('Error loading parsed resume:', error);
+      componentLogger.error('Error loading parsed resume', { error, fileId });
+      setError('Failed to load resume. Please try again.');
     }
-  };
+  }, []); // Remove componentLogger dependency to prevent infinite loop
 
-  const deleteFile = async (fileId: string) => {
+  const deleteFile = useCallback(async (fileId: string) => {
     try {
+      componentLogger.userAction('delete_file', { fileId });
+      
       await apiService.deleteFile(fileId);
+      
       await loadFiles();
       await loadStats();
+      
+      // Invalidate related caches
+      CacheInvalidation.onUserAction();
+      apiCache.delete(`parsed_resume_${fileId}`);
+      
+      componentLogger.userAction('file_deleted', { fileId });
     } catch (error) {
-      console.error('Error deleting file:', error);
+      componentLogger.error('Error deleting file', { error, fileId });
+      setError('Failed to delete file. Please try again.');
     }
-  };
+  }, []); // Remove dependencies to prevent infinite loop
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -119,18 +261,45 @@ export default function ProcessingPage() {
     return `${mb.toFixed(1)} MB`;
   };
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: number | string) => {
+    // Handle both Unix timestamp (number) and ISO string
+    if (typeof timestamp === 'string') {
+      return new Date(timestamp).toLocaleString();
+    }
     return new Date(timestamp * 1000).toLocaleString();
   };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Clock className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p>Loading files...</p>
-          </div>
+        <div className="mb-8">
+          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div className="h-4 w-96 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <DashboardSkeleton 
+          showStats={true}
+          showCharts={false}
+          showTable={true}
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={() => {
+            setError(null);
+            setLoading(true);
+            loadFiles();
+            loadStats();
+          }}>
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -340,7 +509,7 @@ export default function ProcessingPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats?.recent_activity.map((activity, index) => (
+                {stats?.recent_activity && Array.isArray(stats.recent_activity) && stats.recent_activity.map((activity, index) => (
                   <div key={`${activity.file_id}-${index}`} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     {getStatusIcon(activity.status)}
                     <div className="flex-1">
@@ -359,7 +528,7 @@ export default function ProcessingPage() {
                   </div>
                 ))}
                 
-                {(!stats || stats.recent_activity.length === 0) && (
+                {(!stats || !stats.recent_activity || !Array.isArray(stats.recent_activity) || stats.recent_activity.length === 0) && (
                   <div className="text-center py-8">
                     <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">No recent activity</p>
@@ -421,7 +590,7 @@ function ResumeViewer({ resume }: { resume: ParsedResume }) {
           <h3 className="text-lg font-semibold mb-3">Skills</h3>
           <div className="space-y-3">
             {Object.entries(
-              resume.skills.reduce((acc: Record<string, Skill[]>, skill: Skill) => {
+              ((resume.skills as unknown as Skill[])).reduce((acc: Record<string, Skill[]>, skill: Skill) => {
                 const category = skill.category || 'other';
                 if (!acc[category]) acc[category] = [];
                 acc[category].push(skill);
@@ -444,11 +613,11 @@ function ResumeViewer({ resume }: { resume: ParsedResume }) {
       )}
 
       {/* Experience */}
-      {resume.experience && resume.experience.length > 0 && (
+      {resume.work_experience && resume.work_experience.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-3">Experience</h3>
           <div className="space-y-4">
-            {resume.experience.map((exp, index) => (
+            {resume.work_experience.map((exp, index) => (
               <div key={index} className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -493,5 +662,21 @@ function ResumeViewer({ resume }: { resume: ParsedResume }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Main component wrapped with error boundary
+export default function ProcessingPage() {
+  useEffect(() => {
+    logger.pageView('/processing');
+  }, []);
+
+  return (
+    <ErrorBoundary
+      errorBoundaryName="ProcessingPage"
+      showErrorDetails={process.env.NODE_ENV === 'development'}
+    >
+      <ProcessingPageContent />
+    </ErrorBoundary>
   );
 }

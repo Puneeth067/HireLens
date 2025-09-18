@@ -88,7 +88,7 @@ class TextExtractionService:
         try:
             for page_num in range(doc.page_count):
                 page = doc[page_num]
-                text += page.get_text()
+                text += page.get_text()  # type: ignore
                 text += "\n"  # Add page break
             
         finally:
@@ -225,7 +225,7 @@ class TextExtractionService:
             # Check if PDF has extractable text
             for page_num in range(min(3, doc.page_count)):  # Check first 3 pages
                 page = doc[page_num]
-                text = page.get_text().strip()
+                text = page.get_text().strip()  # type: ignore
                 if text:
                     info['has_text'] = True
                     break

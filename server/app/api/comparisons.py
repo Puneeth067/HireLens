@@ -36,7 +36,8 @@ async def create_comparison(request: CreateComparisonRequest):
         return ComparisonResponse(
             success=True,
             message="Comparison created successfully",
-            data=comparison.dict()
+            data=comparison.dict(),
+            error=None
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -51,7 +52,8 @@ async def create_batch_comparison(request: BatchComparisonRequest):
         return ComparisonResponse(
             success=True,
             message=f"Batch comparison created for {batch_result.total_comparisons} resumes",
-            data=batch_result.dict()
+            data=batch_result.dict(),
+            error=None
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -62,23 +64,59 @@ async def create_batch_comparison(request: BatchComparisonRequest):
 async def list_comparisons(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(10, ge=1, le=100, description="Items per page"),
+    limit: Optional[int] = Query(None, ge=1, le=100, description="Items per page (alias for per_page)"),
+    skip: Optional[int] = Query(None, ge=0, description="Items to skip (converted to page)"),
     job_id: Optional[str] = Query(None, description="Filter by job ID"),
     resume_id: Optional[str] = Query(None, description="Filter by resume ID"),
-    status: Optional[ComparisonStatus] = Query(None, description="Filter by status"),
+    status: Optional[str] = Query(None, description="Filter by status"),
     candidate_name: Optional[str] = Query(None, description="Filter by candidate name"),
     company: Optional[str] = Query(None, description="Filter by company"),
     min_overall_score: Optional[float] = Query(None, ge=0, le=100, description="Minimum overall score"),
     max_overall_score: Optional[float] = Query(None, ge=0, le=100, description="Maximum overall score"),
+    min_score: Optional[float] = Query(None, ge=0, le=100, description="Minimum score (alias for min_overall_score)"),
+    max_score: Optional[float] = Query(None, ge=0, le=100, description="Maximum score (alias for max_overall_score)"),
     min_skills_score: Optional[float] = Query(None, ge=0, le=100, description="Minimum skills score"),
+    search: Optional[str] = Query(None, description="Search query"),
+    sort_by: Optional[str] = Query(None, description="Sort field"),
+    sort_order: Optional[str] = Query(None, description="Sort order (asc/desc)"),
     created_after: Optional[datetime] = Query(None, description="Filter created after date"),
     created_before: Optional[datetime] = Query(None, description="Filter created before date")
 ):
     """List comparisons with filtering and pagination"""
     try:
+        # Handle pagination aliases
+        if limit and not per_page:
+            per_page = limit
+        if skip is not None:
+            page = (skip // per_page) + 1
+        
+        # Handle score aliases
+        if min_score is not None and min_overall_score is None:
+            min_overall_score = min_score
+        if max_score is not None and max_overall_score is None:
+            max_overall_score = max_score
+        
+        # Convert status string to enum if provided
+        status_enum = None
+        if status:
+            try:
+                status_enum = ComparisonStatus(status.lower())
+            except ValueError:
+                # Handle legacy status values
+                status_map = {
+                    'complete': ComparisonStatus.COMPLETED,
+                    'completed': ComparisonStatus.COMPLETED,
+                    'pending': ComparisonStatus.PENDING,
+                    'processing': ComparisonStatus.PROCESSING,
+                    'failed': ComparisonStatus.FAILED,
+                    'error': ComparisonStatus.FAILED
+                }
+                status_enum = status_map.get(status.lower())
+        
         filters = ComparisonFilters(
             job_id=job_id,
             resume_id=resume_id,
-            status=status,
+            status=status_enum,
             candidate_name=candidate_name,
             company=company,
             min_overall_score=min_overall_score,
@@ -103,7 +141,8 @@ async def get_comparison(comparison_id: str):
     return ComparisonResponse(
         success=True,
         message="Comparison retrieved successfully",
-        data=comparison.dict()
+        data=comparison.dict(),
+        error=None
     )
 
 @router.delete("/{comparison_id}", response_model=ComparisonResponse)
@@ -115,7 +154,9 @@ async def delete_comparison(comparison_id: str):
     
     return ComparisonResponse(
         success=True,
-        message="Comparison deleted successfully"
+        message="Comparison deleted successfully",
+        data=None,
+        error=None
     )
 
 @router.get("/job/{job_id}", response_model=ComparisonResponse)
@@ -126,7 +167,8 @@ async def get_comparisons_by_job(job_id: str):
         return ComparisonResponse(
             success=True,
             message=f"Found {len(comparisons)} comparisons for job",
-            data=[comp.dict() for comp in comparisons]
+            data=[comp.dict() for comp in comparisons],
+            error=None
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get job comparisons: {str(e)}")
@@ -139,7 +181,8 @@ async def get_comparisons_by_resume(resume_id: str):
         return ComparisonResponse(
             success=True,
             message=f"Found {len(comparisons)} comparisons for resume",
-            data=[comp.dict() for comp in comparisons]
+            data=[comp.dict() for comp in comparisons],
+            error=None
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get resume comparisons: {str(e)}")
@@ -153,7 +196,8 @@ async def get_comparison_summary():
         return ComparisonResponse(
             success=True,
             message="Summary statistics retrieved successfully",
-            data=summary.dict() if summary else {}
+            data=summary.dict() if summary else {},
+            error=None
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get summary: {str(e)}")
@@ -166,24 +210,31 @@ async def get_comparison_analytics():
         return ComparisonResponse(
             success=True,
             message="Analytics retrieved successfully",
-            data=analytics.dict()
+            data=analytics.dict(),
+            error=None
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
 
-@router.post("/bulk-delete", response_model=ComparisonResponse)
-async def bulk_delete_comparisons(comparison_ids: List[str]):
+from pydantic import BaseModel
+
+class BulkDeleteRequest(BaseModel):
+    comparison_ids: List[str]
+
+@router.delete("/bulk-delete", response_model=ComparisonResponse)
+async def bulk_delete_comparisons(request: BulkDeleteRequest):
     """Delete multiple comparisons"""
     try:
         deleted_count = 0
-        for comparison_id in comparison_ids:
+        for comparison_id in request.comparison_ids:
             if comparison_service.delete_comparison(comparison_id):
                 deleted_count += 1
         
         return ComparisonResponse(
             success=True,
-            message=f"Successfully deleted {deleted_count} out of {len(comparison_ids)} comparisons",
-            data={"deleted_count": deleted_count, "requested_count": len(comparison_ids)}
+            message=f"Successfully deleted {deleted_count} out of {len(request.comparison_ids)} comparisons",
+            data={"deleted_count": deleted_count, "requested_count": len(request.comparison_ids)},
+            error=None
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to bulk delete: {str(e)}")
@@ -243,69 +294,139 @@ async def reprocess_comparison(comparison_id: str):
         return ComparisonResponse(
             success=True,
             message="Comparison queued for reprocessing",
-            data=comparison.dict()
+            data=comparison.dict(),
+            error=None
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reprocess comparison: {str(e)}")
 
-@router.get("/export/csv", response_model=ComparisonResponse)
-async def export_comparisons_csv():
-    """Export comparison results as CSV data"""
+@router.get("/stats")
+async def get_comparison_stats():
+    """Get comparison statistics (alias for analytics/summary)"""
     try:
-        import io
-        import csv
+        result = comparison_service.list_comparisons()
+        summary = result.get('summary', {})
         
+        # Format to match client expectations
+        stats = {
+            "total_comparisons": summary.get('total_comparisons', 0),
+            "avg_score": summary.get('avg_score', 0.0),
+            "top_score": summary.get('top_score', 0.0),
+            "recent_comparisons": summary.get('recent_comparisons', 0),
+            "status_breakdown": summary.get('status_breakdown', {})
+        }
+        
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+@router.get("/export")
+async def export_comparisons(
+    format: str = Query("csv", description="Export format (csv or json)"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    job_id: Optional[str] = Query(None, description="Filter by job ID"),
+    min_score: Optional[float] = Query(None, description="Minimum score filter"),
+    max_score: Optional[float] = Query(None, description="Maximum score filter"),
+    search: Optional[str] = Query(None, description="Search filter")
+):
+    """Export comparisons as CSV or JSON"""
+    try:
+        # Get filtered comparisons
         comparisons = [
             c for c in comparison_service._comparison_cache.values()
             if c.status == ComparisonStatus.COMPLETED and c.ats_score
         ]
         
-        if not comparisons:
-            return ComparisonResponse(
-                success=True,
-                message="No completed comparisons to export",
-                data={"csv_data": "", "row_count": 0}
-            )
+        # Apply filters
+        if status:
+            comparisons = [c for c in comparisons if c.status.value == status.lower()]
+        if job_id:
+            comparisons = [c for c in comparisons if c.job_id == job_id]
+        if min_score is not None:
+            comparisons = [c for c in comparisons if c.ats_score.overall_score >= min_score]
+        if max_score is not None:
+            comparisons = [c for c in comparisons if c.ats_score.overall_score <= max_score]
+        if search:
+            search_lower = search.lower()
+            comparisons = [c for c in comparisons if 
+                         search_lower in c.candidate_name.lower() or 
+                         search_lower in c.resume_filename.lower() or
+                         search_lower in c.job_title.lower()]
         
-        # Create CSV content
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        # Write header
-        writer.writerow([
-            'Comparison ID', 'Candidate Name', 'Resume Filename', 'Job Title', 
-            'Company', 'Overall Score', 'Skills Score', 'Experience Score', 
-            'Education Score', 'Keywords Score', 'Matched Skills Count', 
-            'Missing Skills Count', 'Created At', 'Processing Time (s)'
-        ])
-        
-        # Write data rows
-        for comp in comparisons:
-            writer.writerow([
-                comp.id,
-                comp.candidate_name or '',
-                comp.resume_filename,
-                comp.job_title,
-                comp.company,
-                comp.ats_score.overall_score,
-                comp.ats_score.skills_score,
-                comp.ats_score.experience_score,
-                comp.ats_score.education_score,
-                comp.ats_score.keywords_score,
-                len(comp.ats_score.matched_skills),
-                len(comp.ats_score.missing_skills),
-                comp.created_at.isoformat(),
-                comp.processing_time_seconds or 0
-            ])
-        
-        csv_content = output.getvalue()
-        output.close()
-        
-        return ComparisonResponse(
-            success=True,
-            message=f"CSV export generated for {len(comparisons)} comparisons",
-            data={"csv_data": csv_content, "row_count": len(comparisons)}
-        )
-        
+        if format.lower() == "csv":
+            return await _export_comparisons_csv(comparisons)
+        else:
+            return await _export_comparisons_json(comparisons)
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to export CSV: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+async def _export_comparisons_csv(comparisons):
+    """Export comparisons as CSV with proper headers"""
+    import io
+    import csv
+    from fastapi.responses import Response
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'Comparison ID', 'Candidate Name', 'Resume Filename', 'Job Title', 
+        'Company', 'Overall Score', 'Skills Score', 'Experience Score', 
+        'Education Score', 'Keywords Score', 'Matched Skills Count', 
+        'Missing Skills Count', 'Created At', 'Processing Time (s)'
+    ])
+    
+    # Write data rows
+    for comp in comparisons:
+        writer.writerow([
+            comp.id,
+            comp.candidate_name or '',
+            comp.resume_filename,
+            comp.job_title,
+            comp.company,
+            comp.ats_score.overall_score,
+            comp.ats_score.skills_score,
+            comp.ats_score.experience_score,
+            comp.ats_score.education_score,
+            comp.ats_score.keywords_score,
+            len(comp.ats_score.matched_skills),
+            len(comp.ats_score.missing_skills),
+            comp.created_at.isoformat(),
+            comp.processing_time_seconds or 0
+        ])
+    
+    csv_content = output.getvalue()
+    output.close()
+    
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=comparisons-{datetime.now().strftime('%Y%m%d')}.csv"}
+    )
+
+async def _export_comparisons_json(comparisons):
+    """Export comparisons as JSON"""
+    import json
+    from fastapi.responses import Response
+    
+    export_data = {
+        "comparisons": [comp.dict() for comp in comparisons],
+        "total": len(comparisons),
+        "exported_at": datetime.now().isoformat()
+    }
+    
+    return Response(
+        content=json.dumps(export_data, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=comparisons-{datetime.now().strftime('%Y%m%d')}.json"}
+    )
+
+# Legacy CSV export endpoint - deprecated in favor of /export?format=csv
+# Keeping for backward compatibility but redirecting to new endpoint
+@router.get("/export/csv", response_model=ComparisonResponse, deprecated=True)
+async def export_comparisons_csv_legacy():
+    """Legacy CSV export endpoint - use /export?format=csv instead"""
+    # Redirect to new endpoint
+    return await export_comparisons(format="csv")

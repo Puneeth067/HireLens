@@ -67,8 +67,20 @@ class ATSScorer:
         education_result = self._calculate_education_match(resume, job)
         keywords_result = self._calculate_keywords_match(resume, job)
         
-        # Apply job-specific weights
-        weights = job.ats_weights
+        # Apply job-specific weights - create weights object from individual weight fields
+        class ATSWeights:
+            def __init__(self, skills_weight, experience_weight, education_weight, keywords_weight):
+                self.skills_weight = skills_weight
+                self.experience_weight = experience_weight
+                self.education_weight = education_weight
+                self.keywords_weight = keywords_weight
+        
+        weights = ATSWeights(
+            skills_weight=job.weight_skills * 100,
+            experience_weight=job.weight_experience * 100,
+            education_weight=job.weight_education * 100,
+            keywords_weight=job.weight_keywords * 100
+        )
         scores['skills_score'] = skills_result['score']
         scores['experience_score'] = experience_result['score']
         scores['education_score'] = education_result['score']
@@ -128,9 +140,22 @@ class ATSScorer:
         job: JobDescription
     ) -> Dict[str, Any]:
         """Calculate skills matching score"""
-        resume_skills = set([skill.lower().strip() for skill in resume.skills])
+        # Extract all skills from resume (combine all skill categories)
+        all_skills = []
+        if resume.parsed_data.skills.technical:
+            all_skills.extend(resume.parsed_data.skills.technical)
+        if resume.parsed_data.skills.soft:
+            all_skills.extend(resume.parsed_data.skills.soft)
+        if resume.parsed_data.skills.tools:
+            all_skills.extend(resume.parsed_data.skills.tools)
+        if resume.parsed_data.skills.frameworks:
+            all_skills.extend(resume.parsed_data.skills.frameworks)
+        if resume.parsed_data.skills.languages:
+            all_skills.extend(resume.parsed_data.skills.languages)
+        
+        resume_skills = set([skill.lower().strip() for skill in all_skills])
         required_skills = set([skill.lower().strip() for skill in job.required_skills])
-        preferred_skills = set([skill.lower().strip() for skill in job.preferred_skills])
+        preferred_skills = set([skill.lower().strip() for skill in (job.preferred_skills or [])])
         
         # Find exact matches
         required_matches = resume_skills.intersection(required_skills)
@@ -204,17 +229,29 @@ class ATSScorer:
         total_experience = 0
         relevant_experience = 0
         
-        for exp in resume.work_experience:
-            # Simple duration calculation (you might want to improve this)
-            duration = self._extract_duration_from_text(exp.duration)
+        for exp in resume.parsed_data.experience:
+            # Simple duration calculation based on dates
+            duration = self._calculate_duration_from_dates(exp.start_date, exp.end_date, exp.is_current)
             total_experience += duration
             
             # Check if experience is relevant based on job title or description similarity
             if self._is_relevant_experience(exp, job):
                 relevant_experience += duration
         
-        # Score based on experience requirements
-        required_years = job.experience_level_years
+        # Simple mapping of experience levels to years
+        experience_level_mapping = {
+            'entry': 0,
+            'junior': 1,
+            'middle': 3,
+            'senior': 5,
+            'lead': 7,
+            'executive': 10
+        }
+        
+        if job.experience_level:
+            required_years = experience_level_mapping.get(job.experience_level.value, 0)
+        else:
+            required_years = 0
         
         if required_years == 0:
             score = 100.0  # No experience required
@@ -230,7 +267,7 @@ class ATSScorer:
                 'total_experience': total_experience,
                 'relevant_experience': relevant_experience,
                 'required_years': required_years,
-                'experience_positions': len(resume.work_experience)
+                'experience_positions': len(resume.parsed_data.experience)
             }
         }
     
@@ -240,7 +277,9 @@ class ATSScorer:
         job: JobDescription
     ) -> Dict[str, Any]:
         """Calculate education matching score"""
-        if not job.required_education or job.required_education.lower() == 'none':
+        # Use education_requirements field instead of required_education
+        education_reqs = job.education_requirements or []
+        if not education_reqs:
             return {'score': 100.0, 'details': {'education_required': False}}
         
         education_levels = {
@@ -253,13 +292,15 @@ class ATSScorer:
         }
         
         required_level = 0
-        for level, value in education_levels.items():
-            if level in job.required_education.lower():
-                required_level = value
-                break
+        for req in education_reqs:
+            req_lower = req.lower()
+            for level, value in education_levels.items():
+                if level in req_lower:
+                    required_level = max(required_level, value)
+                    break
         
         resume_level = 0
-        for edu in resume.education:
+        for edu in resume.parsed_data.education:
             for level, value in education_levels.items():
                 if level in edu.degree.lower():
                     resume_level = max(resume_level, value)
@@ -277,10 +318,10 @@ class ATSScorer:
         return {
             'score': min(score, 100.0),
             'details': {
-                'required_education': job.required_education,
+                'required_education': ', '.join(education_reqs),
                 'resume_education_level': resume_level,
                 'required_education_level': required_level,
-                'education_count': len(resume.education)
+                'education_count': len(resume.parsed_data.education)
             }
         }
     
@@ -290,12 +331,23 @@ class ATSScorer:
         job: JobDescription
     ) -> Dict[str, Any]:
         """Calculate keyword matching score using TF-IDF similarity"""
-        # Prepare texts
-        resume_text = f"{' '.join(resume.skills)} {resume.summary}"
-        for exp in resume.work_experience:
-            resume_text += f" {exp.job_title} {exp.company} {exp.description}"
+        # Prepare texts from resume data
+        all_skills = []
+        if resume.parsed_data.skills.technical:
+            all_skills.extend(resume.parsed_data.skills.technical)
+        if resume.parsed_data.skills.soft:
+            all_skills.extend(resume.parsed_data.skills.soft)
+        if resume.parsed_data.skills.tools:
+            all_skills.extend(resume.parsed_data.skills.tools)
+        if resume.parsed_data.skills.frameworks:
+            all_skills.extend(resume.parsed_data.skills.frameworks)
         
-        job_text = f"{job.title} {job.description} {' '.join(job.required_skills + job.preferred_skills)}"
+        resume_text = f"{' '.join(all_skills)}"
+        for exp in resume.parsed_data.experience:
+            exp_desc = ' '.join(exp.description) if exp.description else ''
+            resume_text += f" {exp.position} {exp.company} {exp_desc}"
+        
+        job_text = f"{job.title} {job.description} {' '.join(job.required_skills + (job.preferred_skills or []))}"
         
         try:
             # Calculate TF-IDF similarity
@@ -333,6 +385,62 @@ class ATSScorer:
                 'details': {'error': 'TF-IDF calculation failed, used fallback'}
             }
     
+    def _calculate_duration_from_dates(self, start_date: Optional[str], end_date: Optional[str], is_current: bool) -> float:
+        """Calculate duration in years from start and end dates"""
+        if not start_date:
+            return 1.0  # Default to 1 year if no start date
+        
+        from datetime import datetime
+        import re
+        
+        try:
+            # Try to parse various date formats
+            date_patterns = [
+                r'(\d{4})-(\d{2})-(\d{2})',  # YYYY-MM-DD
+                r'(\d{2})/(\d{2})/(\d{4})',  # MM/DD/YYYY
+                r'(\d{4})/(\d{2})',  # YYYY/MM
+                r'(\d{4})',  # YYYY only
+            ]
+            
+            start_year = None
+            for pattern in date_patterns:
+                match = re.search(pattern, start_date)
+                if match:
+                    if len(match.groups()) >= 3:
+                        start_year = int(match.group(1) if len(match.group(1)) == 4 else match.group(3))
+                    elif len(match.groups()) >= 2:
+                        start_year = int(match.group(1))
+                    else:
+                        start_year = int(match.group(1))
+                    break
+            
+            if not start_year:
+                return 1.0
+            
+            if is_current:
+                end_year = datetime.now().year
+            elif end_date:
+                end_year = None
+                for pattern in date_patterns:
+                    match = re.search(pattern, end_date)
+                    if match:
+                        if len(match.groups()) >= 3:
+                            end_year = int(match.group(1) if len(match.group(1)) == 4 else match.group(3))
+                        elif len(match.groups()) >= 2:
+                            end_year = int(match.group(1))
+                        else:
+                            end_year = int(match.group(1))
+                        break
+                if not end_year:
+                    end_year = start_year + 1
+            else:
+                end_year = start_year + 1
+            
+            return max(end_year - start_year, 0.5)  # Minimum 6 months
+            
+        except Exception:
+            return 1.0  # Default to 1 year on any parsing error
+    
     def _extract_duration_from_text(self, duration_text: str) -> float:
         """Extract years of experience from duration text"""
         if not duration_text:
@@ -356,13 +464,16 @@ class ATSScorer:
     def _is_relevant_experience(self, experience, job: JobDescription) -> bool:
         """Check if work experience is relevant to the job"""
         job_title_words = set(job.title.lower().split())
-        exp_title_words = set(experience.job_title.lower().split())
+        exp_title_words = set(experience.position.lower().split())
+        
+        # Get experience description as a single string
+        exp_description = ' '.join(experience.description) if experience.description else ''
         
         # Simple relevance check based on title similarity
         common_words = job_title_words.intersection(exp_title_words)
         return len(common_words) > 0 or any(
-            skill.lower() in experience.description.lower() 
-            for skill in job.required_skills + job.preferred_skills
+            skill.lower() in exp_description.lower() 
+            for skill in job.required_skills + (job.preferred_skills or [])
         )
     
     def _generate_recommendations(

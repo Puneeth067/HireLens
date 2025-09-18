@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { apiService } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,7 +27,7 @@ interface RankedCandidate {
   skills_score: number
   experience_score: number
   education_score: number
-  keyword_score: number
+  keywords_score: number
   skill_match_percentage: number
   meets_requirements: boolean
   resume_filename: string
@@ -66,11 +67,8 @@ export default function RankingPage() {
   
   const fetchJobs = async () => {
     try {
-      const response = await fetch('/api/jobs?status=active')
-      if (response.ok) {
-        const data = await response.json()
-        setJobs(data.jobs || [])
-      }
+      const data = await apiService.getJobs({ status: 'active' })
+      setJobs(data.jobs || [])
     } catch (error) {
       console.error('Failed to fetch jobs:', error)
     }
@@ -430,8 +428,8 @@ export default function RankingPage() {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-500">Keywords</p>
-                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.keyword_score)}`}>
-                                      {candidate.keyword_score.toFixed(1)}%
+                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.keywords_score)}`}>
+                                      {candidate.keywords_score.toFixed(1)}%
                                     </p>
                                   </div>
                                 </div>

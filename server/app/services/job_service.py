@@ -1,4 +1,5 @@
 import json
+import json
 import os
 import uuid
 from datetime import datetime, timedelta
@@ -7,7 +8,8 @@ from pathlib import Path
 
 from ..models.job import (
     JobDescription, JobDescriptionCreate, JobDescriptionUpdate, 
-    JobDescriptionResponse, JobDescriptionList, JobStats, JobStatus
+    JobDescriptionResponse, JobDescriptionList, JobStats, JobStatus,
+    JobType, ExperienceLevel
 )
 from ..config import settings
 
@@ -48,7 +50,34 @@ class JobService:
         with open(self.jobs_file, 'w') as f:
             json.dump(data, f, indent=2, default=str)
 
-    def create_job(self, job_data: JobDescriptionCreate, created_by: str = None) -> JobDescription:
+    def _validate_job_data(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate and clean job data loaded from storage"""
+        # Ensure required fields have defaults if missing
+        defaults = {
+            "title": "",
+            "company": "", 
+            "department": None,
+            "location": "",
+            "salary_min": None,
+            "salary_max": None,
+            "currency": "USD",
+            "description": "",
+            "responsibilities": [],
+            "requirements": [],
+            "required_skills": [],
+            "weight_skills": 0.4,
+            "weight_experience": 0.3,
+            "weight_education": 0.2,
+            "weight_keywords": 0.1
+        }
+        
+        for key, default_value in defaults.items():
+            if key not in job_data or job_data[key] is None:
+                job_data[key] = default_value
+                
+        return job_data
+
+    def create_job(self, job_data: JobDescriptionCreate, created_by: Optional[str] = None) -> JobDescription:
         """Create a new job description"""
         # Load existing data
         data = self.load_jobs()
@@ -84,6 +113,8 @@ class JobService:
         
         for job_data in data["jobs"]:
             if job_data["id"] == job_id:
+                # Validate and clean job data before creating model
+                job_data = self._validate_job_data(job_data)
                 return JobDescription(**job_data)
         
         return None
@@ -109,6 +140,8 @@ class JobService:
                 # Save data
                 self.save_jobs(data)
                 
+                # Validate and clean job data before creating model
+                job_data = self._validate_job_data(job_data)
                 return JobDescription(**job_data)
         
         return None
@@ -173,17 +206,19 @@ class JobService:
         # Convert to response format
         job_responses = []
         for job_data in page_jobs:
+            # Validate and clean job data
+            job_data = self._validate_job_data(job_data)
             job_response = JobDescriptionResponse(
                 id=job_data["id"],
                 title=job_data["title"],
                 company=job_data["company"],
                 department=job_data.get("department"),
                 location=job_data["location"],
-                job_type=job_data["job_type"],
-                experience_level=job_data["experience_level"],
-                status=job_data["status"],
-                created_at=job_data["created_at"],
-                updated_at=job_data["updated_at"],
+                job_type=job_data.get("job_type") or JobType.FULL_TIME,  # Default fallback
+                experience_level=job_data.get("experience_level") or ExperienceLevel.MIDDLE,  # Default fallback
+                status=job_data.get("status") or JobStatus.DRAFT,  # Default fallback
+                created_at=job_data.get("created_at") or datetime.now(),
+                updated_at=job_data.get("updated_at") or datetime.now(),
                 required_skills_count=len(job_data.get("required_skills", [])),
                 total_requirements=len(job_data.get("requirements", [])),
                 applications_count=0  # TODO: Implement when we have applications
@@ -223,7 +258,7 @@ class JobService:
             recent_jobs=recent_jobs
         )
 
-    def duplicate_job(self, job_id: str, created_by: str = None) -> Optional[JobDescription]:
+    def duplicate_job(self, job_id: str, created_by: Optional[str] = None) -> Optional[JobDescription]:
         """Create a duplicate of an existing job"""
         original_job = self.get_job(job_id)
         if not original_job:

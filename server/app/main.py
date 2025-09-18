@@ -1,4 +1,4 @@
-# server/app/main.py - Updated with Analytics Integration
+# server/app/main.py - Fixed API Routes
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +24,6 @@ from app.api.ranking import router as ranking
 # Configure logging
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
 logger = logging.getLogger(__name__)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -98,7 +97,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description=settings.DESCRIPTION + "\n\n## New Features\n* Advanced Analytics Dashboard\n* Skills Gap Analysis\n* Hiring Trends and Insights\n* Performance Metrics and Reporting",  # UPDATED DESCRIPTION
+    description=settings.DESCRIPTION + "\n\n## New Features\n* Advanced Analytics Dashboard\n* Skills Gap Analysis\n* Hiring Trends and Insights\n* Performance Metrics and Reporting",
     version=settings.VERSION,
     lifespan=lifespan
 )
@@ -134,7 +133,7 @@ async def root():
         "version": settings.VERSION,
         "status": "healthy",
         "description": settings.DESCRIPTION,
-        "features": [  # ADD THIS SECTION
+        "features": [
             "Resume parsing and text extraction",
             "AI-powered skills and experience analysis", 
             "ATS scoring with configurable weights",
@@ -146,8 +145,8 @@ async def root():
         "endpoints": {
             "docs": "/docs",
             "redoc": "/redoc",
-            "health": "/health",
-            "system": "/system/info",
+            "health": "/api/health",
+            "system": "/api/system/info",
             "upload": "/api/upload",
             "parse": "/api/parse", 
             "jobs": "/api/jobs",
@@ -157,7 +156,8 @@ async def root():
         }
     }
 
-@app.get("/health")
+# FIXED: Add /api prefix to health endpoint
+@app.get("/api/health")
 async def health_check():
     """Enhanced health check endpoint with analytics status"""
     try:
@@ -220,8 +220,8 @@ async def health_check():
             comparison_service = ComparisonService()
             ranking_service = RankingService()
             
-            file_stats = file_service.get_statistics()
-            job_stats = job_service.get_job_statistics()
+            file_stats = file_service.get_file_stats()
+            job_stats = job_service.get_job_stats()
             comparison_stats = {
                 "total_comparisons": len(comparison_service._comparison_cache),
                 "completed": len([
@@ -241,7 +241,6 @@ async def health_check():
                 "total_rankings": len(os.listdir("data/rankings")) if os.path.exists("data/rankings") else 0
             }
             
-            # ADD ANALYTICS STATUS CHECK
             analytics_stats = analytics_service.get_overview_metrics(days=1)
             analytics_available = True
             
@@ -250,11 +249,12 @@ async def health_check():
             file_stats = {"error": "Service unavailable"}
             job_stats = {"error": "Service unavailable"}
             comparison_stats = {"error": "Service unavailable"}
-            analytics_stats = {"error": "Service unavailable"}  # ADD THIS
-            analytics_available = False  # ADD THIS
+            analytics_stats = {"error": "Service unavailable"}
+            ranking_stats = {"error": "Service unavailable"}
+            analytics_available = False
         
         # Determine overall status
-        all_dirs_exist = upload_dir_exists and resumes_dir_exists and temp_dir_exists and data_dir_exists  # UPDATE THIS
+        all_dirs_exist = upload_dir_exists and resumes_dir_exists and temp_dir_exists and data_dir_exists
         status = "healthy" if dependencies_ok and all_dirs_exist else "degraded"
         ats_status = "operational" if spacy_available and sklearn_available else "limited"
         
@@ -272,7 +272,7 @@ async def health_check():
                 "upload_dir": upload_dir_exists,
                 "resumes_dir": resumes_dir_exists,
                 "temp_dir": temp_dir_exists,
-                "data_dir": data_dir_exists,  # ADD THIS LINE
+                "data_dir": data_dir_exists,
                 "upload_path": settings.UPLOAD_DIR
             },
             "services": {
@@ -280,7 +280,7 @@ async def health_check():
                 "job_service": "operational" if isinstance(job_stats, dict) and "error" not in job_stats else "degraded", 
                 "comparison_service": "operational" if isinstance(comparison_stats, dict) and "error" not in comparison_stats else "degraded",
                 "analytics_service": "operational" if analytics_available else "degraded",
-                "ranking_service": "operational",  # ADD THIS LINE
+                "ranking_service": "operational",
                 "ats_scoring": ats_status
             },
             "dependencies": {
@@ -295,7 +295,7 @@ async def health_check():
                 "jobs": job_stats,
                 "comparisons": comparison_stats,
                 "analytics": analytics_stats,
-                "rankings": ranking_stats  # ADD THIS LINE
+                "rankings": ranking_stats
             },
             "configuration": {
                 "max_file_size_mb": settings.MAX_FILE_SIZE / (1024 * 1024),
@@ -313,22 +313,23 @@ async def health_check():
             "timestamp": time.time()
         }
 
-@app.get("/system/info")
+# FIXED: Add /api prefix to system info endpoint
+@app.get("/api/system/info")
 async def system_info():
     """Detailed system information endpoint with analytics"""
     try:
         from app.services.file_service import FileService
         from app.services.job_service import JobService
         from app.services.comparison_service import ComparisonService
-        from app.services.analytics_service import analytics_service  # ADD THIS
+        from app.services.analytics_service import analytics_service
         
         file_service = FileService()
         job_service = JobService()
         comparison_service = ComparisonService()
         
         # Get detailed statistics
-        file_stats = file_service.get_statistics()
-        job_stats = job_service.get_job_statistics()
+        file_stats = file_service.get_file_stats()
+        job_stats = job_service.get_job_stats()
         
         # Get comparison analytics
         try:
@@ -390,7 +391,7 @@ async def system_info():
                 "files": file_stats,
                 "jobs": job_stats,
                 "comparisons": comparison_data,
-                "analytics": analytics_data  # ADD THIS LINE
+                "analytics": analytics_data
             },
             "timestamp": time.time()
         }
@@ -406,7 +407,6 @@ app.include_router(jobs)
 app.include_router(comparisons)
 app.include_router(analytics)  
 app.include_router(ranking)
-
 
 # Global exception handlers
 @app.exception_handler(404)

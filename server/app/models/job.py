@@ -30,24 +30,24 @@ class JobType(str, Enum):
 
 class JobDescription(BaseModel):
     id: Optional[str] = None
-    title: str = Field(..., min_length=1, max_length=200)
-    company: str = Field(..., min_length=1, max_length=100)
+    title: str = Field(default="", min_length=1, max_length=200)
+    company: str = Field(default="", min_length=1, max_length=100)
     department: Optional[str] = Field(None, max_length=100)
-    location: str = Field(..., min_length=1, max_length=100)
-    job_type: JobType
-    experience_level: ExperienceLevel
+    location: str = Field(default="", min_length=1, max_length=100)
+    job_type: Optional[JobType] = None
+    experience_level: Optional[ExperienceLevel] = None
     salary_min: Optional[int] = Field(None, ge=0)
     salary_max: Optional[int] = Field(None, ge=0)
     currency: Optional[str] = Field(default="USD", max_length=3)
 
     # Core job content
-    description: str = Field(..., min_length=50)
-    responsibilities: List[str] = Field(..., min_items=1)
-    requirements: List[str] = Field(..., min_items=1)
+    description: str = Field(default="", min_length=1)  # Reduced min_length for flexibility
+    responsibilities: List[str] = Field(default_factory=list)
+    requirements: List[str] = Field(default_factory=list)
     nice_to_have: Optional[List[str]] = Field(default_factory=list)
 
     # Skills and qualifications
-    required_skills: List[str] = Field(..., min_items=1)
+    required_skills: List[str] = Field(default_factory=list)
     preferred_skills: Optional[List[str]] = Field(default_factory=list)
     education_requirements: Optional[List[str]] = Field(default_factory=list)
     certifications: Optional[List[str]] = Field(default_factory=list)
@@ -110,12 +110,12 @@ class JobDescriptionCreate(BaseModel):
     salary_max: Optional[int] = Field(None, ge=0)
     currency: Optional[str] = Field(default="USD", max_length=3)
 
-    description: str = Field(..., min_length=50)
-    responsibilities: List[str] = Field(..., min_items=1)
-    requirements: List[str] = Field(..., min_items=1)
+    description: str = Field(..., min_length=1)
+    responsibilities: List[str] = Field(..., min_length=1)
+    requirements: List[str] = Field(..., min_length=1)
     nice_to_have: Optional[List[str]] = Field(default_factory=list)
 
-    required_skills: List[str] = Field(..., min_items=1)
+    required_skills: List[str] = Field(..., min_length=1)
     preferred_skills: Optional[List[str]] = Field(default_factory=list)
     education_requirements: Optional[List[str]] = Field(default_factory=list)
     certifications: Optional[List[str]] = Field(default_factory=list)
@@ -151,22 +151,22 @@ class JobDescriptionCreate(BaseModel):
 
 
 class JobDescriptionUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
-    company: Optional[str] = Field(None, min_length=1, max_length=100)
-    department: Optional[str] = Field(None, max_length=100)
-    location: Optional[str] = Field(None, min_length=1, max_length=100)
+    title: Optional[str] = None
+    company: Optional[str] = None
+    department: Optional[str] = None
+    location: Optional[str] = None
     job_type: Optional[JobType] = None
     experience_level: Optional[ExperienceLevel] = None
-    salary_min: Optional[int] = Field(None, ge=0)
-    salary_max: Optional[int] = Field(None, ge=0)
-    currency: Optional[str] = Field(None, max_length=3)
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    currency: Optional[str] = None
 
-    description: Optional[str] = Field(None, min_length=50)
-    responsibilities: Optional[List[str]] = Field(None, min_items=1)
-    requirements: Optional[List[str]] = Field(None, min_items=1)
+    description: Optional[str] = None
+    responsibilities: Optional[List[str]] = None
+    requirements: Optional[List[str]] = None
     nice_to_have: Optional[List[str]] = None
 
-    required_skills: Optional[List[str]] = Field(None, min_items=1)
+    required_skills: Optional[List[str]] = None
     preferred_skills: Optional[List[str]] = None
     education_requirements: Optional[List[str]] = None
     certifications: Optional[List[str]] = None
@@ -174,10 +174,48 @@ class JobDescriptionUpdate(BaseModel):
     status: Optional[JobStatus] = None
     application_deadline: Optional[datetime] = None
     keywords: Optional[List[str]] = None
-    weight_skills: Optional[float] = Field(None, ge=0, le=1)
-    weight_experience: Optional[float] = Field(None, ge=0, le=1)
-    weight_education: Optional[float] = Field(None, ge=0, le=1)
-    weight_keywords: Optional[float] = Field(None, ge=0, le=1)
+    weight_skills: Optional[float] = None
+    weight_experience: Optional[float] = None
+    weight_education: Optional[float] = None
+    weight_keywords: Optional[float] = None
+
+    @field_validator("title", "company", "location", "description", mode="before")
+    @classmethod
+    def validate_strings(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if len(v) == 0:
+                return None
+        return v
+
+    @field_validator("responsibilities", "requirements", "required_skills", mode="before")
+    @classmethod
+    def validate_lists(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, list) and len(v) == 0:
+            return None
+        return v
+
+    @field_validator("salary_min", "salary_max", mode="before")
+    @classmethod
+    def validate_salaries(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, (int, float)) and v < 0:
+            raise ValueError("Salary must be non-negative")
+        return v
+
+    @field_validator("weight_skills", "weight_experience", "weight_education", "weight_keywords", mode="before")
+    @classmethod
+    def validate_weights(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, (int, float)) and (v < 0 or v > 1):
+            raise ValueError("Weight must be between 0 and 1")
+        return v
 
     @field_validator("salary_max")
     def validate_salary_range(cls, v, info: ValidationInfo):
@@ -236,3 +274,7 @@ class JobStats(BaseModel):
     draft_jobs: int
     closed_jobs: int
     recent_jobs: int  # Jobs created in last 7 days
+
+
+class BulkDeleteRequest(BaseModel):
+    job_ids: List[str]

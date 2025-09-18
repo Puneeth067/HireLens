@@ -1,42 +1,98 @@
 // client/src/app/jobs/[id]/edit/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import JobForm from '@/components/forms/job-form';
 import { Job } from '@/lib/types';
-import { getJob } from '@/lib/api';
+import { apiService } from '@/lib/api';
+import ErrorBoundary from '@/components/error-boundary';
+import { useLogger, logger } from '@/lib/logger';
+import { jobsCache, CacheKeys } from '@/lib/cache';
+import { FormSkeleton } from '@/components/ui/skeleton';
+import { XCircle, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
-export default function EditJobPage() {
+function EditJobPageContent() {
+  const componentLogger = useLogger('EditJobPage');
   const params = useParams();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Performance tracking
   useEffect(() => {
-    const fetchJob = async () => {
-      try {
-        if (params.id) {
-          const jobData = await getJob(params.id as string);
-          setJob(jobData);
-        }
-      } catch (err) {
-        setError('Failed to load job details. Please try again.');
-        console.error('Error fetching job:', err);
-      } finally {
-        setLoading(false);
-      }
+    componentLogger.lifecycle('mount');
+    logger.startPerformanceTimer('edit_job_page_load');
+    
+    return () => {
+      componentLogger.lifecycle('unmount');
+      logger.endPerformanceTimer('edit_job_page_load');
     };
+  }, [componentLogger]);
 
+  const fetchJob = useCallback(async () => {
+    try {
+      if (!params.id) {
+        setError('Job ID not provided');
+        setLoading(false);
+        return;
+      }
+
+      setError(null);
+      componentLogger.debug('Loading job for editing', { jobId: params.id });
+      
+      // Try cache first
+      const cacheKey = CacheKeys.JOB_DETAIL(params.id as string);
+      const cachedJob = jobsCache.get<Job>(cacheKey);
+      
+      if (cachedJob) {
+        componentLogger.debug('Job loaded from cache for editing', { jobId: params.id });
+        setJob(cachedJob);
+        setLoading(false);
+        return;
+      }
+      
+      const jobData = await apiService.getJob(params.id as string);
+      setJob(jobData);
+      
+      // Cache the job data
+      jobsCache.set(cacheKey, jobData, 300000); // 5 minutes cache
+      
+      componentLogger.info('Job loaded for editing', { 
+        jobId: params.id, 
+        jobTitle: jobData.title,
+        company: jobData.company 
+      });
+    } catch (err) {
+      componentLogger.error('Error fetching job for editing', { error: err, jobId: params.id });
+      setError('Failed to load job details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [params.id, componentLogger]);
+
+  useEffect(() => {
     fetchJob();
-  }, [params.id]);
+  }, [fetchJob]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading job details...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="py-8">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header skeleton */}
+            <div className="mb-8">
+              <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-96 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            
+            {/* Form skeleton */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <FormSkeleton fields={8} showActions={true} />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -45,19 +101,35 @@ export default function EditJobPage() {
   if (error || !job) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto">
           <div className="text-red-500 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+            {error ? (
+              <XCircle className="h-12 w-12 mx-auto" />
+            ) : (
+              <AlertCircle className="h-12 w-12 mx-auto" />
+            )}
           </div>
-          <p className="text-gray-600 mb-4">{error || 'Job not found'}</p>
-          <button
-            onClick={() => window.history.back()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Go Back
-          </button>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            {error ? 'Something went wrong' : 'Job not found'}
+          </h2>
+          <p className="text-gray-600 mb-4">{error || 'The job you are trying to edit does not exist.'}</p>
+          <div className="flex gap-2 justify-center">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                fetchJob();
+              }}
+            >
+              Try Again
+            </Button>
+            <Link href="/jobs">
+              <Button>
+                Back to Jobs
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -69,5 +141,21 @@ export default function EditJobPage() {
         <JobForm job={job} isEdit={true} />
       </div>
     </div>
+  );
+}
+
+// Main component wrapped with error boundary
+export default function EditJobPage() {
+  useEffect(() => {
+    logger.pageView('/jobs/[id]/edit');
+  }, []);
+
+  return (
+    <ErrorBoundary
+      errorBoundaryName="EditJobPage"
+      showErrorDetails={process.env.NODE_ENV === 'development'}
+    >
+      <EditJobPageContent />
+    </ErrorBoundary>
   );
 }

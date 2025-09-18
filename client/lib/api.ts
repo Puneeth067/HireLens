@@ -33,7 +33,8 @@ import {
   AnalyticsDashboard,
   AnalyticsChartData,
   AnalyticsExport,
-  AnalyticsRequest
+  AnalyticsRequest,
+  JobDescriptionList
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -49,11 +50,16 @@ class ApiService {
       'Content-Type': 'application/json',
     };
 
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
     const config: RequestInit = {
       headers: {
         ...defaultHeaders,
         ...options.headers,
       },
+      signal: controller.signal,
       ...options,
     };
 
@@ -62,14 +68,48 @@ class ApiService {
       delete (config.headers as Record<string, string>)['Content-Type'];
     }
 
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+    try {
+      const response = await fetch(url, config);
+      clearTimeout(timeoutId); // Clear timeout on successful response
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API Error (${response.status}):`, errorText);
+        
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch {
+          // Use default error message if JSON parsing fails
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId); // Clear timeout on error
+      console.error(`API request failed for ${url}:`, error);
+      
+      // Handle network errors more gracefully
+      if (error instanceof TypeError) {
+        if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+          throw new Error(`Network error: Unable to connect to ${url}. Please ensure the backend server is running and accessible.`);
+        }
+        if (error.message.includes('NetworkError') || error.message.includes('network')) {
+          throw new Error(`Network connection failed. Please check your internet connection and server status.`);
+        }
+      }
+      
+      // Handle timeout errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Request timeout: The server took too long to respond.`);
+      }
+      
+      // Re-throw the original error if it's already formatted
+      throw error;
     }
-    
-    return response;
   }
 
   // ========================================
@@ -168,11 +208,14 @@ class ApiService {
   // JOB DESCRIPTION METHODS
   // ========================================
   async createJob(jobData: CreateJobRequest): Promise<Job> {
+    console.log('Creating job with data:', JSON.stringify(jobData, null, 2));
     const response = await this.fetchWithAuth('/api/jobs', {
       method: 'POST',
       body: JSON.stringify(jobData),
     });
-    return response.json();
+    const result = await response.json();
+    console.log('Job creation response:', result);
+    return result;
   }
 
   async getJob(jobId: string): Promise<Job> {
@@ -202,7 +245,7 @@ class ApiService {
     company?: string;
     job_type?: string;
     search?: string;
-  }): Promise<{ jobs: Job[]; total: number }> {
+  }): Promise<JobDescriptionList> {
     const searchParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -288,7 +331,27 @@ class ApiService {
     });
     
     const response = await this.fetchWithAuth(`/api/comparisons?${queryParams}`);
-    return response.json();
+    const data = await response.json();
+    
+    // Standardize response format handling
+    if (data.success !== undefined) {
+      // Wrapped response format
+      const responseData = data.data || {};
+      return {
+        comparisons: responseData.comparisons || [],
+        total: responseData.total || 0,
+        page: responseData.page || 1,
+        limit: responseData.limit || responseData.per_page || 10
+      };
+    } else {
+      // Direct response format
+      return {
+        comparisons: data.comparisons || data.items || data.results || [],
+        total: data.total || 0,
+        page: data.page || 1,
+        limit: data.limit || data.per_page || 10
+      };
+    }
   }
 
   async getComparison(id: string): Promise<ResumeJobComparison> {
@@ -338,11 +401,17 @@ class ApiService {
   }
 
   async deleteBulkComparisons(ids: string[]): Promise<{ deleted_count: number }> {
-    const response = await this.fetchWithAuth('/api/comparisons/bulk/delete', {
+    const response = await this.fetchWithAuth('/api/comparisons/bulk-delete', {
       method: 'DELETE',
       body: JSON.stringify({ comparison_ids: ids })
     });
-    return response.json();
+    const data = await response.json();
+    
+    // Handle wrapped response
+    if (data.data && data.data.deleted_count !== undefined) {
+      return data.data;
+    }
+    return { deleted_count: data.deleted_count || 0 };
   }
 
   async getComparisonStats(): Promise<{
@@ -404,6 +473,11 @@ class ApiService {
       }
     });
     
+    // Default to CSV format
+    if (!queryParams.has('format')) {
+      queryParams.append('format', 'csv');
+    }
+    
     const response = await this.fetchWithAuth(`/api/comparisons/export?${queryParams}`);
     return response.blob();
   }
@@ -456,7 +530,7 @@ class ApiService {
   // ========================================
 
   async healthCheck(): Promise<SystemHealth> {
-    const response = await this.fetchWithAuth('/health');
+    const response = await this.fetchWithAuth('/api/health');
     return response.json();
   }
 

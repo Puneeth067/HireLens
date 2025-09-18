@@ -1,9 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Download, BarChart3, Users, Trophy, Clock } from 'lucide-react';
-import { ResumeJobComparison, Job } from '@/lib/types';
+import { Search, Filter, Download, BarChart3, Users, Trophy, Clock, XCircle } from 'lucide-react';
+import { ResumeJobComparison, JobDescriptionResponse } from '@/lib/types';
 import { apiService } from '@/lib/api';
+import ErrorBoundary from '@/components/error-boundary';
+import { useLogger, logger } from '@/lib/logger';
+import { comparisonsCache, jobsCache, CacheKeys } from '@/lib/cache';
+import { ComparisonsPageSkeleton, CardSkeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 interface ComparisonStats {
   total_comparisons: number;
@@ -23,11 +28,13 @@ interface ComparisonFilters {
   sort_order: string;
 }
 
-export default function ComparisonsPage() {
+function ComparisonsPageContent() {
+  const componentLogger = useLogger('ComparisonsPage');
   const [comparisons, setComparisons] = useState<ResumeJobComparison[]>([]);
   const [stats, setStats] = useState<ComparisonStats | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<JobDescriptionResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ComparisonFilters>({
     status: 'all',
     job_id: 'all',
@@ -41,46 +48,94 @@ export default function ComparisonsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Performance tracking
+  useEffect(() => {
+    componentLogger.lifecycle('mount');
+    logger.startPerformanceTimer('comparisons_page_load');
+    
+    return () => {
+      componentLogger.lifecycle('unmount');
+      logger.endPerformanceTimer('comparisons_page_load');
+    };
+  }, [componentLogger]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [comparisonsRes, statsRes, jobsRes] = await Promise.all([
-        apiService.getComparisons({
-          page: currentPage,
-          limit: 12,
-          status: filters.status !== 'all' ? filters.status : undefined,
-          job_id: filters.job_id !== 'all' ? filters.job_id : undefined,
-          min_score: filters.min_score,
-          max_score: filters.max_score,
-          search: filters.search || undefined,
-          sort_by: filters.sort_by,
-          sort_order: filters.sort_order as 'asc' | 'desc'
-        }),
-        apiService.getComparisonStats(),
-        apiService.getJobs({ limit: 1000 })
-      ]);
-
+      setError(null);
+      
+      componentLogger.debug('Loading comparisons data', {
+        page: currentPage,
+        filters: filters
+      });
+      
+      // Try cache for jobs and stats first
+      const jobsCacheKey = CacheKeys.JOBS_LIST(1, 'all');
+      const statsCacheKey = CacheKeys.ANALYTICS_OVERVIEW();
+      
+      const cachedJobs = jobsCache.get<{ jobs: JobDescriptionResponse[] }>(jobsCacheKey);
+      const cachedStats = comparisonsCache.get<ComparisonStats>(statsCacheKey);
+      
+      // Load comparisons data (always fresh)
+      const comparisonsRes = await apiService.getComparisons({
+        page: currentPage,
+        limit: 12,
+        status: filters.status !== 'all' ? filters.status : undefined,
+        job_id: filters.job_id !== 'all' ? filters.job_id : undefined,
+        min_score: filters.min_score,
+        max_score: filters.max_score,
+        search: filters.search || undefined,
+        sort_by: filters.sort_by,
+        sort_order: filters.sort_order as 'asc' | 'desc'
+      });
+      
       setComparisons(comparisonsRes.comparisons);
       setTotalPages(Math.ceil(comparisonsRes.total / 12));
-      setStats(statsRes);
-      setJobs(jobsRes.jobs);
+      
+      // Load stats if not cached
+      if (!cachedStats) {
+        const statsRes = await apiService.getComparisonStats();
+        setStats(statsRes);
+        comparisonsCache.set(statsCacheKey, statsRes, 120000); // 2 minutes cache
+      } else {
+        setStats(cachedStats);
+      }
+      
+      // Load jobs if not cached
+      if (!cachedJobs) {
+        const jobsRes = await apiService.getJobs({ limit: 1000 });
+        setJobs(jobsRes.jobs);
+        jobsCache.set(jobsCacheKey, jobsRes, 300000); // 5 minutes cache
+      } else {
+        setJobs(cachedJobs.jobs);
+      }
+      
+      componentLogger.info('Comparisons data loaded', {
+        comparisonsCount: comparisonsRes.comparisons.length,
+        totalComparisons: comparisonsRes.total,
+        page: currentPage,
+        fromCache: { jobs: !!cachedJobs, stats: !!cachedStats }
+      });
     } catch (error) {
-      console.error('Error loading comparisons:', error);
+      componentLogger.error('Error loading comparisons', { error, filters, page: currentPage });
+      setError('Failed to load comparisons. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [filters, currentPage]);
+  }, [filters, currentPage, componentLogger]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handleFilterChange = (key: keyof ComparisonFilters, value: string | number) => {
+  const handleFilterChange = useCallback((key: keyof ComparisonFilters, value: string | number) => {
+    componentLogger.userAction('filter_changed', { filterKey: key, filterValue: value });
     setFilters(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1);
-  };
+  }, [componentLogger]);
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
+    componentLogger.userAction('filters_reset');
     setFilters({
       status: 'all',
       job_id: 'all',
@@ -91,10 +146,11 @@ export default function ComparisonsPage() {
       sort_order: 'desc'
     });
     setCurrentPage(1);
-  };
+  }, [componentLogger]);
 
-  const exportComparisons = async () => {
+  const exportComparisons = useCallback(async () => {
     try {
+      componentLogger.userAction('export_comparisons_initiated', { filters });
       const blob = await apiService.exportComparisons(filters);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -102,10 +158,11 @@ export default function ComparisonsPage() {
       a.download = `comparisons-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
+      componentLogger.userAction('export_comparisons_completed');
     } catch (error) {
-      console.error('Error exporting comparisons:', error);
+      componentLogger.error('Error exporting comparisons', { error, filters });
     }
-  };
+  }, [componentLogger, filters]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600 bg-green-50';
@@ -125,8 +182,37 @@ export default function ComparisonsPage() {
 
   if (loading && !stats) {
     return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ComparisonsPageSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <div className="text-center max-w-md mx-auto">
+          <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="flex gap-2 justify-center">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                loadData();
+              }}
+            >
+              Try Again
+            </Button>
+            <Button onClick={() => window.location.href = '/'}>
+              Go Home
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -199,7 +285,10 @@ export default function ComparisonsPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() => {
+                  componentLogger.userAction('filters_toggled', { showFilters: !showFilters });
+                  setShowFilters(!showFilters);
+                }}
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
               >
                 <Filter className="h-4 w-4" />
@@ -322,9 +411,9 @@ export default function ComparisonsPage() {
               <div key={comparison.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 truncate">{comparison.resume_name}</h3>
+                    <h3 className="font-semibold text-gray-900 truncate">{comparison.candidate_name || comparison.resume_filename}</h3>
                     <p className="text-sm text-gray-600 truncate">{comparison.job_title}</p>
-                    <p className="text-xs text-gray-500">{comparison.company_name}</p>
+                    <p className="text-xs text-gray-500">{comparison.company}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(comparison.status)}`}>
                     {comparison.status}
@@ -354,7 +443,7 @@ export default function ComparisonsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>Keywords:</span>
-                        <span>{comparison.ats_score.keyword_score.toFixed(1)}%</span>
+                        <span>{comparison.ats_score.keywords_score.toFixed(1)}%</span>
                       </div>
                     </div>
                   </div>
@@ -379,7 +468,11 @@ export default function ComparisonsPage() {
           <div className="flex justify-center">
             <nav className="flex items-center space-x-2">
               <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                onClick={() => {
+                  const newPage = Math.max(1, currentPage - 1);
+                  componentLogger.userAction('pagination_previous', { currentPage, newPage });
+                  setCurrentPage(newPage);
+                }}
                 disabled={currentPage === 1}
                 className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
@@ -388,7 +481,10 @@ export default function ComparisonsPage() {
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                 <button
                   key={page}
-                  onClick={() => setCurrentPage(page)}
+                  onClick={() => {
+                    componentLogger.userAction('pagination_page_clicked', { currentPage, newPage: page });
+                    setCurrentPage(page);
+                  }}
                   className={`px-3 py-2 rounded-md border ${
                     currentPage === page
                       ? 'bg-blue-600 text-white border-blue-600'
@@ -399,7 +495,11 @@ export default function ComparisonsPage() {
                 </button>
               ))}
               <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                onClick={() => {
+                  const newPage = Math.min(totalPages, currentPage + 1);
+                  componentLogger.userAction('pagination_next', { currentPage, newPage });
+                  setCurrentPage(newPage);
+                }}
                 disabled={currentPage === totalPages}
                 className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
@@ -410,5 +510,21 @@ export default function ComparisonsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Main component wrapped with error boundary
+export default function ComparisonsPage() {
+  useEffect(() => {
+    logger.pageView('/comparisions');
+  }, []);
+
+  return (
+    <ErrorBoundary
+      errorBoundaryName="ComparisonsPage"
+      showErrorDetails={process.env.NODE_ENV === 'development'}
+    >
+      <ComparisonsPageContent />
+    </ErrorBoundary>
   );
 }

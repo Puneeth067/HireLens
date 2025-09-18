@@ -76,9 +76,14 @@ class ResumeJobComparison(BaseModel):
     # Processing metadata
     status: ComparisonStatus = Field(default=ComparisonStatus.PENDING, description="Comparison status")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Comparison creation time")
+    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update time")
     completed_at: Optional[datetime] = Field(None, description="Completion timestamp")
     processing_time_seconds: Optional[float] = Field(None, description="Time taken to process comparison")
     error_message: Optional[str] = Field(None, description="Error message if comparison failed")
+    
+    @validator('updated_at', always=True)
+    def set_updated_at(cls, v):
+        return datetime.utcnow()
     
     class Config:
         json_encoders = {
@@ -87,7 +92,7 @@ class ResumeJobComparison(BaseModel):
 
 class BatchComparisonRequest(BaseModel):
     """Request for batch processing multiple resume-job comparisons"""
-    resume_ids: List[str] = Field(..., min_items=1, description="List of resume IDs to process")
+    resume_ids: List[str] = Field(..., min_length=1, description="List of resume IDs to process")
     job_id: str = Field(..., description="Job description ID to compare against")
     
     @validator('resume_ids')

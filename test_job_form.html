@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Job Creation</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .form-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input, textarea, select { width: 300px; padding: 5px; }
+        button { padding: 10px 20px; margin: 10px 5px 0 0; }
+        .result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <h1>Test Job Creation API</h1>
+    
+    <form id="jobForm">
+        <div class="form-group">
+            <label>Title:</label>
+            <input type="text" id="title" value="Test Software Engineer" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Company:</label>
+            <input type="text" id="company" value="Test Company" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Location:</label>
+            <input type="text" id="location" value="Remote" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Job Type:</label>
+            <select id="job_type">
+                <option value="full_time">Full Time</option>
+                <option value="part_time">Part Time</option>
+                <option value="contract">Contract</option>
+                <option value="internship">Internship</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Experience Level:</label>
+            <select id="experience_level">
+                <option value="entry">Entry</option>
+                <option value="junior">Junior</option>
+                <option value="middle" selected>Middle</option>
+                <option value="senior">Senior</option>
+                <option value="lead">Lead</option>
+                <option value="executive">Executive</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Description:</label>
+            <textarea id="description" rows="4">This is a test job description for a software engineer position.</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Required Skills (comma-separated):</label>
+            <input type="text" id="required_skills" value="JavaScript, React, Node.js">
+        </div>
+        
+        <button type="button" onclick="createJob()">Create Job</button>
+        <button type="button" onclick="listJobs()">List Jobs</button>
+    </form>
+    
+    <div id="result" class="result" style="display: none;"></div>
+    
+    <script>
+        async function createJob() {
+            const result = document.getElementById('result');
+            result.style.display = 'block';
+            result.innerHTML = 'Creating job...';
+            
+            const jobData = {
+                title: document.getElementById('title').value,
+                company: document.getElementById('company').value,
+                location: document.getElementById('location').value,
+                job_type: document.getElementById('job_type').value,
+                experience_level: document.getElementById('experience_level').value,
+                description: document.getElementById('description').value,
+                required_skills: document.getElementById('required_skills').value.split(',').map(s => s.trim()),
+                preferred_skills: [],
+                responsibilities: ['General responsibilities'],
+                requirements: ['General requirements'],
+                weight_skills: 0.4,
+                weight_experience: 0.3,
+                weight_education: 0.2,
+                weight_keywords: 0.1
+            };
+            
+            try {
+                console.log('Sending job data:', jobData);
+                
+                const response = await fetch('http://localhost:8000/api/jobs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(jobData)
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                if (response.ok) {
+                    const createdJob = await response.json();
+                    result.innerHTML = `
+                        <h3>Job Created Successfully!</h3>
+                        <p><strong>ID:</strong> ${createdJob.id}</p>
+                        <p><strong>Title:</strong> ${createdJob.title}</p>
+                        <p><strong>Company:</strong> ${createdJob.company}</p>
+                        <p><strong>Status:</strong> ${createdJob.status}</p>
+                        <pre>${JSON.stringify(createdJob, null, 2)}</pre>
+                    `;
+                } else {
+                    const error = await response.text();
+                    result.innerHTML = `
+                        <h3>Error Creating Job</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Error:</strong> ${error}</p>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <h3>Network Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        async function listJobs() {
+            const result = document.getElementById('result');
+            result.style.display = 'block';
+            result.innerHTML = 'Loading jobs...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/jobs');
+                
+                if (response.ok) {
+                    const jobList = await response.json();
+                    let html = `<h3>Jobs List (${jobList.total} total)</h3>`;
+                    
+                    if (jobList.jobs && jobList.jobs.length > 0) {
+                        html += '<ul>';
+                        jobList.jobs.forEach(job => {
+                            html += `<li>${job.title} at ${job.company} (${job.status})</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p>No jobs found.</p>';
+                    }
+                    
+                    result.innerHTML = html;
+                } else {
+                    const error = await response.text();
+                    result.innerHTML = `
+                        <h3>Error Loading Jobs</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Error:</strong> ${error}</p>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <h3>Network Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

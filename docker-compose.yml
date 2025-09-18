@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - server
+    networks:
+      - hirelens-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - UPLOAD_DIR=/app/uploads
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./server:/app
+      - ./uploads:/app/uploads
+    networks:
+      - hirelens-network
+
+  # Optional: PostgreSQL database
+  # database:
+  #   image: postgres:15
+  #   environment:
+  #     POSTGRES_DB: hirelens
+  #     POSTGRES_USER: hirelens
+  #     POSTGRES_PASSWORD: password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - hirelens-network
+
+networks:
+  hirelens-network:
+    driver: bridge
+
+volumes:
+  # postgres_data:
+  uploads_data:

@@ -8,7 +8,7 @@ from ..models.ranking import (
 from ..services.ranking_service import RankingService
 from ..services.job_service import JobService
 
-router = APIRouter(prefix="/ranking", tags=["ranking"])
+router = APIRouter(prefix="/api/ranking", tags=["ranking"])
 ranking_service = RankingService()
 job_service = JobService()
 
@@ -303,4 +303,4 @@ async def bulk_compare_candidates(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to perform bulk comparison: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to perform bulk comparison: {str(e)}")

@@ -4,6 +4,7 @@ Handles parsing of resume files and extracting structured data
 """
 import re
 import json
+import uuid
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 import spacy
@@ -12,8 +13,12 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import logging
+import os
 
-from app.models.resume import ParsedResume, Experience, Education, Skill, ContactInfo
+from app.models.resume import (
+    ParsedResume, Experience, Education, Skill, ContactInfo,
+    ParsedData, PersonalInfo, Skills, ResumeFileMetadata, FileType, ProcessingStatus
+)
 from app.services.text_extraction_service import TextExtractionService
 
 # Download required NLTK data
@@ -94,15 +99,88 @@ class ResumeParserService:
             experience = self._extract_experience(raw_text, doc)
             education = self._extract_education(raw_text, doc)
             
+            # Create metadata
+            file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
+            file_extension = os.path.splitext(filename)[1].lower().lstrip('.')
+            file_type = FileType.PDF if file_extension == 'pdf' else FileType.DOCX if file_extension in ['docx', 'doc'] else FileType.DOC
+            
+            metadata = ResumeFileMetadata(
+                file_size=file_size,
+                file_type=file_type,
+                upload_date=datetime.now()
+            )
+            
+            # Convert contact info to personal info
+            personal_info = PersonalInfo(
+                name=contact_info.name,
+                email=contact_info.email,
+                phone=contact_info.phone,
+                linkedin=contact_info.linkedin
+            )
+            
+            # Convert skills to new format
+            parsed_skills = Skills()
+            for skill in skills:
+                if skill.category == 'programming':
+                    parsed_skills.technical.append(skill.name)
+                elif skill.category == 'frameworks':
+                    parsed_skills.frameworks.append(skill.name)
+                elif skill.category == 'tools':
+                    parsed_skills.tools.append(skill.name)
+                else:
+                    parsed_skills.technical.append(skill.name)
+            
+            # Create new experience objects directly in the correct format
+            parsed_experience = []
+            for exp in experience:
+                # Ensure description is always a list of strings
+                desc_list: List[str] = []
+                if hasattr(exp, 'description') and exp.description:
+                    if isinstance(exp.description, str):
+                        desc_list = [exp.description]
+                    elif isinstance(exp.description, list):
+                        # Convert all items to strings, handling any type safely
+                        for item in exp.description:
+                            if isinstance(item, str):
+                                desc_list.append(item)
+                            else:
+                                # Convert any non-string items to string representation
+                                desc_list.append(str(item))
+                    
+                parsed_experience.append(Experience(
+                    company=exp.company or "",
+                    position=getattr(exp, 'position', getattr(exp, 'job_title', "")),
+                    start_date=getattr(exp, 'start_date', None),
+                    end_date=getattr(exp, 'end_date', None),
+                    description=desc_list
+                ))
+            
+            # Convert education to new format
+            parsed_education = []
+            for edu in education:
+                parsed_education.append(Education(
+                    institution=edu.institution or "Unknown",
+                    degree=edu.degree,
+                    field_of_study=edu.field_of_study,
+                    graduation_date=edu.graduation_date  # Use graduation_date instead of graduation_year
+                ))
+            
+            # Create parsed data structure
+            parsed_data = ParsedData(
+                personal_info=personal_info,
+                education=parsed_education,
+                experience=parsed_experience,
+                skills=parsed_skills
+            )
+            
             # Create parsed resume object
             parsed_resume = ParsedResume(
+                id=str(uuid.uuid4()),
                 filename=filename,
                 raw_text=raw_text,
-                contact_info=contact_info,
-                skills=skills,
-                experience=experience,
-                education=education,
-                parsed_at=datetime.now()
+                parsed_data=parsed_data,
+                metadata=metadata,
+                status=ProcessingStatus.COMPLETED
             )
             
             logger.info(f"Successfully parsed resume: {filename}")
@@ -223,7 +301,7 @@ class ResumeParserService:
                         degree=degree_type.title(),
                         field_of_study=field.title(),
                         institution="",  # Could be enhanced
-                        graduation_year=None  # Could be enhanced
+                        graduation_date=None  # Could be enhanced
                     ))
         
         return education
@@ -335,11 +413,11 @@ class ResumeParserService:
         
         if job_title:
             return Experience(
-                job_title=job_title,
+                position=job_title,
                 company=company,
                 start_date=start_date,
                 end_date=end_date,
-                description='\n'.join(description)
+                description=['\n'.join(description)] if description else []  # Convert to list with joined string
             )
         
         return None

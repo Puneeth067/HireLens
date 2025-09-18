@@ -3,6 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { UploadedFile } from '@/lib/types';
 import { Button } from "@/components/ui/button"
+import { apiService } from '@/lib/api';
 
 
 interface FileUploadProps {
@@ -41,35 +42,88 @@ export default function FileUpload({
       }
 
       const uploadedFile: UploadedFile = {
-        id: Date.now() + Math.random(),
+        id: (Date.now() + Math.random()).toString(),
         name: file.name,
         size: file.size,
-        type: file.type || 'application/octet-stream',
+        file: file,
         uploadedAt: new Date(),
         status: 'uploading',
-        file: file
+        progress: 0
       };
 
       newFiles.push(uploadedFile);
     }
 
-    // Simulate upload process
+    // Add files to state immediately
     const updatedFiles = [...uploadedFiles, ...newFiles];
     setUploadedFiles(updatedFiles);
 
-    // Update status to success after brief delay
-    setTimeout(() => {
-      const successFiles = updatedFiles.map(f => 
+    // Actually upload files to the API
+    try {
+      if (multiple && newFiles.length > 1) {
+        // Bulk upload
+        const result = await apiService.uploadBulkFiles(newFiles.map(f => f.file));
+        
+        // Update files with real IDs and success status
+        const successFiles = updatedFiles.map(f => {
+          const newFileIndex = newFiles.findIndex(nf => nf.id === f.id);
+          if (newFileIndex !== -1 && result.uploaded_files[newFileIndex]) {
+            return {
+              ...f,
+              id: result.uploaded_files[newFileIndex].file_id,
+              status: 'completed' as const,
+              progress: 100
+            };
+          }
+          return f;
+        });
+        
+        setUploadedFiles(successFiles);
+        onFilesSelected(successFiles);
+      } else {
+        // Single file uploads
+        const successFiles = [...updatedFiles];
+        
+        for (let i = 0; i < newFiles.length; i++) {
+          try {
+            const result = await apiService.uploadSingleFile(newFiles[i].file);
+            const fileIndex = successFiles.findIndex(f => f.id === newFiles[i].id);
+            if (fileIndex !== -1) {
+              successFiles[fileIndex] = {
+                ...successFiles[fileIndex],
+                id: result.file_id,
+                status: 'completed',
+                progress: 100
+              };
+            }
+          } catch (error) {
+            const fileIndex = successFiles.findIndex(f => f.id === newFiles[i].id);
+            if (fileIndex !== -1) {
+              successFiles[fileIndex] = {
+                ...successFiles[fileIndex],
+                status: 'error',
+                error: error instanceof Error ? error.message : 'Upload failed'
+              };
+            }
+          }
+        }
+        
+        setUploadedFiles(successFiles);
+        onFilesSelected(successFiles);
+      }
+    } catch (error) {
+      // Handle bulk upload error
+      const errorFiles = updatedFiles.map(f => 
         newFiles.find(nf => nf.id === f.id) 
-          ? { ...f, status: 'success' as const }
+          ? { ...f, status: 'error' as const, error: error instanceof Error ? error.message : 'Upload failed' }
           : f
       );
-      setUploadedFiles(successFiles);
-      onFilesSelected(successFiles);
-      setIsUploading(false);
-    }, 1500);
+      setUploadedFiles(errorFiles);
+      onFilesSelected(errorFiles);
+    }
 
-  }, [uploadedFiles, maxFiles, acceptedTypes, onFilesSelected]);
+    setIsUploading(false);
+  }, [uploadedFiles, maxFiles, acceptedTypes, onFilesSelected, multiple]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -81,7 +135,7 @@ export default function FileUpload({
     maxFiles
   });
 
-  const removeFile = (fileId: number) => {
+  const removeFile = (fileId: string) => {
     const updatedFiles = uploadedFiles.filter(f => f.id !== fileId);
     setUploadedFiles(updatedFiles);
     onFilesSelected(updatedFiles);
@@ -95,11 +149,13 @@ export default function FileUpload({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getStatusIcon = (status: 'uploading' | 'success' | 'error') => {
+  const getStatusIcon = (status: 'pending' | 'uploading' | 'processing' | 'completed' | 'error') => {
     switch (status) {
+      case 'pending':
       case 'uploading':
+      case 'processing':
         return <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />;
-      case 'success':
+      case 'completed':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'error':
         return <AlertCircle className="w-4 h-4 text-red-500" />;
@@ -149,7 +205,7 @@ export default function FileUpload({
                       {file.name}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {formatFileSize(file.size)} • {file.uploadedAt.toLocaleTimeString()}
+                      {formatFileSize(file.size || 0)} • {file.uploadedAt?.toLocaleTimeString() || 'Just now'}
                     </div>
                   </div>
                 </div>
@@ -159,7 +215,7 @@ export default function FileUpload({
                     onClick={() => removeFile(file.id)}
                     variant="ghost"
                     size="icon"
-                    disabled={file.status === "uploading"}
+                    disabled={file.status === "uploading" || file.status === "processing"}
                     title="Remove file"
                   >
                     <X className="h-4 w-4" />

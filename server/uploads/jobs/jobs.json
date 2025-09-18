@@ -1,8 +1,98 @@
 {
-  "jobs": [],
+  "jobs": [
+    {
+      "id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
+      "title": "Senior Software Engineer",
+      "company": "Tech Corp",
+      "department": null,
+      "location": "San Francisco, CA",
+      "job_type": "full_time",
+      "experience_level": "middle",
+      "salary_min": 80000,
+      "salary_max": 120000,
+      "currency": "USD",
+      "description": "We are looking for a senior software engineer to join our team.",
+      "responsibilities": [
+        "Develop web applications",
+        "Code reviews",
+        "Mentoring"
+      ],
+      "requirements": [
+        "Bachelor's degree",
+        "3+ years experience"
+      ],
+      "nice_to_have": [],
+      "required_skills": [
+        "Python",
+        "JavaScript",
+        "React"
+      ],
+      "preferred_skills": [
+        "Docker",
+        "AWS"
+      ],
+      "education_requirements": [],
+      "certifications": [],
+      "status": "draft",
+      "posted_date": null,
+      "application_deadline": null,
+      "created_at": "2025-09-17 23:30:13.734987",
+      "updated_at": "2025-09-17 23:30:13.734987",
+      "created_by": null,
+      "keywords": [],
+      "weight_skills": 0.4,
+      "weight_experience": 0.3,
+      "weight_education": 0.2,
+      "weight_keywords": 0.1
+    },
+    {
+      "id": "60fb2217-e569-4f58-ac0a-2f3cce711597",
+      "title": "Senior Dev",
+      "company": "Tech JOE",
+      "department": null,
+      "location": "Remote",
+      "job_type": "contract",
+      "experience_level": "senior",
+      "salary_min": 100000,
+      "salary_max": 499999,
+      "currency": "USD",
+      "description": "I will tel bla bla",
+      "responsibilities": [
+        "Develop and maintain software ",
+        " Do testing"
+      ],
+      "requirements": [
+        "BE in computer science ",
+        "expereince as a software developer in java devops"
+      ],
+      "nice_to_have": [],
+      "required_skills": [
+        "lm",
+        "ml",
+        "python",
+        "dsa"
+      ],
+      "preferred_skills": [
+        "java"
+      ],
+      "education_requirements": [],
+      "certifications": [],
+      "status": "draft",
+      "posted_date": null,
+      "application_deadline": null,
+      "created_at": "2025-09-18 13:24:11.922374",
+      "updated_at": "2025-09-18 13:24:11.922374",
+      "created_by": null,
+      "keywords": [],
+      "weight_skills": 0.4,
+      "weight_experience": 0.3,
+      "weight_education": 0.2,
+      "weight_keywords": 0.1
+    }
+  ],
   "metadata": {
     "created_at": "2025-09-15T11:26:27.208528",
-    "last_updated": "2025-09-15T11:26:27.208528",
+    "last_updated": "2025-09-18T13:24:11.923373",
     "version": "1.0"
   }
 }
