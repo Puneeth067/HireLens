@@ -100,13 +100,12 @@ class AnalyticsService:
         completed_comparisons = [c for c in comparisons if c.get('status') == 'completed']
         
         scores = [
-            c.get('ats_score', {}).get('total_score')
+            c.get('ats_score', {}).get('overall_score')
             for c in completed_comparisons
             if c.get('ats_score')
         ]
         scores = [s for s in scores if s is not None]
 
-        # Score ranges
         ranges = {
             "0-20": 0, "21-40": 0, "41-60": 0, 
             "61-80": 0, "81-100": 0
@@ -160,12 +159,14 @@ class AnalyticsService:
         skill_scores = defaultdict(list)
         
         for comp in comparisons:
-            if comp.get('status') == 'completed' and comp.get('ats_score') and 'skills_analysis' in comp['ats_score']:
-                matched_skills = comp['ats_score']['skills_analysis'].get('matched_skills', [])
-                for skill_match in matched_skills:
+            if comp.get('status') == 'completed' and comp.get('ats_score') and comp.get('ats_score').get('skills_analysis'):
+                skills_data = comp['ats_score']['skills_analysis']
+                for skill_match in skills_data.get('matched_skills', []):
                     skill = skill_match['skill']
                     resume_skills[skill] += 1
-
+                    if comp.get('ats_score').get('overall_score') is not None:
+                        skill_scores[skill].append(comp['ats_score']['overall_score'])
+        
         demanded_skills = set(job_skills.keys())
         available_skills = set(resume_skills.keys())
         skill_gaps = demanded_skills - available_skills
@@ -280,7 +281,7 @@ class AnalyticsService:
             if job_id in job_metrics:
                 job_metrics[job_id]["total_applications"] += 1
                 
-                if comp.get('status') == 'completed' and comp.get('ats_score') and 'overall_score' in comp['ats_score'] and comp['ats_score']['overall_score'] is not None:
+                if comp.get('status') == 'completed' and comp.get('ats_score') and comp.get('ats_score').get('overall_score') is not None:
                     job_metrics[job_id]["completed_reviews"] += 1
                     score = comp['ats_score']['overall_score']
                     
@@ -315,7 +316,7 @@ class AnalyticsService:
         
         job_scores = defaultdict(list)
         for comp in completed_comparisons:
-            if comp.get('ats_score') and 'overall_score' in comp['ats_score'] and comp['ats_score']['overall_score'] is not None:
+            if comp.get('ats_score') and comp.get('ats_score').get('overall_score') is not None:
                 job_scores[comp['job_id']].append(comp['ats_score']['overall_score'])
         
         challenging_jobs = []
@@ -370,11 +371,12 @@ class AnalyticsService:
                 skill_demand[skill] += 1
         
         for comp in comparisons:
-            if comp.get('status') == 'completed' and comp.get('ats_score') and 'skills_analysis' in comp['ats_score']:
-                matched_skills = comp['ats_score']['skills_analysis'].get('matched_skills', [])
-                for skill_match in matched_skills:
-                    skill_matches[skill_match['skill']] += 1
-
+            if comp.get('status') == 'completed' and comp.get('ats_score') and comp.get('ats_score').get('skills_analysis'):
+                skills_data = comp['ats_score']['skills_analysis']
+                for skill_match in skills_data.get('matched_skills', []):
+                    skill = skill_match['skill']
+                    skill_matches[skill] += 1
+        
         problem_skills = []
         for skill, demand in skill_demand.items():
             if demand >= 3:

@@ -368,6 +368,23 @@ class CachedApiService {
       console.warn('Failed to preload dashboard data:', error);
     }
   }
+
+  // Add missing ranking methods
+  async getRankingsByJob(
+    jobId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<import('./types').RankingListResponse> {
+    // For now, we'll bypass caching for ranking methods to ensure they work
+    // In a production environment, you might want to add proper caching
+    return await this.originalApi.getRankingsByJob(jobId, page, limit);
+  }
+
+  async getRankingStatistics(jobId: string): Promise<import('./types').RankingStatisticsResponse> {
+    // For now, we'll bypass caching for ranking methods to ensure they work
+    // In a production environment, you might want to add proper caching
+    return await this.originalApi.getRankingStatistics(jobId);
+  }
 }
 
 // Create and export a singleton instance

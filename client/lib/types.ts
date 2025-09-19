@@ -882,3 +882,187 @@ export type DeepPartial<T> = {
 
 export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
 export type OptionalFields<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+// Ranking Types
+export interface RankingCriteria {
+  skills_weight: number;
+  experience_weight: number;
+  education_weight: number;
+  keyword_weight: number;
+  
+  // Minimum requirements
+  min_overall_score?: number;
+  min_skills_score?: number;
+  min_experience_score?: number;
+  min_education_score?: number;
+  
+  // Additional criteria
+  require_degree: boolean;
+  min_years_experience?: number;
+  required_skills: string[];
+  preferred_skills: string[];
+}
+
+export interface RankedCandidate {
+  resume_id: string;
+  comparison_id: string;
+  rank: number;
+  composite_score: number;
+  
+  // Individual scores
+  skills_score: number;
+  experience_score: number;
+  education_score: number;
+  keyword_score: number;
+  
+  // Additional metrics
+  skill_match_percentage: number;
+  meets_requirements: boolean;
+  
+  // Candidate info
+  resume_filename: string;
+  candidate_name: string;
+  
+  // Optional additional data
+  email?: string;
+  phone?: string;
+  location?: string;
+  linkedin_url?: string;
+}
+
+export interface CandidateRanking {
+  id: string;
+  job_id: string;
+  criteria: RankingCriteria;
+  candidates: RankedCandidate[];
+  total_candidates: number;
+  
+  // Metadata
+  created_at: string;
+  updated_at?: string;
+  created_by?: string;
+  
+  // Statistics
+  average_score?: number;
+  median_score?: number;
+  top_score?: number;
+  candidates_meeting_requirements?: number;
+}
+
+export interface RankingRequest {
+  job_id: string;
+  criteria: RankingCriteria;
+  filters?: Record<string, string | number | boolean | string[]>;
+  name?: string;
+  description?: string;
+}
+
+export interface RankingFilters {
+  min_score?: number;
+  max_score?: number;
+  meets_requirements_only: boolean;
+  top_n?: number;
+  exclude_resume_ids: string[];
+}
+
+export interface CandidateComparison {
+  job_id: string;
+  candidates: RankedCandidate[];
+  comparison_metrics: Record<string, string | number | boolean>;
+  created_at: string;
+}
+
+export interface ShortlistSuggestion {
+  job_id: string;
+  suggested_candidates: RankedCandidate[];
+  reasoning: string;
+  confidence_score: number;
+  diversity_score: number;
+  created_at: string;
+}
+
+export interface RankingUpdate {
+  criteria?: RankingCriteria;
+  filters?: Record<string, string | number | boolean | string[]>;
+  name?: string;
+  description?: string;
+}
+
+export interface RankingResponse {
+  success: boolean;
+  ranking?: CandidateRanking;
+  message: string;
+  error?: string;
+}
+
+export interface RankingListResponse {
+  success: boolean;
+  rankings: CandidateRanking[];
+  total: number;
+  page: number;
+  limit: number;
+  message: string;
+}
+
+export interface CandidateComparisonResponse {
+  success: boolean;
+  comparison?: Record<string, string | number | boolean | object>;
+  message: string;
+  error?: string;
+}
+
+export interface ShortlistResponse {
+  success: boolean;
+  suggestions: RankedCandidate[];
+  total_candidates: number;
+  selection_criteria: string;
+  message: string;
+}
+
+// Ranking Statistics Types
+export interface RankingStatistics {
+  total_rankings: number;
+  latest_ranking: {
+    id: string;
+    created_at: string;
+    total_candidates: number;
+    candidates_meeting_requirements: number;
+  } | null;
+  total_candidates: number;
+  average_score: number;
+  median_score: number;
+  top_score: number;
+  candidates_meeting_requirements: number;
+}
+
+export interface RankingStatisticsResponse {
+  success: boolean;
+  statistics: RankingStatistics;
+  message: string;
+}
+
+// Pipeline Types
+export interface CandidatePipeline {
+  stage_name: string;
+  stage_order: number;
+  candidates: string[]; // resume_ids
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface PipelineStage {
+  name: string;
+  order: number;
+  description: string;
+  auto_advance_criteria?: Record<string, string | number | boolean>;
+  notification_settings: Record<string, boolean>;
+}
+
+export interface JobPipeline {
+  id: string;
+  job_id: string;
+  stages: PipelineStage[];
+  candidate_stages: Record<string, string>; // resume_id -> stage_name
+  created_at: string;
+  updated_at?: string;
+}

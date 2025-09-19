@@ -34,7 +34,15 @@ import {
   AnalyticsChartData,
   AnalyticsExport,
   AnalyticsRequest,
-  JobDescriptionList
+  JobDescriptionList,
+  // Ranking types
+  RankingRequest,
+  RankingResponse,
+  RankingListResponse,
+  CandidateComparisonResponse,
+  ShortlistResponse,
+  RankingUpdate,
+  RankingStatisticsResponse
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -1366,6 +1374,147 @@ async getJobSummary(jobId: string): Promise<{
     // This would need to be implemented to get all parsed resumes
     // For now, return empty array
     return { resumes: [], total: 0 };
+  }
+
+  // ========================================
+  // RANKING METHODS
+  // ========================================
+  
+  /**
+   * Create a new candidate ranking for a job
+   */
+  async createRanking(request: RankingRequest): Promise<RankingResponse> {
+    const response = await this.fetchWithAuth('/api/ranking/create', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+    return response.json();
+  }
+
+  /**
+   * Get all rankings for a specific job
+   */
+  async getRankingsByJob(
+    jobId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<RankingListResponse> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    
+    const response = await this.fetchWithAuth(`/api/ranking/job/${jobId}?${params.toString()}`);
+    return response.json();
+  }
+
+  /**
+   * Get a specific ranking by ID
+   */
+  async getRanking(rankingId: string): Promise<RankingResponse> {
+    const response = await this.fetchWithAuth(`/api/ranking/${rankingId}`);
+    return response.json();
+  }
+
+  /**
+   * Compare specific candidates side by side
+   */
+  async compareCandidates(
+    candidateIds: string[],
+    jobId: string
+  ): Promise<CandidateComparisonResponse> {
+    const response = await this.fetchWithAuth('/api/ranking/compare', {
+      method: 'POST',
+      body: JSON.stringify({
+        candidate_ids: candidateIds,
+        job_id: jobId,
+      }),
+    });
+    return response.json();
+  }
+
+  /**
+   * Get AI-suggested shortlist of top candidates
+   */
+  async getShortlistSuggestions(
+    jobId: string,
+    count: number = 10
+  ): Promise<ShortlistResponse> {
+    const params = new URLSearchParams({
+      count: count.toString(),
+    });
+    
+    const response = await this.fetchWithAuth(`/api/ranking/shortlist/${jobId}?${params.toString()}`);
+    return response.json();
+  }
+
+  /**
+   * Update an existing ranking with new criteria or filters
+   */
+  async updateRanking(
+    rankingId: string,
+    update: RankingUpdate
+  ): Promise<RankingResponse> {
+    const response = await this.fetchWithAuth(`/api/ranking/${rankingId}`, {
+      method: 'PUT',
+      body: JSON.stringify(update),
+    });
+    return response.json();
+  }
+
+  /**
+   * Delete a ranking
+   */
+  async deleteRanking(rankingId: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.fetchWithAuth(`/api/ranking/${rankingId}`, {
+      method: 'DELETE',
+    });
+    return response.json();
+  }
+
+  /**
+   * Get predefined ranking criteria templates
+   */
+  async getCriteriaTemplates(): Promise<{
+    success: boolean;
+    templates: Record<string, RankingCriteria>;
+    message: string;
+  }> {
+    const response = await this.fetchWithAuth('/api/ranking/criteria/templates');
+    return response.json();
+  }
+
+  /**
+   * Get ranking statistics for a job
+   */
+  async getRankingStatistics(jobId: string): Promise<RankingStatisticsResponse> {
+    const response = await this.fetchWithAuth(`/api/ranking/statistics/${jobId}`);
+    return response.json();
+  }
+
+  /**
+   * Compare multiple groups of candidates
+   */
+  async bulkCompareCandidates(
+    jobId: string,
+    candidateGroups: string[][]
+  ): Promise<{
+    success: boolean;
+    comparisons: Array<{
+      group_name: string;
+      [key: string]: string | number | boolean | object;
+    }>;
+    total_groups: number;
+    message: string;
+  }> {
+    const response = await this.fetchWithAuth('/api/ranking/bulk-compare', {
+      method: 'POST',
+      body: JSON.stringify({
+        job_id: jobId,
+        candidate_groups: candidateGroups,
+      }),
+    });
+    return response.json();
   }
 
 }

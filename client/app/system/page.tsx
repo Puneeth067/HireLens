@@ -217,19 +217,19 @@ function SystemPageContent() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600 mb-1">
-                    {health.system.cpu_percent.toFixed(1)}%
+                    {health?.system?.cpu_percent?.toFixed(1) ?? '0.0'}%
                   </div>
                   <div className="text-sm text-gray-600">CPU Usage</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600 mb-1">
-                    {health.system.memory_percent.toFixed(1)}%
+                    {health?.system?.memory_percent?.toFixed(1) ?? '0.0'}%
                   </div>
                   <div className="text-sm text-gray-600">Memory Usage</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-600 mb-1">
-                    {health.system.disk_percent.toFixed(1)}%
+                    {health?.system?.disk_percent?.toFixed(1) ?? '0.0'}%
                   </div>
                   <div className="text-sm text-gray-600">Disk Usage</div>
                 </div>
@@ -331,13 +331,13 @@ function SystemPageContent() {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-2xl font-bold">
-                              {systemInfo.system.cpu_usage_percent.toFixed(1)}%
+                              {systemInfo?.system?.cpu_usage_percent?.toFixed(1) ?? '0.0'}%
                             </span>
                             <Cpu className="h-8 w-8 text-blue-600" />
                           </div>
-                          <Progress value={systemInfo.system.cpu_usage_percent} className="h-3" />
+                          <Progress value={systemInfo?.system?.cpu_usage_percent ?? 0} className="h-3" />
                           <p className="text-sm text-gray-600">
-                            Python {health.system.python_version}
+                            Python {health?.system?.python_version ?? 'Unknown'}
                           </p>
                         </div>
                       </CardContent>
@@ -354,13 +354,13 @@ function SystemPageContent() {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-2xl font-bold">
-                              {systemInfo.system.memory.usage_percent.toFixed(1)}%
+                              {systemInfo?.system?.memory?.usage_percent?.toFixed(1) ?? '0.0'}%
                             </span>
                             <Memory className="h-8 w-8 text-green-600" />
                           </div>
-                          <Progress value={systemInfo.system.memory.usage_percent} className="h-3" />
+                          <Progress value={systemInfo?.system?.memory?.usage_percent ?? 0} className="h-3" />
                           <p className="text-sm text-gray-600">
-                            {systemInfo.system.memory.available_gb.toFixed(1)} GB / {systemInfo.system.memory.total_gb.toFixed(1)} GB available
+                            {systemInfo?.system?.memory?.available_gb?.toFixed(1) ?? '0.0'} GB / {systemInfo?.system?.memory?.total_gb?.toFixed(1) ?? '0.0'} GB available
                           </p>
                         </div>
                       </CardContent>
@@ -377,13 +377,13 @@ function SystemPageContent() {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-2xl font-bold">
-                              {systemInfo.system.disk.usage_percent.toFixed(1)}%
+                              {systemInfo?.system?.disk?.usage_percent?.toFixed(1) ?? '0.0'}%
                             </span>
                             <HardDrive className="h-8 w-8 text-purple-600" />
                           </div>
-                          <Progress value={systemInfo.system.disk.usage_percent} className="h-3" />
+                          <Progress value={systemInfo?.system?.disk?.usage_percent ?? 0} className="h-3" />
                           <p className="text-sm text-gray-600">
-                            {systemInfo.system.disk.free_gb.toFixed(1)} GB free of {systemInfo.system.disk.total_gb.toFixed(1)} GB
+                            {systemInfo?.system?.disk?.free_gb?.toFixed(1) ?? '0.0'} GB free of {systemInfo?.system?.disk?.total_gb?.toFixed(1) ?? '0.0'} GB
                           </p>
                         </div>
                       </CardContent>
@@ -402,7 +402,7 @@ function SystemPageContent() {
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Upload Directory</span>
                               <span className="text-sm font-medium">
-                                {formatBytes(systemInfo.application.upload_directory_size_mb * 1024 * 1024)}
+                                {formatBytes((systemInfo?.application?.upload_directory_size_mb ?? 0) * 1024 * 1024)}
                               </span>
                             </div>
                           </div>
@@ -413,19 +413,19 @@ function SystemPageContent() {
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Total Disk Space</span>
                               <span className="text-sm font-medium">
-                                {systemInfo.system.disk.total_gb.toFixed(1)} GB
+                                {systemInfo?.system?.disk?.total_gb?.toFixed(1) ?? '0.0'} GB
                               </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Used Space</span>
                               <span className="text-sm font-medium">
-                                {systemInfo.system.disk.used_gb.toFixed(1)} GB
+                                {systemInfo?.system?.disk?.used_gb?.toFixed(1) ?? '0.0'} GB
                               </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Available Space</span>
                               <span className="text-sm font-medium">
-                                {systemInfo.system.disk.free_gb.toFixed(1)} GB
+                                {systemInfo?.system?.disk?.free_gb?.toFixed(1) ?? '0.0'} GB
                               </span>
                             </div>
                           </div>

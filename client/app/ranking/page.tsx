@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { apiService } from '@/lib/api'
+import { cachedApiService } from '@/lib/cached-api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,45 +11,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Search, Users, TrendingUp, Award, Plus, ArrowLeft } from 'lucide-react'
-
-interface Job {
-  id: string
-  title: string
-  company: string
-  status: string
-  created_at: string
-}
-
-interface RankedCandidate {
-  resume_id: string
-  comparison_id: string
-  rank: number
-  composite_score: number
-  skills_score: number
-  experience_score: number
-  education_score: number
-  keywords_score: number
-  skill_match_percentage: number
-  meets_requirements: boolean
-  resume_filename: string
-  candidate_name: string
-}
-
-interface CandidateRanking {
-  id: string
-  job_id: string
-  candidates: RankedCandidate[]
-  total_candidates: number
-  created_at: string
-  average_score: number
-  median_score: number
-  top_score: number
-  candidates_meeting_requirements: number
-}
+import { 
+  JobDescriptionResponse, 
+  RankingListResponse, 
+  RankingStatisticsResponse,
+  CandidateRanking,
+  RankedCandidate,
+  RankingCriteria
+} from '@/lib/types'
 
 export default function RankingPage() {
   const router = useRouter();
-  const [jobs, setJobs] = useState<Job[]>([])
+  const [jobs, setJobs] = useState<JobDescriptionResponse[]>([])
   const [selectedJob, setSelectedJob] = useState<string>('')
   const [rankings, setRankings] = useState<CandidateRanking[]>([])
   const [currentRanking, setCurrentRanking] = useState<CandidateRanking | null>(null)
@@ -69,7 +42,7 @@ export default function RankingPage() {
   
   const fetchJobs = async () => {
     try {
-      const data = await apiService.getJobs({ status: 'active' })
+      const data = await cachedApiService.getJobs({ status: 'active' })
       setJobs(data.jobs || [])
     } catch (error) {
       console.error('Failed to fetch jobs:', error)
@@ -86,13 +59,10 @@ export default function RankingPage() {
     
     setLoading(true)
     try {
-      const response = await fetch(`/api/ranking/job/${selectedJob}`)
-      if (response.ok) {
-        const data = await response.json()
-        setRankings(data.rankings || [])
-        if (data.rankings && data.rankings.length > 0) {
-          setCurrentRanking(data.rankings[0]) // Most recent ranking
-        }
+      const response: RankingListResponse = await cachedApiService.getRankingsByJob(selectedJob)
+      setRankings(response.rankings || [])
+      if (response.rankings && response.rankings.length > 0) {
+        setCurrentRanking(response.rankings[0]) // Most recent ranking
       }
     } catch (error) {
       console.error('Failed to fetch rankings:', error)
@@ -105,11 +75,14 @@ export default function RankingPage() {
     if (!selectedJob) return
     
     try {
-      const response = await fetch(`/api/ranking/statistics/${selectedJob}`)
-      if (response.ok) {
-        const data = await response.json()
-        setStatistics(data.statistics || {})
-      }
+      const response: RankingStatisticsResponse = await cachedApiService.getRankingStatistics(selectedJob)
+      setStatistics(response.statistics || {
+        total_rankings: 0,
+        total_candidates: 0,
+        average_score: 0,
+        top_score: 0,
+        candidates_meeting_requirements: 0
+      })
     } catch (error) {
       console.error('Failed to fetch statistics:', error)
     }
@@ -120,13 +93,14 @@ export default function RankingPage() {
       fetchRankings()
       fetchStatistics()
     }
-  }, [selectedJob,fetchRankings,fetchStatistics])
+  }, [selectedJob, fetchRankings, fetchStatistics])
 
   const generateShortlist = async () => {
     if (!selectedJob) return
     
     setLoading(true)
     try {
+      // Using the original apiService for methods not in cachedApiService
       const response = await fetch(`/api/ranking/shortlist/${selectedJob}?count=10`)
       if (response.ok) {
         const data = await response.json()
@@ -134,6 +108,15 @@ export default function RankingPage() {
         const shortlistRanking: CandidateRanking = {
           id: 'shortlist',
           job_id: selectedJob,
+          criteria: {
+            skills_weight: 0.4,
+            experience_weight: 0.3,
+            education_weight: 0.2,
+            keyword_weight: 0.1,
+            require_degree: false,
+            required_skills: [],
+            preferred_skills: []
+          },
           candidates: data.suggestions || [],
           total_candidates: data.suggestions?.length || 0,
           created_at: new Date().toISOString(),
@@ -442,8 +425,8 @@ export default function RankingPage() {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-500">Keywords</p>
-                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.keywords_score)}`}>
-                                      {candidate.keywords_score.toFixed(1)}%
+                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.keyword_score)}`}>
+                                      {candidate.keyword_score.toFixed(1)}%
                                     </p>
                                   </div>
                                 </div>
