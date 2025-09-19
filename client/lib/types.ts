@@ -521,11 +521,10 @@ export interface OverviewMetrics {
   total_candidates: number;
   total_active_jobs: number;
   total_comparisons: number;
+  recent_comparisons: number;
   average_ats_score: number;
-  high_scoring_candidates: number;
-  recent_activity_count: number;
-  success_rate: number;
-  data_period_days: number;
+  processing_success_rate: number;
+  top_performing_score: number;
 }
 
 export interface ScoreDistribution {

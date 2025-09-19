@@ -409,20 +409,20 @@ app.include_router(analytics)
 app.include_router(ranking)
 
 # Global exception handlers
-@app.exception_handler(404)
-async def not_found_handler(request, exc):
-    """Custom 404 handler"""
-    from fastapi.responses import JSONResponse
-    return JSONResponse(
-        status_code=404,
-        content={
-            "error": "Not Found",
-            "message": f"The requested endpoint was not found",
-            "status_code": 404,
-            "timestamp": time.time()
-        }
-    )
-
+## @app.exception_handler(404)
+#    # async def not_found_handler(request, exc):
+#    """Custom 404 handler"""
+#    from fastapi.responses import JSONResponse
+#    return JSONResponse(
+#        status_code=404,
+#        content={
+#            "error": "Not Found",
+#            "message": f"The requested endpoint was not found",
+#            "status_code": 404,
+#            "timestamp": time.time()
+#        }
+#    )
+#
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Custom 500 handler"""

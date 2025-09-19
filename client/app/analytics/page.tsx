@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   AnalyticsPageSkeleton, 
   AnalyticsCardSkeleton, 
@@ -14,7 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { 
   BarChart3, TrendingUp, Users, Briefcase, Award, 
   Download, RefreshCw, Target, Brain,
-  AlertTriangle, CheckCircle, Activity
+  AlertTriangle, CheckCircle, Activity,
+  ArrowLeft
 } from 'lucide-react';
 import cachedApiService from '@/lib/cached-api';
 import {
@@ -28,6 +30,7 @@ import {
 } from '@/lib/types';
 
 export default function AnalyticsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
   const [overview, setOverview] = useState<OverviewMetrics | null>(null);
   const [scoreDistribution, setScoreDistribution] = useState<ScoreDistribution | null>(null);
@@ -177,7 +180,7 @@ export default function AnalyticsPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* Header with Back Button */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -185,6 +188,16 @@ export default function AnalyticsPage() {
               <p className="text-gray-600">Comprehensive insights into your recruitment pipeline</p>
             </div>
             <div className="flex gap-3 mt-4 sm:mt-0">
+              <Button
+                onClick={() => {
+                  router.back();
+                }}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
               <Button
                 onClick={() => fetchAnalyticsData()}
                 disabled={refreshing}
@@ -256,7 +269,7 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-gray-900">
-                    {overview.total_candidates.toLocaleString()}
+                    {overview.total_candidates?.toLocaleString() || '0'}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">Unique candidates processed</p>
                 </CardContent>
@@ -273,7 +286,7 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-gray-900">
-                    {overview.total_active_jobs}
+                    {overview.total_active_jobs || 0}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">Currently hiring positions</p>
                 </CardContent>
@@ -290,7 +303,7 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-gray-900">
-                    {overview.average_ats_score}%
+                    {overview.average_ats_score || 0}%
                   </div>
                   <p className="text-sm text-gray-500 mt-1">Across all comparisons</p>
                 </CardContent>
@@ -307,9 +320,9 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-gray-900">
-                    {overview.success_rate}%
+                    {overview.processing_success_rate || 0}%
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">High-scoring candidates</p>
+                  <p className="text-sm text-gray-500 mt-1">Processing success rate</p>
                 </CardContent>
               </Card>
             </div>
@@ -318,22 +331,22 @@ export default function AnalyticsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Last {overview.data_period_days} days summary</CardDescription>
+                  <CardDescription>Last 30 days summary</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Total Comparisons</span>
-                    <span className="font-semibold">{overview.total_comparisons}</span>
+                    <span className="font-semibold">{overview.total_comparisons || 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">High Scoring Candidates</span>
+                    <span className="text-sm text-gray-600">Recent Comparisons</span>
                     <Badge className={getScoreColor(80)}>
-                      {overview.high_scoring_candidates}
+                      {overview.recent_comparisons || 0}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Recent Activity Count</span>
-                    <span className="font-semibold">{overview.recent_activity_count}</span>
+                    <span className="text-sm text-gray-600">Top Performing Score</span>
+                    <span className="font-semibold">{(overview.top_performing_score || 0)}%</span>
                   </div>
                 </CardContent>
               </Card>
@@ -429,25 +442,29 @@ export default function AnalyticsPage() {
                     </span>
                   </div>
                   <hr className="my-3" />
-                  <div className="text-sm font-medium text-gray-700 mb-2">Score Trends</div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Improving</span>
-                    <Badge className="bg-green-100 text-green-700">
-                      {scoreDistribution.score_trends.improving}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Declining</span>
-                    <Badge className="bg-red-100 text-red-700">
-                      {scoreDistribution.score_trends.declining}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Stable</span>
-                    <Badge className="bg-gray-100 text-gray-700">
-                      {scoreDistribution.score_trends.stable}
-                    </Badge>
-                  </div>
+                  {scoreDistribution.score_trends && (
+                    <>
+                      <div className="text-sm font-medium text-gray-700 mb-2">Score Trends</div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Improving</span>
+                        <Badge className="bg-green-100 text-green-700">
+                          {scoreDistribution.score_trends.improving}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Declining</span>
+                        <Badge className="bg-red-100 text-red-700">
+                          {scoreDistribution.score_trends.declining}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Stable</span>
+                        <Badge className="bg-gray-100 text-gray-700">
+                          {scoreDistribution.score_trends.stable}
+                        </Badge>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -477,7 +494,7 @@ export default function AnalyticsPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold text-yellow-600">
-                    {skillsAnalytics.skill_gaps.length}
+                    {skillsAnalytics.skill_gaps?.length || 0}
                   </div>
                   <div className="text-sm text-gray-600">Skill Gaps</div>
                 </CardContent>
@@ -500,7 +517,7 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {skillsAnalytics.top_demanded_skills.slice(0, 8).map((skill, index) => (
+                    {skillsAnalytics.top_demanded_skills && skillsAnalytics.top_demanded_skills.slice(0, 8).map((skill, index) => (
                       <div key={skill.skill} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
@@ -532,7 +549,7 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {skillsAnalytics.emerging_skills.slice(0, 8).map((skill, index) => (
+                    {skillsAnalytics.emerging_skills && skillsAnalytics.emerging_skills.slice(0, 8).map((skill, index) => (
                       <div key={skill.skill} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">
@@ -553,7 +570,7 @@ export default function AnalyticsPage() {
               </Card>
             </div>
 
-            {skillsAnalytics.skill_gaps.length > 0 && (
+            {skillsAnalytics.skill_gaps && skillsAnalytics.skill_gaps.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -591,7 +608,7 @@ export default function AnalyticsPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold text-blue-600">
-                    {hiringTrends.overall_growth.comparisons_growth > 0 ? '+' : ''}{hiringTrends.overall_growth.comparisons_growth}%
+                    {hiringTrends.overall_growth ? `${hiringTrends.overall_growth.comparisons_growth > 0 ? '+' : ''}${hiringTrends.overall_growth.comparisons_growth}%` : 'N/A'}
                   </div>
                   <div className="text-sm text-gray-600">Comparisons Growth</div>
                 </CardContent>
@@ -599,7 +616,7 @@ export default function AnalyticsPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold text-green-600">
-                    {hiringTrends.overall_growth.jobs_growth > 0 ? '+' : ''}{hiringTrends.overall_growth.jobs_growth}%
+                    {hiringTrends.overall_growth ? `${hiringTrends.overall_growth.jobs_growth > 0 ? '+' : ''}${hiringTrends.overall_growth.jobs_growth}%` : 'N/A'}
                   </div>
                   <div className="text-sm text-gray-600">Jobs Growth</div>
                 </CardContent>
@@ -607,7 +624,7 @@ export default function AnalyticsPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold text-yellow-600">
-                    {hiringTrends.overall_growth.score_improvement > 0 ? '+' : ''}{hiringTrends.overall_growth.score_improvement}%
+                    {hiringTrends.overall_growth ? `${hiringTrends.overall_growth.score_improvement > 0 ? '+' : ''}${hiringTrends.overall_growth.score_improvement}%` : 'N/A'}
                   </div>
                   <div className="text-sm text-gray-600">Score Improvement</div>
                 </CardContent>
@@ -615,7 +632,7 @@ export default function AnalyticsPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold text-purple-600">
-                    {hiringTrends.seasonal_patterns.average_monthly_activity}
+                    {hiringTrends.seasonal_patterns ? hiringTrends.seasonal_patterns.average_monthly_activity : 'N/A'}
                   </div>
                   <div className="text-sm text-gray-600">Monthly Avg Activity</div>
                 </CardContent>
@@ -741,7 +758,7 @@ export default function AnalyticsPage() {
                                 'border-green-300 text-green-700'
                               }
                             >
-                              {job.difficulty_level.replace('_', ' ')}
+                              {job.difficulty_level ? job.difficulty_level.replace('_', ' ') : 'N/A'}
                             </Badge>
                           </td>
                           <td className="p-3 text-center">
@@ -772,7 +789,7 @@ export default function AnalyticsPage() {
                   <CardDescription>Critical observations and opportunities</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {insights.key_insights.map((insight, index) => (
+                  {insights.key_insights && insights.key_insights.map((insight, index) => (
                     <div 
                       key={index} 
                       className={`p-4 rounded-lg border ${
@@ -789,7 +806,7 @@ export default function AnalyticsPage() {
                         </Badge>
                       </div>
                       <div className="text-sm text-gray-700 mb-3">{insight.description}</div>
-                      {insight.action_items.length > 0 && (
+                      {insight.action_items && insight.action_items.length > 0 && (
                         <div className="space-y-1">
                           <div className="text-xs font-medium text-gray-600 mb-1">Action Items:</div>
                           {insight.action_items.map((action, actionIndex) => (
@@ -810,7 +827,7 @@ export default function AnalyticsPage() {
                   <CardDescription>Strategic recommendations for improvement</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {insights.recommendations.map((rec, index) => (
+                  {insights.recommendations && insights.recommendations.map((rec, index) => (
                     <div key={index} className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <div className="font-medium text-blue-900">{rec.title}</div>
@@ -847,26 +864,26 @@ export default function AnalyticsPage() {
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="font-medium text-gray-900 mb-2">Competitive Analysis</div>
                     <div className="text-sm text-gray-700">
-                      {insights.market_insights.competitive_analysis}
+                      {insights.market_insights?.competitive_analysis || 'No data available'}
                     </div>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="font-medium text-gray-900 mb-2">Salary Benchmarks</div>
                     <div className="text-sm text-gray-700">
-                      {insights.market_insights.salary_benchmarks}
+                      {insights.market_insights?.salary_benchmarks || 'No data available'}
                     </div>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="font-medium text-gray-900 mb-2">Skill Market Trends</div>
                     <div className="text-sm text-gray-700">
-                      {insights.market_insights.skill_market_trends}
+                      {insights.market_insights?.skill_market_trends || 'No data available'}
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {insights.challenging_positions.length > 0 && (
+            {insights.challenging_positions && insights.challenging_positions.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -882,13 +899,13 @@ export default function AnalyticsPage() {
                         <div className="flex items-center justify-between mb-2">
                           <div>
                             <div className="font-medium text-yellow-900">{pos.job_title}</div>
-                            <div className="text-sm text-yellow-700">{pos.challenge_reasons.join(', ')}</div>
+                            <div className="text-sm text-yellow-700">{pos.challenge_reasons?.join(', ') || 'No reasons specified'}</div>
                           </div>
                         </div>
                         <div className="mt-3">
                           <div className="text-xs font-medium text-yellow-800 mb-2">Suggested Improvements:</div>
                           <div className="space-y-1">
-                            {pos.suggested_improvements.map((improvement, impIndex) => (
+                            {pos.suggested_improvements && pos.suggested_improvements.map((improvement, impIndex) => (
                               <div key={impIndex} className="text-xs text-yellow-700 pl-2 border-l-2 border-yellow-300">
                                 {improvement}
                               </div>

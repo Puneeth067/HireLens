@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiService } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Search, Users, TrendingUp, Award, Plus } from 'lucide-react'
+import { Search, Users, TrendingUp, Award, Plus, ArrowLeft } from 'lucide-react'
 
 interface Job {
   id: string
@@ -47,6 +48,7 @@ interface CandidateRanking {
 }
 
 export default function RankingPage() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([])
   const [selectedJob, setSelectedJob] = useState<string>('')
   const [rankings, setRankings] = useState<CandidateRanking[]>([])
@@ -206,10 +208,22 @@ export default function RankingPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Candidate Ranking</h1>
-        <p className="text-gray-600">
-          Rank and compare candidates using advanced scoring algorithms
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Candidate Ranking</h1>
+            <p className="text-gray-600">
+              Rank and compare candidates using advanced scoring algorithms
+            </p>
+          </div>
+          <Button
+            onClick={() => router.back()}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
       </div>
 
       {/* Job Selection */}

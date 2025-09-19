@@ -96,6 +96,16 @@ class UploadResponse(BaseModel):
     files: Optional[List[FileMetadata]] = None
     errors: Optional[List[str]] = None
 
+class BulkUploadResponse(BaseModel):
+    """Response model for bulk file upload operations"""
+    success: bool = True
+    message: str = "Files uploaded successfully"
+    uploaded_files: List[Dict[str, Any]]
+    total_files: int
+    successful_uploads: int
+    failed_uploads: int
+    errors: Optional[List[str]] = None
+
 class ErrorResponse(BaseModel):
     """Standard error response model"""
     success: bool = False

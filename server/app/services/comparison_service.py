@@ -1,7 +1,3 @@
-"""
-Service for managing resume-job comparisons and ATS scoring
-"""
-
 import json
 import uuid
 from pathlib import Path
@@ -29,6 +25,14 @@ from app.services.file_service import FileService
 from app.services.job_service import JobService
 from app.config import settings
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+def default(o):
+    if isinstance(o, datetime):
+        return o.isoformat()
+
 class ComparisonService:
     def __init__(self):
         """Initialize comparison service"""
@@ -53,7 +57,7 @@ class ComparisonService:
                         comparison = ResumeJobComparison(**comp_data)
                         self._comparison_cache[comparison.id] = comparison
         except Exception as e:
-            print(f"Error loading comparisons: {e}")
+            logger.error(f"Error loading comparisons: {e}", exc_info=True)
     
     def _save_comparisons(self):
         """Save comparisons to persistent storage"""
@@ -61,19 +65,20 @@ class ComparisonService:
             comparisons_file = self.comparisons_dir / "comparisons.json"
             data = {
                 'comparisons': [
-                    comparison.dict() for comparison in self._comparison_cache.values()
+                    json.loads(comparison.json()) for comparison in self._comparison_cache.values()
                 ],
                 'last_updated': datetime.utcnow().isoformat()
             }
             with open(comparisons_file, 'w') as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
-            print(f"Error saving comparisons: {e}")
+            logger.error(f"Error saving comparisons: {e}", exc_info=True)
     
     async def create_comparison(
         self, 
         resume_id: str, 
-        job_id: str
+        job_id: str,
+        batch_id: Optional[str] = None
     ) -> ResumeJobComparison:
         """Create a new resume-job comparison"""
         # Validate resume and job exist
@@ -87,12 +92,14 @@ class ComparisonService:
         
         # Create comparison record
         comparison_id = str(uuid.uuid4())
+        candidate_name = resume_data.get('parsed_data', {}).get('personal_info', {}).get('name', 'Unknown')
         comparison = ResumeJobComparison(
             id=comparison_id,
+            batch_id=batch_id,
             resume_id=resume_id,
             job_id=job_id,
             resume_filename=resume_data.get('filename', 'Unknown'),
-            candidate_name=resume_data.get('name', 'Unknown'),
+            candidate_name=candidate_name,
             job_title=job_data.title,
             company=job_data.company,
             status=ComparisonStatus.PENDING,
@@ -134,6 +141,12 @@ class ComparisonService:
             # Parse resume data
             parsed_resume = ParsedResume(**resume_data)
             
+            # Update candidate name if it was previously unknown
+            if comparison.candidate_name == "Unknown" or not comparison.candidate_name:
+                candidate_name = resume_data.get('parsed_data', {}).get('personal_info', {}).get('name')
+                if candidate_name:
+                    comparison.candidate_name = candidate_name
+            
             # Calculate ATS score
             scoring_result = calculate_ats_score(parsed_resume, job_data)
             ats_score = ATSScore(**scoring_result)
@@ -170,13 +183,14 @@ class ComparisonService:
         # Create individual comparisons
         for resume_id in request.resume_ids:
             try:
-                comparison = await self.create_comparison(resume_id, request.job_id)
+                comparison = await self.create_comparison(resume_id, request.job_id, batch_id=batch_id)
                 comparisons.append(comparison)
             except Exception as e:
                 # Create failed comparison record
                 comparison_id = str(uuid.uuid4())
                 failed_comparison = ResumeJobComparison(
                     id=comparison_id,
+                    batch_id=batch_id,
                     resume_id=resume_id,
                     job_id=request.job_id,
                     resume_filename="Unknown",
@@ -206,6 +220,34 @@ class ComparisonService:
         """Get a specific comparison by ID"""
         return self._comparison_cache.get(comparison_id)
     
+    def get_batch_status(self, batch_id: str) -> Dict[str, Any]:
+        """Get the status of a batch comparison"""
+        batch_comparisons = [
+            c for c in self._comparison_cache.values() if c.batch_id == batch_id
+        ]
+        
+        if not batch_comparisons:
+            raise ValueError("Batch not found")
+
+        total_count = len(batch_comparisons)
+        completed_count = len([c for c in batch_comparisons if c.status == ComparisonStatus.COMPLETED])
+        failed_count = len([c for c in batch_comparisons if c.status == ComparisonStatus.FAILED])
+
+        status = "processing"
+        if completed_count + failed_count == total_count:
+            if failed_count > 0:
+                status = "failed"
+            else:
+                status = "completed"
+
+        return {
+            "batch_id": batch_id,
+            "total_count": total_count,
+            "completed_count": completed_count,
+            "failed_count": failed_count,
+            "status": status,
+        }
+
     def list_comparisons(
         self, 
         filters: Optional[ComparisonFilters] = None,

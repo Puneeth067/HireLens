@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,10 +25,12 @@ import {
   MemoryStick as Memory,
   Folder,
   Shield,
-  Settings
+  Settings,
+  ArrowLeft
 } from 'lucide-react'
 
 function SystemPageContent() {
+  const router = useRouter();
   const logger = useLogger('SystemPage');
   const { loading, error, startLoading, stopLoading, setError, clearError } = useLoadingState('SystemPage');
   
@@ -157,6 +160,17 @@ function SystemPageContent() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              <Button
+                onClick={() => {
+                  LoggerUtils.logButtonClick('back_button_clicked');
+                  router.back();
+                }}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
               <div className="text-sm text-gray-500">
                 {isClient ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Last updated: --:--:--'}
               </div>

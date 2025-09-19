@@ -66,7 +66,7 @@ async def parse_single_resume(
         
         try:
             # Parse the resume
-            parsed_resume = parser.parse_resume(file_path, file_metadata['original_filename'])
+            parsed_resume = parser.parse_resume(file_path, file_metadata['original_filename'], file_id)
             
             # Save parsed data
             parsed_data = parsed_resume.model_dump()
@@ -147,7 +147,7 @@ async def parse_batch_resumes(
                 file_service.update_file_status(file_id, "processing")
                 
                 # Parse the resume
-                parsed_resume = parser.parse_resume(file_path, file_metadata['original_filename'])
+                parsed_resume = parser.parse_resume(file_path, file_metadata['original_filename'], file_id)
                 
                 # Save parsed data
                 parsed_data = parsed_resume.model_dump()
@@ -238,7 +238,14 @@ async def get_parsed_resume(
         if not parsed_data:
             raise HTTPException(status_code=404, detail="Parsed data not found")
         
+        # Get file metadata to ensure status consistency
+        file_metadata = file_service.get_file_metadata(file_id)
+        if file_metadata:
+            # Ensure the ParsedResume status matches the file metadata status
+            parsed_data['status'] = file_metadata.get('status', parsed_data.get('status', 'pending'))
+        
         # Convert back to ParsedResume object
+        parsed_data['id'] = file_id
         return ParsedResume(**parsed_data)
         
     except HTTPException:
@@ -283,6 +290,10 @@ async def get_all_parsed_resumes(
             if file_data.get('status') == 'completed':
                 parsed_data = file_service.get_parsed_data(file_data['file_id'])
                 if parsed_data:
+                    # Ensure the ParsedResume status matches the file metadata status
+                    parsed_data['status'] = 'completed'
+                    # Overwrite the id from the loaded json with the correct file_id
+                    parsed_data['id'] = file_data['file_id']
                     parsed_resumes.append(ParsedResume(**parsed_data))
         
         return {
@@ -349,3 +360,21 @@ async def get_parsing_stats(
     except Exception as e:
         logger.error(f"Error getting parsing stats: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.post("/cleanup")
+async def cleanup_orphaned_files(
+    file_service: FileService = Depends(get_file_service)
+):
+    """
+    Clean up orphaned files and metadata
+    """
+    try:
+        result = file_service.cleanup_orphaned_files()
+        return {
+            "success": True,
+            "message": f"Cleaned up {result['files']} files, {result['parsed_data']} parsed data, and {result['metadata_entries']} metadata entries",
+            "details": result
+        }
+    except Exception as e:
+        logger.error(f"Error during cleanup: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")

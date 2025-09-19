@@ -165,6 +165,11 @@ class FileService:
             parsed_data['file_id'] = file_id
             parsed_data['saved_at'] = datetime.now().isoformat()
             
+            # Ensure the status in parsed data matches the file metadata status
+            file_metadata = self.get_file_metadata(file_id)
+            if file_metadata and 'status' in file_metadata:
+                parsed_data['status'] = file_metadata['status']
+            
             with open(parsed_file, 'w') as f:
                 json.dump(parsed_data, f, indent=2, default=str)
             
@@ -398,3 +403,72 @@ class FileService:
             'total_files': len(filtered_metadata),
             'files': filtered_metadata
         }
+    
+    def scan_and_register_existing_files(self) -> Dict[str, int]:
+        """Scan uploads/resumes directory and register any unregistered files"""
+        resumes_dir = self.upload_dir / "resumes"
+        if not resumes_dir.exists():
+            return {'registered': 0, 'skipped': 0, 'errors': 0}
+        
+        metadata = self._load_metadata()
+        registered = 0
+        skipped = 0
+        errors = 0
+        
+        # Get list of already registered filenames
+        registered_filenames = {meta['filename'] for meta in metadata.values()}
+        
+        # Scan resumes directory
+        for file_path in resumes_dir.iterdir():
+            if file_path.is_file() and file_path.suffix.lower() in ['.pdf', '.docx']:
+                # Check if already registered
+                if file_path.name in registered_filenames:
+                    skipped += 1
+                    continue
+                
+                try:
+                    # Read file content
+                    with open(file_path, 'rb') as f:
+                        file_content = f.read()
+                    
+                    # Generate file ID and create metadata (similar to save_file)
+                    file_id = str(uuid.uuid4())
+                    original_filename = file_path.name
+                    file_extension = file_path.suffix
+                    unique_filename = f"{file_id}{file_extension}"
+                    
+                    # Move file to main upload directory
+                    new_file_path = self.upload_dir / unique_filename
+                    with open(new_file_path, 'wb') as f:
+                        f.write(file_content)
+                    
+                    # Remove original file
+                    file_path.unlink()
+                    
+                    # Create metadata
+                    file_metadata = {
+                        'file_id': file_id,
+                        'original_filename': original_filename,
+                        'filename': unique_filename,
+                        'file_size': len(file_content),
+                        'file_type': file_extension.lower(),
+                        'uploaded_at': datetime.now().timestamp(),
+                        'status': 'pending',
+                        'error_message': None,
+                        'parsed_at': None,
+                        'processing_time': None
+                    }
+                    
+                    # Save to metadata
+                    metadata[file_id] = file_metadata
+                    registered += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error registering file {file_path.name}: {e}")
+                    errors += 1
+        
+        # Save updated metadata
+        if registered > 0:
+            self._save_metadata(metadata)
+        
+        return {'registered': registered, 'skipped': skipped, 'errors': errors}

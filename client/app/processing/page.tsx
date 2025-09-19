@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FileText, Brain, CheckCircle2, XCircle, Clock, Eye, Trash2, BarChart3 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { FileText, Brain, CheckCircle2, XCircle, Clock, Eye, Trash2, BarChart3, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/skeleton';
 
 function ProcessingPageContent() {
+  const router = useRouter();
   const componentLogger = useLogger('ProcessingPage');
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [stats, setStats] = useState<ProcessingStats | null>(null);
@@ -29,12 +31,19 @@ function ProcessingPageContent() {
   const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState<string | null>(null);
+  const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set()); // New state for deletion loading
   const processingFilesRef = useRef<Set<string>>(new Set());
-
+  const deletingFilesRef = useRef<Set<string>>(new Set());
+  
   // Update ref when processingFiles changes
   useEffect(() => {
     processingFilesRef.current = processingFiles;
   }, [processingFiles]);
+
+  // Update ref when deletingFiles changes
+  useEffect(() => {
+    deletingFilesRef.current = deletingFiles;
+  }, [deletingFiles]);
 
   // Performance tracking
   useEffect(() => {
@@ -218,9 +227,17 @@ function ProcessingPageContent() {
     }
   }, []); // Remove componentLogger dependency to prevent infinite loop
 
-  const deleteFile = useCallback(async (fileId: string) => {
+  const deleteFile = useCallback(async (fileId: string, filename: string) => {
+    // Confirmation dialog
+    if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+      return;
+    }
+    
     try {
       componentLogger.userAction('delete_file', { fileId });
+      
+      // Set loading state for this file
+      setDeletingFiles(prev => new Set(prev).add(fileId));
       
       await apiService.deleteFile(fileId);
       
@@ -232,9 +249,52 @@ function ProcessingPageContent() {
       apiCache.delete(`parsed_resume_${fileId}`);
       
       componentLogger.userAction('file_deleted', { fileId });
-    } catch (error) {
+    } catch (error: unknown) {
+      // Check if it's a 404 error (file already deleted)
+      if (error instanceof Error && error.message.includes('404')) {
+        componentLogger.info('File already deleted', { fileId });
+        // Refresh the file list to update UI
+        await loadFiles();
+        await loadStats();
+        return;
+      }
+      
       componentLogger.error('Error deleting file', { error, fileId });
       setError('Failed to delete file. Please try again.');
+    } finally {
+      // Remove loading state for this file
+      setDeletingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(fileId);
+        return newSet;
+      });
+    }
+  }, [loadFiles, loadStats, componentLogger]);
+
+  // Add state for cleanup loading
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+  
+  // Add cleanup function
+  const cleanupOrphanedFiles = useCallback(async () => {
+    try {
+      componentLogger.userAction('cleanup_orphaned_files');
+      setIsCleaningUp(true);
+      
+      const result = await apiService.cleanupOrphanedFiles();
+      
+      await loadFiles();
+      await loadStats();
+      
+      // Invalidate all caches
+      CacheInvalidation.onUserAction();
+      
+      componentLogger.userAction('cleanup_completed', { result });
+      alert(result.message);
+    } catch (error) {
+      componentLogger.error('Error cleaning up orphaned files', { error });
+      setError('Failed to clean up files. Please try again.');
+    } finally {
+      setIsCleaningUp(false);
     }
   }, []); // Remove dependencies to prevent infinite loop
 
@@ -306,239 +366,284 @@ function ProcessingPageContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Resume Processing</h1>
-        <p className="text-gray-600">Manage and view your parsed resume files</p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header with Back Button */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Resume Processing</h1>
+            <p className="text-gray-600 mt-1">Manage uploaded resumes and parsed data</p>
+          </div>
+          <Button
+            onClick={() => {
+              componentLogger.userAction('back_button_clicked');
+              router.back();
+            }}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
+        </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="files">Files</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-        </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          {/* Stats Cards */}
-          {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-2xl font-bold">{stats.total_files}</p>
-                      <p className="text-sm text-gray-600">Total Files</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="text-2xl font-bold">{stats.completed}</p>
-                      <p className="text-sm text-gray-600">Completed</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-2xl font-bold">{stats.processing}</p>
-                      <p className="text-sm text-gray-600">Processing</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <XCircle className="w-5 h-5 text-red-600" />
-                    <div>
-                      <p className="text-2xl font-bold">{stats.error}</p>
-                      <p className="text-sm text-gray-600">Errors</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Recent Files */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Files</CardTitle>
-              <CardDescription>Latest uploaded and processed files</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {files.slice(0, 5).map((file) => (
-                  <div key={file.file_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <FileText className="w-5 h-5 text-gray-500" />
+          <TabsContent value="overview" className="space-y-6">
+            {/* Stats Cards */}
+            {stats && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="w-5 h-5 text-blue-600" />
                       <div>
-                        <p className="font-medium">{file.original_filename}</p>
-                        <p className="text-sm text-gray-600">{formatFileSize(file.file_size)}</p>
+                        <p className="text-2xl font-bold">{stats.total_files}</p>
+                        <p className="text-sm text-gray-600">Total Files</p>
                       </div>
                     </div>
-                    <Badge className={getStatusColor(file.status)}>
-                      <div className="flex items-center space-x-1">
-                        {getStatusIcon(file.status)}
-                        <span className="capitalize">{file.status}</span>
+                  </CardContent>
+                </Card>
+              
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{stats.completed}</p>
+                        <p className="text-sm text-gray-600">Completed</p>
                       </div>
-                    </Badge>
-                  </div>
-                ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{stats.processing}</p>
+                        <p className="text-sm text-gray-600">Processing</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <XCircle className="w-5 h-5 text-red-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{stats.error}</p>
+                        <p className="text-sm text-gray-600">Errors</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            )}
 
-        <TabsContent value="files" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Files</CardTitle>
-              <CardDescription>Manage all uploaded resume files</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {files.map((file) => (
-                  <div key={file.file_id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <FileText className="w-6 h-6 text-gray-500" />
-                      <div>
-                        <h3 className="font-medium">{file.original_filename}</h3>
-                        <p className="text-sm text-gray-600">
-                          {formatFileSize(file.file_size)} • Uploaded {formatDate(file.uploaded_at)}
-                        </p>
-                        {file.error_message && (
-                          <p className="text-sm text-red-600 mt-1">{file.error_message}</p>
-                        )}
+            {/* Cleanup Button */}
+            <div className="flex justify-end">
+              <Button 
+                onClick={cleanupOrphanedFiles} 
+                variant="outline"
+                disabled={isCleaningUp}
+              >
+                {isCleaningUp ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                    Cleaning Up...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clean Up Orphaned Files
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Recent Files */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Files</CardTitle>
+                <CardDescription>Latest uploaded and processed files</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {files.slice(0, 5).map((file) => (
+                    <div key={file.file_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="font-medium">{file.original_filename}</p>
+                          <p className="text-sm text-gray-600">{formatFileSize(file.file_size)}</p>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3">
                       <Badge className={getStatusColor(file.status)}>
                         <div className="flex items-center space-x-1">
                           {getStatusIcon(file.status)}
                           <span className="capitalize">{file.status}</span>
                         </div>
                       </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="files" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>All Files</CardTitle>
+                <CardDescription>Manage all uploaded resume files</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {files.map((file) => (
+                    <div key={file.file_id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <FileText className="w-6 h-6 text-gray-500" />
+                        <div>
+                          <h3 className="font-medium">{file.original_filename}</h3>
+                          <p className="text-sm text-gray-600">
+                            {formatFileSize(file.file_size)} • Uploaded {formatDate(file.uploaded_at)}
+                          </p>
+                          {file.error_message && (
+                            <p className="text-sm text-red-600 mt-1">{file.error_message}</p>
+                          )}
+                        </div>
+                      </div>
+                    
+                      <div className="flex items-center space-x-3">
+                        <Badge className={getStatusColor(file.status)}>
+                          <div className="flex items-center space-x-1">
+                            {getStatusIcon(file.status)}
+                            <span className="capitalize">{file.status}</span>
+                          </div>
+                        </Badge>
                       
-                      <div className="flex space-x-2">
-                        {file.status === 'pending' && (
+                        <div className="flex space-x-2">
+                          {file.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              onClick={() => parseFile(file.file_id)}
+                              disabled={processingFiles.has(file.file_id)}
+                            >
+                              <Brain className="w-4 h-4 mr-2" />
+                              Parse
+                            </Button>
+                          )}
+                        
+                          {file.status === 'completed' && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => viewParsedResume(file.file_id)}
+                                >
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl max-h-[80vh]">
+                                <DialogHeader>
+                                  <DialogTitle>Parsed Resume: {file.original_filename}</DialogTitle>
+                                  <DialogDescription>
+                                    Extracted information from the resume
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <ScrollArea className="h-[60vh]">
+                                  {selectedResume && (
+                                    <ResumeViewer resume={selectedResume} />
+                                  )}
+                                </ScrollArea>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                        
                           <Button
                             size="sm"
-                            onClick={() => parseFile(file.file_id)}
-                            disabled={processingFiles.has(file.file_id)}
+                            variant="outline"
+                            onClick={() => deleteFile(file.file_id, file.original_filename)}
+                            className="text-red-600 hover:text-red-700"
+                            disabled={deletingFiles.has(file.file_id)}
                           >
-                            <Brain className="w-4 h-4 mr-2" />
-                            Parse
+                            {deletingFiles.has(file.file_id) ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                                Deleting...
+                              </>
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </Button>
-                        )}
-                        
-                        {file.status === 'completed' && (
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => viewParsedResume(file.file_id)}
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                View
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[80vh]">
-                              <DialogHeader>
-                                <DialogTitle>Parsed Resume: {file.original_filename}</DialogTitle>
-                                <DialogDescription>
-                                  Extracted information from the resume
-                                </DialogDescription>
-                              </DialogHeader>
-                              <ScrollArea className="h-[60vh]">
-                                {selectedResume && (
-                                  <ResumeViewer resume={selectedResume} />
-                                )}
-                              </ScrollArea>
-                            </DialogContent>
-                          </Dialog>
-                        )}
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => deleteFile(file.file_id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
                 
-                {files.length === 0 && (
-                  <div className="text-center py-8">
-                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No files uploaded yet</p>
-                    <Button className="mt-4" onClick={() => window.location.href = '/upload'}>
-                      Upload Resume
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest processing activity and system events</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {stats?.recent_activity && Array.isArray(stats.recent_activity) && stats.recent_activity.map((activity, index) => (
-                  <div key={`${activity.file_id}-${index}`} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    {getStatusIcon(activity.status)}
-                    <div className="flex-1">
-                      <p className="font-medium">{activity.filename}</p>
-                      <p className="text-sm text-gray-600">
-                        {activity.status === 'completed' ? 'Successfully parsed' : 
-                         activity.status === 'error' ? 'Failed to parse' : 
-                         'Processing...'}
-                      </p>
+                  {files.length === 0 && (
+                    <div className="text-center py-8">
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No files uploaded yet</p>
+                      <Button className="mt-4" onClick={() => window.location.href = '/upload'}>
+                        Upload Resume
+                      </Button>
                     </div>
-                    {activity.parsed_at && (
-                      <p className="text-sm text-gray-500">
-                        {new Date(activity.parsed_at).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="activity" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>Latest processing activity and system events</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {stats?.recent_activity && Array.isArray(stats.recent_activity) && stats.recent_activity.map((activity, index) => (
+                    <div key={`${activity.file_id}-${index}`} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                      {getStatusIcon(activity.status)}
+                      <div className="flex-1">
+                        <p className="font-medium">{activity.filename}</p>
+                        <p className="text-sm text-gray-600">
+                          {activity.status === 'completed' ? 'Successfully parsed' : 
+                           activity.status === 'error' ? 'Failed to parse' : 
+                           'Processing...'}
+                        </p>
+                      </div>
+                      {activity.parsed_at && (
+                        <p className="text-sm text-gray-500">
+                          {new Date(activity.parsed_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 
-                {(!stats || !stats.recent_activity || !Array.isArray(stats.recent_activity) || stats.recent_activity.length === 0) && (
-                  <div className="text-center py-8">
-                    <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No recent activity</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  {(!stats || !stats.recent_activity || !Array.isArray(stats.recent_activity) || stats.recent_activity.length === 0) && (
+                    <div className="text-center py-8">
+                      <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No recent activity</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

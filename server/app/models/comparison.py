@@ -61,6 +61,7 @@ class ComparisonStatus(str, Enum):
 class ResumeJobComparison(BaseModel):
     """Complete comparison between resume and job description"""
     id: str = Field(..., description="Unique comparison identifier")
+    batch_id: Optional[str] = Field(None, description="Batch identifier if part of a batch")
     resume_id: str = Field(..., description="Resume identifier")
     job_id: str = Field(..., description="Job description identifier")
     

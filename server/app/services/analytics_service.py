@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Any
 import json
 import os
-from collections import defaultdict, Counter
+from collections import defaultdict
 from statistics import mean, median
 import calendar
 
@@ -16,9 +15,9 @@ from app.config import settings
 class AnalyticsService:
     def __init__(self):
         self.data_dir = settings.UPLOAD_DIR
-        self.comparisons_file = os.path.join(self.data_dir, "comparisons.json")
-        self.resumes_file = os.path.join(self.data_dir, "parsed_resumes.json")
-        self.jobs_file = os.path.join(self.data_dir, "jobs.json")
+        self.comparisons_file = os.path.join(self.data_dir, "comparisons", "comparisons.json")
+        self.resumes_dir = os.path.join(self.data_dir, "parsed_resumes")
+        self.jobs_file = os.path.join(self.data_dir, "jobs", "jobs.json")
     
     def _load_comparisons(self) -> List[Dict]:
         """Load all comparisons from storage"""
@@ -26,17 +25,27 @@ class AnalyticsService:
             return []
         
         with open(self.comparisons_file, 'r') as f:
-            data = json.load(f)
-            return data.get('comparisons', [])
+            try:
+                data = json.load(f)
+                return data.get('comparisons', [])
+            except json.JSONDecodeError:
+                return []
     
     def _load_resumes(self) -> List[Dict]:
         """Load all parsed resumes from storage"""
-        if not os.path.exists(self.resumes_file):
+        if not os.path.exists(self.resumes_dir):
             return []
         
-        with open(self.resumes_file, 'r') as f:
-            data = json.load(f)
-            return data.get('resumes', [])
+        resumes = []
+        for filename in os.listdir(self.resumes_dir):
+            if filename.endswith(".json"):
+                file_path = os.path.join(self.resumes_dir, filename)
+                with open(file_path, 'r') as f:
+                    try:
+                        resumes.append(json.load(f))
+                    except json.JSONDecodeError:
+                        pass
+        return resumes
     
     def _load_jobs(self) -> List[Dict]:
         """Load all jobs from storage"""
@@ -44,8 +53,11 @@ class AnalyticsService:
             return []
         
         with open(self.jobs_file, 'r') as f:
-            data = json.load(f)
-            return data.get('jobs', [])
+            try:
+                data = json.load(f)
+                return data.get('jobs', [])
+            except json.JSONDecodeError:
+                return []
     
     def get_overview_metrics(self, days: int = 30) -> Dict[str, Any]:
         """Get high-level overview metrics for the dashboard"""
@@ -53,45 +65,54 @@ class AnalyticsService:
         resumes = self._load_resumes()
         jobs = self._load_jobs()
         
-        # Filter by date range
         cutoff_date = datetime.now() - timedelta(days=days)
         recent_comparisons = [
             c for c in comparisons 
             if datetime.fromisoformat(c['created_at'].replace('Z', '+00:00')) > cutoff_date
         ]
         
-        # Calculate metrics
+        completed_comparisons = [c for c in comparisons if c.get('status') == 'completed']
+        scores = [
+            c.get('ats_score', {}).get('overall_score') 
+            for c in completed_comparisons 
+            if c.get('ats_score')
+        ]
+        scores = [s for s in scores if s is not None]
+        avg_score = mean(scores) if scores else 0
+
         total_candidates = len(set(c['resume_id'] for c in comparisons))
-        total_jobs = len([j for j in jobs if j['status'] == 'active'])
-        avg_score = mean([c['ats_score']['total_score'] for c in comparisons if c['status'] == 'completed'])
-        processing_success_rate = len([c for c in comparisons if c['status'] == 'completed']) / max(len(comparisons), 1) * 100
+        total_jobs = len([j for j in jobs if j.get('status') == 'active'])
+        processing_success_rate = len(completed_comparisons) / max(len(comparisons), 1) * 100
         
         return {
             "total_candidates": total_candidates,
             "total_active_jobs": total_jobs,
             "total_comparisons": len(comparisons),
             "recent_comparisons": len(recent_comparisons),
-            "average_ats_score": round(avg_score, 2) if comparisons else 0,
+            "average_ats_score": round(avg_score, 2),
             "processing_success_rate": round(processing_success_rate, 2),
-            "top_performing_score": max([c['ats_score']['total_score'] for c in comparisons], default=0)
+            "top_performing_score": max(scores, default=0)
         }
     
     def get_score_distribution(self) -> Dict[str, Any]:
         """Get ATS score distribution data for charts"""
         comparisons = self._load_comparisons()
-        completed_comparisons = [c for c in comparisons if c['status'] == 'completed']
+        completed_comparisons = [c for c in comparisons if c.get('status') == 'completed']
         
+        scores = [
+            c.get('ats_score', {}).get('total_score')
+            for c in completed_comparisons
+            if c.get('ats_score')
+        ]
+        scores = [s for s in scores if s is not None]
+
         # Score ranges
         ranges = {
             "0-20": 0, "21-40": 0, "41-60": 0, 
             "61-80": 0, "81-100": 0
         }
         
-        scores = []
-        for comp in completed_comparisons:
-            score = comp['ats_score']['total_score']
-            scores.append(score)
-            
+        for score in scores:
             if score <= 20:
                 ranges["0-20"] += 1
             elif score <= 40:
@@ -114,7 +135,12 @@ class AnalyticsService:
                 min=min(scores) if scores else 0,
                 max=max(scores) if scores else 0,
                 total_candidates=len(scores)
-            )
+            ).dict(),
+            "score_trends": {
+                "improving": 0,
+                "declining": 0,
+                "stable": 0
+            }
         }
     
     def get_skills_analytics(self) -> Dict[str, Any]:
@@ -122,28 +148,24 @@ class AnalyticsService:
         comparisons = self._load_comparisons()
         jobs = self._load_jobs()
         
-        # Most demanded skills from jobs
-        job_skills = defaultdict(float)  # Changed to float to handle 0.5 weights
+        job_skills = defaultdict(float)
         for job in jobs:
-            if job['status'] == 'active':
+            if job.get('status') == 'active':
                 for skill in job.get('required_skills', []):
                     job_skills[skill] += 1
                 for skill in job.get('preferred_skills', []):
-                    job_skills[skill] += 0.5  # Weight preferred skills less
+                    job_skills[skill] += 0.5
         
-        # Most common skills in resumes
         resume_skills = defaultdict(int)
         skill_scores = defaultdict(list)
         
         for comp in comparisons:
-            if comp['status'] == 'completed' and 'skills_analysis' in comp['ats_score']:
-                skills_data = comp['ats_score']['skills_analysis']
-                for skill_match in skills_data.get('matched_skills', []):
+            if comp.get('status') == 'completed' and comp.get('ats_score') and 'skills_analysis' in comp['ats_score']:
+                matched_skills = comp['ats_score']['skills_analysis'].get('matched_skills', [])
+                for skill_match in matched_skills:
                     skill = skill_match['skill']
                     resume_skills[skill] += 1
-                    skill_scores[skill].append(comp['ats_score']['total_score'])
-        
-        # Skills gap analysis
+
         demanded_skills = set(job_skills.keys())
         available_skills = set(resume_skills.keys())
         skill_gaps = demanded_skills - available_skills
@@ -154,7 +176,7 @@ class AnalyticsService:
                 for skill, count in sorted(job_skills.items(), key=lambda x: x[1], reverse=True)[:10]
             ],
             "top_candidate_skills": [
-                {"skill": skill, "candidates": count, "avg_score": round(mean(skill_scores[skill]), 2)}
+                {"skill": skill, "candidates": count, "avg_score": round(mean(skill_scores[skill]), 2) if skill_scores[skill] else 0}
                 for skill, count in sorted(resume_skills.items(), key=lambda x: x[1], reverse=True)[:10]
             ],
             "skill_gaps": [
@@ -174,7 +196,6 @@ class AnalyticsService:
         comparisons = self._load_comparisons()
         jobs = self._load_jobs()
         
-        # Generate monthly data for the specified period
         end_date = datetime.now()
         trends = []
         
@@ -184,16 +205,20 @@ class AnalyticsService:
             
             month_comparisons = [
                 c for c in comparisons
-                if month_start <= datetime.fromisoformat(c['created_at'].replace('Z', '+00:00')) <= month_end
+                if datetime.fromisoformat(c['created_at'].replace('Z', '+00:00')) >= month_start and datetime.fromisoformat(c['created_at'].replace('Z', '+00:00')) <= month_end
             ]
             
             month_jobs = [
                 j for j in jobs
-                if month_start <= datetime.fromisoformat(j['created_at'].replace('Z', '+00:00')) <= month_end
+                if 'created_at' in j and j['created_at'] and datetime.fromisoformat(j['created_at'].replace('Z', '+00:00')) >= month_start and datetime.fromisoformat(j['created_at'].replace('Z', '+00:00')) <= month_end
             ]
             
-            # Calculate scores for the month
-            month_scores = [c['ats_score']['total_score'] for c in month_comparisons if c['status'] == 'completed']
+            month_scores = [
+                c.get('ats_score', {}).get('overall_score')
+                for c in month_comparisons 
+                if c.get('status') == 'completed' and c.get('ats_score')
+            ]
+            month_scores = [s for s in month_scores if s is not None]
             
             trends.append({
                 "month": month_start.strftime("%Y-%m"),
@@ -236,7 +261,6 @@ class AnalyticsService:
         
         job_metrics = {}
         
-        # Initialize job metrics
         for job in jobs:
             job_metrics[job['id']] = {
                 "job_id": job['id'],
@@ -247,19 +271,18 @@ class AnalyticsService:
                 "avg_score": 0,
                 "high_scoring_candidates": 0,
                 "top_score": 0,
-                "created_at": job['created_at'],
-                "status": job['status']
+                "created_at": job.get('created_at'),
+                "status": job.get('status')
             }
         
-        # Calculate metrics from comparisons
         for comp in comparisons:
-            job_id = comp['job_id']
+            job_id = comp.get('job_id')
             if job_id in job_metrics:
                 job_metrics[job_id]["total_applications"] += 1
                 
-                if comp['status'] == 'completed':
+                if comp.get('status') == 'completed' and comp.get('ats_score') and 'overall_score' in comp['ats_score'] and comp['ats_score']['overall_score'] is not None:
                     job_metrics[job_id]["completed_reviews"] += 1
-                    score = comp['ats_score']['total_score']
+                    score = comp['ats_score']['overall_score']
                     
                     if score >= 80:
                         job_metrics[job_id]["high_scoring_candidates"] += 1
@@ -267,10 +290,13 @@ class AnalyticsService:
                     if score > job_metrics[job_id]["top_score"]:
                         job_metrics[job_id]["top_score"] = score
         
-        # Calculate average scores
         for job_id in job_metrics:
-            job_comparisons = [c for c in comparisons if c['job_id'] == job_id and c['status'] == 'completed']
-            scores = [c['ats_score']['total_score'] for c in job_comparisons]
+            job_comparisons = [
+                c for c in comparisons 
+                if c.get('job_id') == job_id and c.get('status') == 'completed' and c.get('ats_score')
+            ]
+            scores = [c.get('ats_score', {}).get('overall_score') for c in job_comparisons]
+            scores = [s for s in scores if s is not None]
             job_metrics[job_id]["avg_score"] = round(mean(scores), 2) if scores else 0
         
         return sorted(job_metrics.values(), key=lambda x: x["avg_score"], reverse=True)
@@ -280,34 +306,36 @@ class AnalyticsService:
         comparisons = self._load_comparisons()
         jobs = self._load_jobs()
         
-        # Calculate insights
-        total_comparisons = len([c for c in comparisons if c['status'] == 'completed'])
-        high_scoring = len([c for c in comparisons if c['status'] == 'completed' and c['ats_score']['total_score'] >= 80])
+        completed_comparisons = [c for c in comparisons if c.get('status') == 'completed' and c.get('ats_score')]
+        scores = [c.get('ats_score', {}).get('overall_score') for c in completed_comparisons]
+        scores = [s for s in scores if s is not None]
         
-        # Most challenging positions (low average scores)
+        total_comparisons = len(completed_comparisons)
+        high_scoring = len([s for s in scores if s >= 80])
+        
         job_scores = defaultdict(list)
-        for comp in comparisons:
-            if comp['status'] == 'completed':
-                job_scores[comp['job_id']].append(comp['ats_score']['total_score'])
+        for comp in completed_comparisons:
+            if comp.get('ats_score') and 'overall_score' in comp['ats_score'] and comp['ats_score']['overall_score'] is not None:
+                job_scores[comp['job_id']].append(comp['ats_score']['overall_score'])
         
         challenging_jobs = []
-        for job_id, scores in job_scores.items():
+        for job_id, scores_list in job_scores.items():
             job = next((j for j in jobs if j['id'] == job_id), None)
-            if job and len(scores) >= 3:  # Only consider jobs with multiple applications
-                avg_score = mean(scores)
-                if avg_score < 60:  # Low average score threshold
+            if job and len(scores_list) >= 3:
+                avg_score = mean(scores_list)
+                if avg_score < 60:
                     challenging_jobs.append({
                         "job_title": job['title'],
                         "company": job['company'],
                         "avg_score": round(avg_score, 2),
-                        "applications": len(scores)
+                        "applications": len(scores_list)
                     })
         
         return {
             "summary": {
                 "quality_candidate_rate": round((high_scoring / max(total_comparisons, 1)) * 100, 2),
                 "challenging_positions": len(challenging_jobs),
-                "active_job_count": len([j for j in jobs if j['status'] == 'active'])
+                "active_job_count": len([j for j in jobs if j.get('status') == 'active'])
             },
             "recommendations": [
                 {
@@ -334,7 +362,6 @@ class AnalyticsService:
         """Generate specific actionable insights based on data patterns"""
         insights = []
         
-        # Insight 1: Skills with high demand but low candidate match rates
         skill_demand = defaultdict(int)
         skill_matches = defaultdict(int)
         
@@ -343,17 +370,16 @@ class AnalyticsService:
                 skill_demand[skill] += 1
         
         for comp in comparisons:
-            if comp['status'] == 'completed' and 'skills_analysis' in comp['ats_score']:
+            if comp.get('status') == 'completed' and comp.get('ats_score') and 'skills_analysis' in comp['ats_score']:
                 matched_skills = comp['ats_score']['skills_analysis'].get('matched_skills', [])
                 for skill_match in matched_skills:
                     skill_matches[skill_match['skill']] += 1
-        
-        # Find skills with high demand but low matches
+
         problem_skills = []
         for skill, demand in skill_demand.items():
-            if demand >= 3:  # Only consider skills demanded by multiple jobs
+            if demand >= 3:
                 match_rate = skill_matches.get(skill, 0) / demand
-                if match_rate < 0.3:  # Less than 30% match rate
+                if match_rate < 0.3:
                     problem_skills.append({"skill": skill, "demand": demand, "match_rate": round(match_rate * 100, 1)})
         
         if problem_skills:
@@ -367,5 +393,4 @@ class AnalyticsService:
         
         return insights
 
-# Create analytics service instance
 analytics_service = AnalyticsService()

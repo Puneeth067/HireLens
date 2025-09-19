@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 import mimetypes
 
-from app.models.resume import FileMetadata, UploadResponse, ErrorResponse
+from app.models.resume import FileMetadata, UploadResponse, BulkUploadResponse, ErrorResponse
 from app.services.file_service import FileService
 from app.config import settings
 
@@ -67,36 +67,12 @@ async def upload_single_resume(file: UploadFile = File(...)):
                 detail=f"File size too large. Maximum allowed: {MAX_FILE_SIZE / (1024*1024):.1f}MB"
             )
         
-        # Generate unique filename
-        file_id = str(uuid.uuid4())
+        # Check filename
         if not file.filename:
             raise HTTPException(status_code=400, detail="Filename is required")
-        file_extension = os.path.splitext(file.filename)[1].lower()
-        unique_filename = f"{file_id}{file_extension}"
         
-        # Save file to uploads directory
-        upload_dir = os.path.join(settings.UPLOAD_DIR, "resumes")
-        os.makedirs(upload_dir, exist_ok=True)
-        file_path = os.path.join(upload_dir, unique_filename)
-        
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        # Create file metadata
-        metadata = FileMetadata(
-            id=file_id,
-            filename=file.filename,
-            original_filename=file.filename,
-            file_path=file_path,
-            file_size=file_size,
-            mime_type=file.content_type or "application/octet-stream",
-            uploaded_at=datetime.now(),
-            status="uploaded"
-        )
-        
-        # Store file using file service
-        file_content = file.file.read()
-        file.file.seek(0)  # Reset for potential reuse
+        # Store file using file service (this generates the file_id)
+        file_content = await file.read()
         saved_metadata = file_service.save_file(file_content, file.filename)
         
         return UploadResponse(
@@ -113,7 +89,7 @@ async def upload_single_resume(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
-@router.post("/bulk", response_model=UploadResponse)
+@router.post("/bulk", response_model=BulkUploadResponse)
 async def upload_bulk_resumes(files: List[UploadFile] = File(...)):
     """Upload and process multiple resume files."""
     if len(files) > 20:
@@ -127,65 +103,43 @@ async def upload_bulk_resumes(files: List[UploadFile] = File(...)):
             try:
                 # Validate each file
                 if not validate_file(file):
-                    errors.append(f"{file.filename}: Invalid file type")
+                    errors.append(f"{file.filename or 'Unknown file'}: Invalid file type")
                     continue
                 
                 # Check file size
                 file_size = get_file_size(file)
                 if file_size > MAX_FILE_SIZE:
-                    errors.append(f"{file.filename}: File too large")
+                    errors.append(f"{file.filename or 'Unknown file'}: File too large")
                     continue
                 
-                # Generate unique filename
-                file_id = str(uuid.uuid4())
+                # Check filename
                 if not file.filename:
                     errors.append("File missing filename")
                     continue
-                file_extension = os.path.splitext(file.filename)[1].lower()
-                unique_filename = f"{file_id}{file_extension}"
                 
-                # Save file
-                upload_dir = os.path.join(settings.UPLOAD_DIR, "resumes")
-                os.makedirs(upload_dir, exist_ok=True)
-                file_path = os.path.join(upload_dir, unique_filename)
-                
-                with open(file_path, "wb") as buffer:
-                    shutil.copyfileobj(file.file, buffer)
-                
-                # Create metadata
-                metadata = FileMetadata(
-                    id=file_id,
-                    filename=file.filename,
-                    original_filename=file.filename,
-                    file_path=file_path,
-                    file_size=file_size,
-                    mime_type=file.content_type or "application/octet-stream",
-                    uploaded_at=datetime.now(),
-                    status="uploaded"
-                )
-                
-                file_content = file.file.read()
-                file.file.seek(0)  # Reset for potential reuse
+                # Store file using file service (this generates the file_id)
+                file_content = await file.read()
                 saved_metadata = file_service.save_file(file_content, file.filename)
                 uploaded_files.append(saved_metadata)
                 
             except Exception as e:
-                errors.append(f"{file.filename}: {str(e)}")
+                errors.append(f"{file.filename or 'Unknown file'}: {str(e)}")
         
-        if not uploaded_files:
-            raise HTTPException(status_code=400, detail="No files were successfully uploaded")
-        
-        return {
-            "uploaded_files": [{
+        # Always return a response, even if no files were successfully uploaded
+        return BulkUploadResponse(
+            success=len(uploaded_files) > 0 or len(errors) == 0,
+            message="Bulk upload completed" if len(uploaded_files) > 0 else "No files were successfully uploaded",
+            uploaded_files=[{
                 "file_id": f['file_id'],
                 "filename": f['original_filename'],
                 "file_size": f['file_size'],
                 "status": f['status']
             } for f in uploaded_files],
-            "total_files": len(files),
-            "successful_uploads": len(uploaded_files),
-            "failed_uploads": len(errors)
-        }
+            total_files=len(files),
+            successful_uploads=len(uploaded_files),
+            failed_uploads=len(errors),
+            errors=errors if errors else None
+        )
         
     except HTTPException:
         raise
@@ -211,7 +165,7 @@ async def get_upload_status(file_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Status check failed: {str(e)}")
 
-@router.delete("/{file_id}")
+@router.delete("/file/{file_id}", summary="Delete uploaded file", description="Delete an uploaded file by its ID")
 async def delete_uploaded_file(file_id: str):
     """Delete an uploaded file."""
     try:
@@ -254,3 +208,16 @@ async def list_uploaded_files_legacy():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"List files failed: {str(e)}")
+
+@router.post("/scan-and-register")
+async def scan_and_register_existing_files():
+    """Scan uploads/resumes directory and register any unregistered files"""
+    try:
+        result = file_service.scan_and_register_existing_files()
+        return {
+            "success": True,
+            "message": f"Scanned and registered {result['registered']} files, skipped {result['skipped']} files, encountered {result['errors']} errors",
+            "details": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Scan and register failed: {str(e)}")

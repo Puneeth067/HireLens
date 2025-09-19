@@ -1,0 +1,140 @@
+{
+  "id": "c1690ec3-2bbb-4b6f-bfe4-309896f195c4",
+  "filename": "Puneeth_Resume (5).pdf",
+  "raw_text": "Puneeth Kumar\nAI, Data & Cloud Enthusiast | Skilled in Full-Stack Development and Analytics\n\uf0e0kumarpuneeth631@gmail.com\n\uf095+91-8904305399\n\uf041Mangalore, India\n\uf0e1linkedin.com/in/puneeth-kumar-386a22224\n\uf09bgithub.com/Puneeth067\nEducation\nSahyadri College of Engineering\nMangalore\nB.E. in Computer Science\n2021\u20132025\nCGPA\n8.33/10\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .\nAmbika PU College\nPuttur\nPre University Course - PCMCs\n2019\u20132021\nPercentage\n98.83%\nExperience\nData Engineer Intern \u2013 UnifyCX\nFeb\u2013May 2025\n\u2022 Built ETL pipeline for csv, excel, json and web\nurls\n\u2022 Automated report generation using Power BI\nAI features, reducing manual reporting time\nby 70% and enabling near real-time insights.\nData Analysis Intern \u2013 Novigo Solutions\nOct\u2013Nov 2023\n\u2022 Analyzed food review data using Twitter API\n\u2022 Developed sentiment analysis system with\n93% accuracy\nSkills\nProgramming\nLanguages:\nJava,\nPython,\nC++, SQL, JavaScript\nWeb & Frameworks: React, Next.js, Node.js,\nNest.js, Tailwind CSS\nDatabases & Platforms: PostgreSQL, Mon-\ngoDB, Supabase, Firebase\nData & ML: Pandas, NumPy, Scikit-learn,\nSpaCy, Power BI, Tableau\nCloud & Tools: AWS, Git, FastAPI, Rest API,\nVSCode, Postman\nCS Fundamentals: Data Structures & Algo-\nrithm, OOP, OS, Computer Networks, DBMS,\nCloud Computing\nCertifications\n\u2022 Postman: API Fundamentals - 2023\n\u2022 Udemy: Web Development Bootcamp - 2024\n\u2022 Udemy: Python Bootcamp - 2025\n\u2022 AWS SimuLearn: Cloud Practitioner - 2025\n\u2022 Oracle Cloud Infrastructure 2025 Foundations Associate\nProjects\nAcademiCalPro \u2013 University Timetable Generator\n\u2022 GA-based system for conflict-free timetable allocation\n\u2022 Role-based access, dynamic PDF export, CRUD UI\n\u2022 Capable of handling 50000 users at a time\nTech: Next.js, Node.js, TypeScript, TailWindCSS, PostgreSQL,\nSupabase\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .\nResuMatch \u2013 AI Resume Analyzer\n\u2022 Smart resume-job matcher using NLP\n\u2022 Suggests ATS-friendliness and ranking\nTech: FastAPI, SpaCy, Sklearn, Next.js\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .\nDreamForge \u2013 Creator-Patron Platform\n\u2022 Showcase portfolios, manage collaborations and chat\n\u2022 Automated portfolio creation through Chatbot\n\u2022 Built dashboards, proposal, and chat modules using Su-\npabase stack\nTech: React, Tailwind CSS, Javascript, Supabase, PostgreSQL\nAchievements & Co-curricular\nHackathons\n\u2022 Runner-up \u2013 Project Omega 2025 @ Yenepoya Institute\n\u2022 Top 20 Finalist \u2013 Hack for the Future 2023 @ Niveus Solu-\ntions\nLeadership\n\u2022 Web Lead \u2013 MLSA Club @ Sahyadri College\nClubs\n\u2022 Member \u2013 Python Club @ SOSC (Sahyadri Open Source\nCommunity)",
+  "parsed_data": {
+    "personal_info": {
+      "name": "Puneeth Kumar",
+      "email": "kumarpuneeth631@gmail.com",
+      "phone": "1-8904305399",
+      "location": null,
+      "linkedin": "https://www.linkedin.com/in/puneeth-kumar-386a22224",
+      "github": "https://www.github.com/puneeth067",
+      "portfolio": null
+    },
+    "education": [
+      {
+        "institution": "College\nPuttur\nPre University",
+        "degree": "",
+        "field_of_study": "",
+        "graduation_date": null,
+        "gpa": null,
+        "achievements": []
+      },
+      {
+        "institution": "College of Engineering\nMangalore",
+        "degree": "",
+        "field_of_study": "",
+        "graduation_date": null,
+        "gpa": null,
+        "achievements": []
+      }
+    ],
+    "experience": [
+      {
+        "company": "",
+        "position": "Data Engineer Intern \u2013 UnifyCX",
+        "location": "",
+        "start_date": "",
+        "end_date": "",
+        "is_current": false,
+        "description": [],
+        "achievements": [],
+        "technologies": []
+      },
+      {
+        "company": "",
+        "position": "Feb\u2013May 2025",
+        "location": "",
+        "start_date": "2025",
+        "end_date": "",
+        "is_current": false,
+        "description": [
+          "\u2022 Built ETL pipeline for csv, excel, json and web",
+          "urls",
+          "\u2022 Automated report generation using Power BI",
+          "AI features, reducing manual reporting time",
+          "by 70% and enabling near real-time insights.",
+          "Data Analysis Intern \u2013 Novigo Solutions"
+        ],
+        "achievements": [],
+        "technologies": []
+      },
+      {
+        "company": "",
+        "position": "Oct\u2013Nov 2023",
+        "location": "",
+        "start_date": "2023",
+        "end_date": "",
+        "is_current": false,
+        "description": [
+          "\u2022 Analyzed food review data using Twitter API",
+          "\u2022 Developed sentiment analysis system with",
+          "93% accuracy"
+        ],
+        "achievements": [],
+        "technologies": []
+      }
+    ],
+    "skills": {
+      "technical": [
+        "Languages:",
+        "Nest.Js",
+        "Mon-",
+        "Supabase",
+        "Spacy",
+        "Tableau",
+        "Git",
+        "Fastapi",
+        "Vscode",
+        "Postman",
+        "Oop",
+        "Os",
+        "Dbms",
+        "Cloud Computing"
+      ],
+      "soft": [],
+      "tools": [
+        "Cloud & Tools: Aws"
+      ],
+      "frameworks": [
+        "Next.Js",
+        "Node.Js",
+        "Data & Ml: Pandas",
+        "Numpy"
+      ],
+      "languages": [
+        "Programming",
+        "Java",
+        "Python",
+        "C++",
+        "Sql",
+        "Javascript",
+        "Web & Frameworks: React",
+        "Tailwind Css",
+        "Databases & Platforms: Postgresql",
+        "Godb",
+        "Firebase",
+        "Scikit-Learn",
+        "Power Bi",
+        "Rest Api",
+        "Cs Fundamentals: Data Structures & Algo-",
+        "Rithm",
+        "Computer Networks"
+      ]
+    },
+    "certifications": [],
+    "languages": []
+  },
+  "metadata": {
+    "file_size": 165276,
+    "file_type": "pdf",
+    "pages": 1,
+    "upload_date": "2025-09-19 23:43:10.151574",
+    "processing_time": null
+  },
+  "status": "processing",
+  "error_message": null,
+  "file_id": "c1690ec3-2bbb-4b6f-bfe4-309896f195c4",
+  "saved_at": "2025-09-19T23:43:10.151574"
+}

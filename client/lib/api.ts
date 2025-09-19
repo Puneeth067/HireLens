@@ -46,6 +46,8 @@ class ApiService {
   ): Promise<Response> {
     const url = `${API_BASE_URL}${endpoint}`;
     
+    console.log(`Making API request to: ${url}`, { endpoint, options });
+    
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
     };
@@ -72,9 +74,16 @@ class ApiService {
       const response = await fetch(url, config);
       clearTimeout(timeoutId); // Clear timeout on successful response
       
+      console.log(`API response for ${url}:`, response.status, response.statusText);
+      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API Error (${response.status}):`, errorText);
+        // Only log 404 errors for stats endpoint as warnings since they're handled gracefully
+        if (response.status === 404 && endpoint === '/api/comparisons/stats') {
+          console.warn(`API Warning (${response.status}) for stats endpoint:`, errorText);
+        } else {
+          console.error(`API Error (${response.status}):`, errorText);
+        }
         
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         try {
@@ -84,13 +93,30 @@ class ApiService {
           // Use default error message if JSON parsing fails
         }
         
+        // For 404 errors, provide more specific messaging
+        if (response.status === 404) {
+          // Special handling for comparison creation errors
+          if (endpoint === '/api/comparisons' && errorMessage.includes('Resume not found')) {
+            throw new Error(`Resume not found: The selected resume is no longer available. Please refresh and try again.`);
+          } else if (endpoint === '/api/comparisons' && errorMessage.includes('Job not found')) {
+            throw new Error(`Job not found: The selected job is no longer available. Please refresh and try again.`);
+          } else {
+            throw new Error(`404: ${errorMessage}`);
+          }
+        }
+        
         throw new Error(errorMessage);
       }
       
       return response;
     } catch (error) {
       clearTimeout(timeoutId); // Clear timeout on error
-      console.error(`API request failed for ${url}:`, error);
+      // Only log 404 errors for stats endpoint as warnings since they're handled gracefully
+      if (error instanceof Error && error.message.includes('404') && endpoint === '/api/comparisons/stats') {
+        console.warn(`API request failed for ${url} (handled gracefully):`, error);
+      } else {
+        console.error(`API request failed for ${url}:`, error);
+      }
       
       // Handle network errors more gracefully
       if (error instanceof TypeError) {
@@ -147,7 +173,7 @@ class ApiService {
   }
 
   async deleteFile(fileId: string): Promise<{ message: string }> {
-    const response = await this.fetchWithAuth(`/api/upload/${fileId}`, {
+    const response = await this.fetchWithAuth(`/api/upload/file/${fileId}`, {
       method: 'DELETE',
     });
     return response.json();
@@ -184,12 +210,274 @@ class ApiService {
   async getParsedResumes(): Promise<ParsedResume[]> {
     const response = await this.fetchWithAuth('/api/parse/parsed-resumes');
     const data = await response.json();
-    return data.parsed_resumes || [];
+
+    // Define proper types instead of using 'any'
+    interface ServerParsedData {
+      personal_info?: Partial<{
+        name?: string;
+        email?: string;
+        phone?: string;
+        linkedin?: string;
+        location?: string;
+        github?: string;
+        portfolio?: string;
+      }>;
+      skills?: {
+        technical?: string[];
+        soft?: string[];
+        tools?: string[];
+        frameworks?: string[];
+        languages?: string[];
+      };
+      experience?: Array<{
+        position?: string;
+        job_title?: string;
+        company?: string;
+        start_date?: string;
+        end_date?: string;
+        description?: string | string[];
+        location?: string;
+        is_current?: boolean;
+        achievements?: string[];
+        technologies?: string[];
+      }>;
+      education?: Array<{
+        degree?: string;
+        field_of_study?: string;
+        institution?: string;
+        graduation_year?: string | number;
+        gpa?: string;
+        achievements?: string[];
+      }>;
+    }
+
+    interface ServerResume {
+      id: string;
+      filename: string;
+      raw_text: string;
+      parsed_data?: ServerParsedData;
+      status?: string;
+      parsed_at?: string;
+      file_id?: string; // Add file_id field
+    }
+
+    const toClient = (server: ServerResume): ParsedResume => {
+      const personal = server.parsed_data?.personal_info || {};
+      const skills = server.parsed_data?.skills || {};
+      const experience = server.parsed_data?.experience || [];
+      const education = server.parsed_data?.education || [];
+
+      const skillsList: string[] = [
+        ...(skills.technical || []),
+        ...(skills.soft || []),
+        ...(skills.tools || []),
+        ...(skills.frameworks || []),
+        ...(skills.languages || []),
+      ];
+
+      // Define types for map functions
+      interface ExperienceItem {
+        position?: string;
+        job_title?: string;
+        company?: string;
+        start_date?: string;
+        end_date?: string;
+        description?: string | string[];
+        location?: string;
+        is_current?: boolean;
+        achievements?: string[];
+        technologies?: string[];
+      }
+
+      interface EducationItem {
+        degree?: string;
+        field_of_study?: string;
+        institution?: string;
+        graduation_year?: string | number;
+        gpa?: string;
+        achievements?: string[];
+      }
+
+      const work_experience = experience.map((e: ExperienceItem) => ({
+        job_title: e.position || e.job_title || '',
+        company: e.company || '',
+        start_date: e.start_date || '',
+        end_date: e.end_date || undefined,
+        description: Array.isArray(e.description) ? e.description.join(' ') : (e.description || ''),
+        location: e.location || '',
+        is_current: !!e.is_current,
+        achievements: e.achievements || [],
+        technologies: e.technologies || [],
+      }));
+
+      const edu = education.map((e: EducationItem) => ({
+        degree: e.degree || '',
+        field_of_study: e.field_of_study || '',
+        institution: e.institution || '',
+        graduation_year: e.graduation_year ? Number(e.graduation_year) : undefined,
+        gpa: e.gpa,
+        achievements: e.achievements || [],
+      }));
+
+      return {
+        // Use file_id as the primary ID for accessing parsed resume data
+        id: server.file_id || server.id,
+        filename: server.filename,
+        raw_text: server.raw_text,
+        contact_info: {
+          name: personal.name,
+          email: personal.email,
+          phone: personal.phone,
+          linkedin: personal.linkedin,
+          github: personal.github,
+          portfolio: personal.portfolio,
+          location: personal.location,
+        },
+        skills: skillsList,
+        work_experience,
+        education: edu,
+        parsing_status: (server.status || 'pending') as 'pending' | 'processing' | 'completed' | 'failed',
+        parsed_at: server.parsed_at,
+      };
+    };
+
+    const list = data.parsed_resumes || [];
+    return Array.isArray(list) ? list.map(toClient) : [];
   }
 
   async getParsedResume(id: string): Promise<ParsedResume> {
+    // When calling the API, we need to use the file_id, not the parsed data id
+    // The id parameter here is the file_id from the client-side ParsedResume object
     const response = await this.fetchWithAuth(`/api/parse/parsed-resumes/${id}`);
-    return response.json();
+    const server = await response.json();
+
+    // Define proper types instead of using 'any'
+    interface ServerParsedData {
+      personal_info?: Partial<{
+        name?: string;
+        email?: string;
+        phone?: string;
+        linkedin?: string;
+        location?: string;
+        github?: string;
+        portfolio?: string;
+      }>;
+      skills?: {
+        technical?: string[];
+        soft?: string[];
+        tools?: string[];
+        frameworks?: string[];
+        languages?: string[];
+      };
+      experience?: Array<{
+        position?: string;
+        job_title?: string;
+        company?: string;
+        start_date?: string;
+        end_date?: string;
+        description?: string | string[];
+        location?: string;
+        is_current?: boolean;
+        achievements?: string[];
+        technologies?: string[];
+      }>;
+      education?: Array<{
+        degree?: string;
+        field_of_study?: string;
+        institution?: string;
+        graduation_year?: string | number;
+        gpa?: string;
+        achievements?: string[];
+      }>;
+    }
+
+    interface ServerResume {
+      id: string;
+      filename: string;
+      raw_text: string;
+      parsed_data?: ServerParsedData;
+      status?: string;
+      parsed_at?: string;
+      file_id?: string; // Add file_id field
+    }
+
+    const personal = server.parsed_data?.personal_info || {};
+    const skills = server.parsed_data?.skills || {};
+    const experience = server.parsed_data?.experience || [];
+    const education = server.parsed_data?.education || [];
+
+    const skillsList: string[] = [
+      ...(skills.technical || []),
+      ...(skills.soft || []),
+      ...(skills.tools || []),
+      ...(skills.frameworks || []),
+      ...(skills.languages || []),
+    ];
+
+    // Define types for map functions
+    interface ExperienceItem {
+      position?: string;
+      job_title?: string;
+      company?: string;
+      start_date?: string;
+      end_date?: string;
+      description?: string | string[];
+      location?: string;
+      is_current?: boolean;
+      achievements?: string[];
+      technologies?: string[];
+    }
+
+    interface EducationItem {
+      degree?: string;
+      field_of_study?: string;
+      institution?: string;
+      graduation_year?: string | number;
+      gpa?: string;
+      achievements?: string[];
+    }
+
+    const work_experience = experience.map((e: ExperienceItem) => ({
+      job_title: e.position || e.job_title || '',
+      company: e.company || '',
+      start_date: e.start_date || '',
+      end_date: e.end_date || undefined,
+      description: Array.isArray(e.description) ? e.description.join(' ') : (e.description || ''),
+      location: e.location || '',
+      is_current: !!e.is_current,
+      achievements: e.achievements || [],
+      technologies: e.technologies || [],
+    }));
+
+    const edu = education.map((e: EducationItem) => ({
+      degree: e.degree || '',
+      field_of_study: e.field_of_study || '',
+      institution: e.institution || '',
+      graduation_year: e.graduation_year ? Number(e.graduation_year) : undefined,
+      gpa: e.gpa,
+      achievements: e.achievements || [],
+    }));
+
+    return {
+      // Use file_id as the primary ID for accessing parsed resume data
+      id: server.file_id || server.id,
+      filename: server.filename,
+      raw_text: server.raw_text,
+      contact_info: {
+        name: personal.name,
+        email: personal.email,
+        phone: personal.phone,
+        linkedin: personal.linkedin,
+        github: personal.github,
+        portfolio: personal.portfolio,
+        location: personal.location,
+      },
+      skills: skillsList,
+      work_experience,
+      education: edu,
+      parsing_status: (server.status || 'pending') as 'pending' | 'processing' | 'completed' | 'failed',
+      parsed_at: server.parsed_at,
+    } as ParsedResume;
   }
 
   async deleteParsedResume(fileId: string): Promise<{ message: string }> {
@@ -201,6 +489,17 @@ class ApiService {
 
   async getParsingStats(): Promise<ProcessingStats> {
     const response = await this.fetchWithAuth('/api/parse/stats');
+    return response.json();
+  }
+
+  async cleanupOrphanedFiles(): Promise<{ 
+    success: boolean; 
+    message: string; 
+    details: { files: number; parsed_data: number; metadata_entries: number } 
+  }> {
+    const response = await this.fetchWithAuth('/api/parse/cleanup', {
+      method: 'POST',
+    });
     return response.json();
   }
 
@@ -326,11 +625,12 @@ class ApiService {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        queryParams.append(key, value.toString());
+        const k = key === 'limit' ? 'per_page' : key;
+        queryParams.append(k, value.toString());
       }
     });
     
-    const response = await this.fetchWithAuth(`/api/comparisons?${queryParams}`);
+    const response = await this.fetchWithAuth(`/api/comparisons?${queryParams.toString()}`);
     const data = await response.json();
     
     // Standardize response format handling
@@ -356,7 +656,9 @@ class ApiService {
 
   async getComparison(id: string): Promise<ResumeJobComparison> {
     const response = await this.fetchWithAuth(`/api/comparisons/${id}`);
-    return response.json();
+    const data = await response.json();
+    // Unwrap standard response wrapper if present
+    return data?.data || data;
   }
 
   async createComparison(data: {
@@ -367,18 +669,21 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(data)
     });
-    return response.json();
+    const res = await response.json();
+    return res?.data || res;
   }
 
   async createBulkComparisons(data: {
     job_id: string;
     resume_ids: string[];
   }): Promise<{ batch_id: string; message: string }> {
-    const response = await this.fetchWithAuth('/api/comparisons/bulk', {
+    const response = await this.fetchWithAuth('/api/comparisons/batch', {
       method: 'POST',
       body: JSON.stringify(data)
     });
-    return response.json();
+    const res = await response.json();
+    const payload = res?.data || res;
+    return { batch_id: payload.batch_id, message: res?.message || 'Batch comparison created' };
   }
 
   async getBatchStatus(batchId: string): Promise<BatchProcessingStatus> {
@@ -421,8 +726,24 @@ class ApiService {
     recent_comparisons: number;
     status_breakdown: Record<string, number>;
   }> {
-    const response = await this.fetchWithAuth('/api/comparisons/stats');
-    return response.json();
+    try {
+      const response = await this.fetchWithAuth('/api/comparisons/stats');
+      return response.json();
+    } catch (error) {
+      // Handle 404 errors gracefully as they indicate no comparisons exist yet
+      if (error instanceof Error && error.message.includes('404')) {
+        console.log('No comparison stats available yet, returning default values');
+        return {
+          total_comparisons: 0,
+          avg_score: 0,
+          top_score: 0,
+          recent_comparisons: 0,
+          status_breakdown: {}
+        };
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async getComparisonAnalytics(params: {
@@ -455,7 +776,7 @@ class ApiService {
       }
     });
     
-    const response = await this.fetchWithAuth(`/api/comparisons/analytics?${queryParams}`);
+    const response = await this.fetchWithAuth(`/api/comparisons/analytics?${queryParams.toString()}`);
     return response.json();
   }
 
@@ -820,7 +1141,7 @@ async getAnalyticsByDateRange(
     sections.forEach(section => params.append('sections', section));
   }
   
-  const response = await this.fetchWithAuth(`/api/analytics/date-range?${params}`);
+  const response = await this.fetchWithAuth(`/api/analytics/date-range?${params.toString()}`);
   return response.json();
 }
 
@@ -1046,7 +1367,9 @@ async getJobSummary(jobId: string): Promise<{
     // For now, return empty array
     return { resumes: [], total: 0 };
   }
+
 }
+
 // Export singleton instance
 export const apiService = new ApiService();
 export default apiService;
@@ -1061,3 +1384,5 @@ export const deleteJob = apiService.deleteJob.bind(apiService);
 export const getJobs = apiService.getJobs.bind(apiService);
 export const parseResume = apiService.parseResume.bind(apiService);
 export const getParsedResume = apiService.getParsedResume.bind(apiService);
+export const deleteParsedResume = apiService.deleteParsedResume.bind(apiService);
+export const cleanupOrphanedFiles = apiService.cleanupOrphanedFiles.bind(apiService);

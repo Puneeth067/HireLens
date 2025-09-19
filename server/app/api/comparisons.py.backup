@@ -2,10 +2,9 @@
 API endpoints for ATS scoring and comparison functionality
 """
 
-import logging
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 from pydantic import BaseModel
 
 from app.models.comparison import (
@@ -26,7 +25,6 @@ router = APIRouter(prefix="/api/comparisons", tags=["comparisons"])
 
 # Initialize service
 comparison_service = ComparisonService()
-logger = logging.getLogger(__name__)
 
 class ComparisonStatsResponse(BaseModel):
     """Response model for comparison statistics"""
@@ -36,8 +34,41 @@ class ComparisonStatsResponse(BaseModel):
     recent_comparisons: int
     status_breakdown: Dict[str, int]
 
-# IMPORTANT: List routes BEFORE parameterized routes to avoid conflicts
-# List all comparisons (must come before /{comparison_id})
+@router.post("/", response_model=ComparisonResponse)
+async def create_comparison(request: CreateComparisonRequest):
+    """Create a new resume-job comparison"""
+    try:
+        comparison = await comparison_service.create_comparison(
+            resume_id=request.resume_id,
+            job_id=request.job_id
+        )
+        return ComparisonResponse(
+            success=True,
+            message="Comparison created successfully",
+            data=comparison.dict(),
+            error=None
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create comparison: {str(e)}")
+
+@router.post("/batch", response_model=ComparisonResponse)
+async def create_batch_comparison(request: BatchComparisonRequest):
+    """Create batch comparison for multiple resumes against one job"""
+    try:
+        batch_result = await comparison_service.create_batch_comparison(request)
+        return ComparisonResponse(
+            success=True,
+            message=f"Batch comparison created for {batch_result.total_comparisons} resumes",
+            data=batch_result.dict(),
+            error=None
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create batch comparison: {str(e)}")
+
 @router.get("/", response_model=ComparisonListResponse)
 async def list_comparisons(
     page: int = Query(1, ge=1, description="Page number"),
@@ -105,213 +136,16 @@ async def list_comparisons(
         )
         
         result = comparison_service.list_comparisons(filters, page, per_page)
-        
-        # Update any "Unknown" candidate names with the latest data from resumes
-        updated_comparisons = []
-        needs_save = False
-        for comparison in result.get('comparisons', []):
-            if comparison.candidate_name == "Unknown":
-                try:
-                    resume_data = comparison_service.file_service.get_parsed_data(comparison.resume_id)
-                    if resume_data:
-                        candidate_name = resume_data.get('parsed_data', {}).get('personal_info', {}).get('name')
-                        if candidate_name:
-                            # Update the comparison with the correct candidate name
-                            comparison.candidate_name = candidate_name
-                            # Update in cache
-                            cached_comparison = comparison_service._comparison_cache.get(comparison.id)
-                            if cached_comparison:
-                                cached_comparison.candidate_name = candidate_name
-                            needs_save = True
-                except Exception as e:
-                    # Log the error but continue processing
-                    logger.warning(f"Could not update candidate name for comparison {comparison.id}: {e}")
-            updated_comparisons.append(comparison)
-        
-        # If any comparisons were updated, save the changes
-        if needs_save:
-            comparison_service._save_comparisons()
-            # Update the result with the updated comparisons
-            result['comparisons'] = updated_comparisons
-        
         return ComparisonListResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list comparisons: {str(e)}")
 
-# Create a new comparison
-@router.post("/", response_model=ComparisonResponse)
-async def create_comparison(request: CreateComparisonRequest):
-    """Create a new resume-job comparison"""
-    try:
-        comparison = await comparison_service.create_comparison(
-            resume_id=request.resume_id,
-            job_id=request.job_id
-        )
-        return ComparisonResponse(
-            success=True,
-            message="Comparison created successfully",
-            data=comparison.dict(),
-            error=None
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create comparison: {str(e)}")
-
-# Create batch comparison for multiple resumes against one job
-@router.post("/batch", response_model=ComparisonResponse)
-async def create_batch_comparison(request: BatchComparisonRequest):
-    """Create batch comparison for multiple resumes against one job"""
-    try:
-        batch_result = await comparison_service.create_batch_comparison(request)
-        return ComparisonResponse(
-            success=True,
-            message=f"Batch comparison created for {batch_result.total_comparisons} resumes",
-            data=batch_result.dict(),
-            error=None
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create batch comparison: {str(e)}")
-
-@router.get("/batch/{batch_id}/status")
-async def get_batch_status(batch_id: str):
-    """Get the status of a batch comparison"""
-    try:
-        status = comparison_service.get_batch_status(batch_id)
-        return status
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get batch status: {str(e)}")
-
-# Get comparison statistics (must come before parameterized routes)
-@router.get("/stats", response_model=ComparisonStatsResponse, summary="Get comparison statistics", description="Get comparison statistics including total comparisons, average score, top score, recent comparisons, and status breakdown.")
-async def get_comparison_stats():
-    """Get comparison statistics (alias for analytics/summary)"""
-    try:
-        result = comparison_service.list_comparisons()
-        summary = result.get('summary')
-        
-        # Handle case when there are no comparisons yet
-        if not summary:
-            stats = {
-                "total_comparisons": 0,
-                "avg_score": 0.0,
-                "top_score": 0.0,
-                "recent_comparisons": 0,
-                "status_breakdown": {}
-            }
-        else:
-            # Get top score from top candidates
-            top_score = 0.0
-            if summary.top_candidates:
-                top_score = max(
-                    candidate.get('overall_score', 0) 
-                    for candidate in summary.top_candidates
-                )
-            
-            # Create status breakdown
-            status_breakdown = {
-                "completed": summary.completed_comparisons,
-                "pending": summary.pending_comparisons,
-                "failed": summary.failed_comparisons
-            }
-            
-            # Calculate recent comparisons (last 7 days)
-            from datetime import datetime, timedelta
-            one_week_ago = datetime.utcnow() - timedelta(days=7)
-            recent_comparisons = len([
-                c for c in comparison_service._comparison_cache.values()
-                if c.created_at >= one_week_ago
-            ])
-            
-            # Format to match client expectations
-            stats = {
-                "total_comparisons": summary.total_comparisons,
-                "avg_score": summary.average_overall_score,
-                "top_score": top_score,
-                "recent_comparisons": recent_comparisons,
-                "status_breakdown": status_breakdown
-            }
-        
-        return stats
-    except Exception as e:
-        # Return default stats instead of raising an error
-        return {
-            "total_comparisons": 0,
-            "avg_score": 0.0,
-            "top_score": 0.0,
-            "recent_comparisons": 0,
-            "status_breakdown": {}
-        }
-
-# Export comparisons (must come before parameterized routes)
-@router.get("/export")
-async def export_comparisons(
-    format: str = Query("csv", description="Export format (csv or json)"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    job_id: Optional[str] = Query(None, description="Filter by job ID"),
-    min_score: Optional[float] = Query(None, description="Minimum score filter"),
-    max_score: Optional[float] = Query(None, description="Maximum score filter"),
-    search: Optional[str] = Query(None, description="Search filter")
-):
-    """Export comparisons as CSV or JSON"""
-    try:
-        # Get filtered comparisons
-        comparisons = [
-            c for c in comparison_service._comparison_cache.values()
-            if c.status == ComparisonStatus.COMPLETED and c.ats_score
-        ]
-        
-        # Apply filters
-        if status:
-            comparisons = [c for c in comparisons if c.status.value == status.lower()]
-        if job_id:
-            comparisons = [c for c in comparisons if c.job_id == job_id]
-        if min_score is not None:
-            comparisons = [c for c in comparisons if c.ats_score.overall_score >= min_score]
-        if max_score is not None:
-            comparisons = [c for c in comparisons if c.ats_score.overall_score <= max_score]
-        if search:
-            search_lower = search.lower()
-            comparisons = [c for c in comparisons if 
-                         search_lower in c.candidate_name.lower() or 
-                         search_lower in c.resume_filename.lower() or
-                         search_lower in c.job_title.lower()]
-        
-        if format.lower() == "csv":
-            return await _export_comparisons_csv(comparisons)
-        else:
-            return await _export_comparisons_json(comparisons)
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
-
-# Parameterized routes (must come AFTER list routes)
 @router.get("/{comparison_id}", response_model=ComparisonResponse)
 async def get_comparison(comparison_id: str):
     """Get a specific comparison by ID"""
     comparison = comparison_service.get_comparison(comparison_id)
     if not comparison:
         raise HTTPException(status_code=404, detail="Comparison not found")
-    
-    # If candidate name is "Unknown", try to update it with the latest data from resume
-    if comparison.candidate_name == "Unknown":
-        try:
-            resume_data = comparison_service.file_service.get_parsed_data(comparison.resume_id)
-            if resume_data:
-                candidate_name = resume_data.get('parsed_data', {}).get('personal_info', {}).get('name')
-                if candidate_name:
-                    # Update the comparison with the correct candidate name
-                    comparison.candidate_name = candidate_name
-                    # Save the updated comparison
-                    comparison_service._comparison_cache[comparison_id] = comparison
-                    comparison_service._save_comparisons()
-        except Exception as e:
-            # Log the error but don't fail the request
-            logger.warning(f"Could not update candidate name for comparison {comparison_id}: {e}")
     
     return ComparisonResponse(
         success=True,
@@ -474,6 +308,84 @@ async def reprocess_comparison(comparison_id: str):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reprocess comparison: {str(e)}")
+
+@router.get("/stats", response_model=ComparisonStatsResponse, summary="Get comparison statistics", description="Get comparison statistics including total comparisons, average score, top score, recent comparisons, and status breakdown.")
+async def get_comparison_stats():
+    """Get comparison statistics (alias for analytics/summary)"""
+    try:
+        result = comparison_service.list_comparisons()
+        summary = result.get('summary', {})
+        
+        # Handle case when there are no comparisons yet
+        if not summary:
+            stats = {
+                "total_comparisons": 0,
+                "avg_score": 0.0,
+                "top_score": 0.0,
+                "recent_comparisons": 0,
+                "status_breakdown": {}
+            }
+        else:
+            # Format to match client expectations
+            stats = {
+                "total_comparisons": summary.get('total_comparisons', 0),
+                "avg_score": summary.get('avg_score', 0.0),
+                "top_score": summary.get('top_score', 0.0),
+                "recent_comparisons": summary.get('recent_comparisons', 0),
+                "status_breakdown": summary.get('status_breakdown', {})
+            }
+        
+        return stats
+    except Exception as e:
+        # Return default stats instead of raising an error
+        return {
+            "total_comparisons": 0,
+            "avg_score": 0.0,
+            "top_score": 0.0,
+            "recent_comparisons": 0,
+            "status_breakdown": {}
+        }
+
+@router.get("/export")
+async def export_comparisons(
+    format: str = Query("csv", description="Export format (csv or json)"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    job_id: Optional[str] = Query(None, description="Filter by job ID"),
+    min_score: Optional[float] = Query(None, description="Minimum score filter"),
+    max_score: Optional[float] = Query(None, description="Maximum score filter"),
+    search: Optional[str] = Query(None, description="Search filter")
+):
+    """Export comparisons as CSV or JSON"""
+    try:
+        # Get filtered comparisons
+        comparisons = [
+            c for c in comparison_service._comparison_cache.values()
+            if c.status == ComparisonStatus.COMPLETED and c.ats_score
+        ]
+        
+        # Apply filters
+        if status:
+            comparisons = [c for c in comparisons if c.status.value == status.lower()]
+        if job_id:
+            comparisons = [c for c in comparisons if c.job_id == job_id]
+        if min_score is not None:
+            comparisons = [c for c in comparisons if c.ats_score.overall_score >= min_score]
+        if max_score is not None:
+            comparisons = [c for c in comparisons if c.ats_score.overall_score <= max_score]
+        if search:
+            search_lower = search.lower()
+            comparisons = [c for c in comparisons if 
+                         search_lower in c.candidate_name.lower() or 
+                         search_lower in c.resume_filename.lower() or
+                         search_lower in c.job_title.lower()]
+        
+        if format.lower() == "csv":
+            return await _export_comparisons_csv(comparisons)
+        else:
+            return await _export_comparisons_json(comparisons)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 async def _export_comparisons_csv(comparisons):
     """Export comparisons as CSV with proper headers"""

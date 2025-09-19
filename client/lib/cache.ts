@@ -237,7 +237,7 @@ class CacheManager {
 export const CACHE_CONFIGS = {
   // API responses with frequent updates
   ANALYTICS: { ttl: 2 * 60 * 1000, maxSize: 50 }, // 2 minutes
-  JOBS: { ttl: 5 * 60 * 1000, maxSize: 100 }, // 5 minutes
+  JOBS: { ttl: 1 * 1000, maxSize: 100 }, // 1 second (reduced from 5 seconds for immediate updates)
   COMPARISONS: { ttl: 3 * 60 * 1000, maxSize: 200 }, // 3 minutes
   
   // Relatively static data
@@ -288,41 +288,49 @@ export const CacheKeys = {
 export const CacheInvalidation = {
   // Invalidate related caches when data changes
   onJobCreate: () => {
-    jobsCache.delete(CacheKeys.JOBS_LIST(1));
-    apiCache.delete(CacheKeys.ANALYTICS_DASHBOARD());
-    systemCache.delete(CacheKeys.SYSTEM_INFO());
+    // Clear all job-related caches immediately
+    jobsCache.clear();
+    // Also clear analytics caches that might be affected
+    apiCache.clear();
+    systemCache.clear();
   },
   
   onJobUpdate: (jobId: string) => {
-    jobsCache.delete(CacheKeys.JOB_DETAIL(jobId));
-    // Invalidate list caches
-    jobsCache.keys().filter(key => key.startsWith('jobs_list')).forEach(key => jobsCache.delete(key));
-    apiCache.delete(CacheKeys.ANALYTICS_DASHBOARD());
+    // Clear all job-related caches immediately
+    jobsCache.clear();
+    // Also clear analytics caches that might be affected
+    apiCache.clear();
   },
   
   onJobDelete: (jobId: string) => {
-    jobsCache.delete(CacheKeys.JOB_DETAIL(jobId));
-    jobsCache.keys().filter(key => key.startsWith('jobs_list')).forEach(key => jobsCache.delete(key));
-    apiCache.delete(CacheKeys.ANALYTICS_DASHBOARD());
-    systemCache.delete(CacheKeys.SYSTEM_INFO());
+    // Clear all job-related caches immediately
+    jobsCache.clear();
+    // Also clear analytics caches that might be affected
+    apiCache.clear();
+    systemCache.clear();
   },
   
   onComparisonCreate: () => {
-    comparisonsCache.keys().filter(key => key.startsWith('comparisons_list')).forEach(key => comparisonsCache.delete(key));
-    apiCache.delete(CacheKeys.ANALYTICS_DASHBOARD());
-    apiCache.delete(CacheKeys.ANALYTICS_OVERVIEW());
+    // Clear comparison caches
+    comparisonsCache.clear();
+    // Clear job stats cache as comparisons might affect job analytics
+    jobsCache.clear();
+    // Clear analytics caches
+    apiCache.clear();
   },
   
   onComparisonUpdate: (comparisonId: string) => {
-    comparisonsCache.delete(CacheKeys.COMPARISON_DETAIL(comparisonId));
-    comparisonsCache.keys().filter(key => key.startsWith('comparisons_list')).forEach(key => comparisonsCache.delete(key));
-    apiCache.delete(CacheKeys.ANALYTICS_DASHBOARD());
+    // Clear comparison caches
+    comparisonsCache.clear();
+    // Clear job stats cache as comparisons might affect job analytics
+    jobsCache.clear();
+    // Clear analytics caches
+    apiCache.clear();
   },
   
   onUserAction: () => {
-    // Invalidate analytics that might be affected by user actions
-    apiCache.delete(CacheKeys.ANALYTICS_DASHBOARD());
-    apiCache.delete(CacheKeys.ANALYTICS_OVERVIEW());
+    // Clear all caches for maximum freshness
+    [apiCache, jobsCache, comparisonsCache, systemCache, userCache, searchCache].forEach(cache => cache.clear());
   },
   
   // Manual invalidation for specific data types

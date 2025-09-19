@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Filter, Download, BarChart3, Users, Trophy, Clock, XCircle } from 'lucide-react';
+import { Search, Filter, Download, BarChart3, Users, Trophy, Clock, XCircle, ArrowLeft } from 'lucide-react';
 import { ResumeJobComparison, JobDescriptionResponse } from '@/lib/types';
 import { apiService } from '@/lib/api';
 import ErrorBoundary from '@/components/error-boundary';
@@ -30,12 +31,14 @@ interface ComparisonFilters {
 }
 
 function ComparisonsPageContent() {
+  const router = useRouter();
   const componentLogger = useLogger('ComparisonsPage');
   const [comparisons, setComparisons] = useState<ResumeJobComparison[]>([]);
   const [stats, setStats] = useState<ComparisonStats | null>(null);
   const [jobs, setJobs] = useState<JobDescriptionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noComparisons, setNoComparisons] = useState(false);
   const [filters, setFilters] = useState<ComparisonFilters>({
     status: 'all',
     job_id: 'all',
@@ -48,6 +51,11 @@ function ComparisonsPageContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  
+  // Refs to track if data has been loaded to prevent infinite loops
+  const hasLoadedData = useRef(false);
+  const filtersRef = useRef(filters);
+  const currentPageRef = useRef(currentPage);
 
   // Performance tracking
   useEffect(() => {
@@ -61,9 +69,23 @@ function ComparisonsPageContent() {
   }, [componentLogger]);
 
   const loadData = useCallback(async () => {
+    // Prevent infinite loops by checking if filters or page actually changed
+    const filtersChanged = JSON.stringify(filtersRef.current) !== JSON.stringify(filters);
+    const pageChanged = currentPageRef.current !== currentPage;
+    
+    if (!filtersChanged && !pageChanged && hasLoadedData.current) {
+      return;
+    }
+    
+    // Update refs
+    filtersRef.current = filters;
+    currentPageRef.current = currentPage;
+    hasLoadedData.current = true;
+
     try {
       setLoading(true);
       setError(null);
+      setNoComparisons(false);
       
       componentLogger.debug('Loading comparisons data', {
         page: currentPage,
@@ -93,11 +115,30 @@ function ComparisonsPageContent() {
       setComparisons(comparisonsRes.comparisons);
       setTotalPages(Math.ceil(comparisonsRes.total / 12));
       
+      // Check if there are no comparisons
+      if (comparisonsRes.total === 0) {
+        setNoComparisons(true);
+      }
+      
       // Load stats if not cached
       if (!cachedStats) {
-        const statsRes = await apiService.getComparisonStats();
-        setStats(statsRes);
-        comparisonsCache.set(statsCacheKey, statsRes, 120000); // 2 minutes cache
+        try {
+          componentLogger.debug('Fetching comparison stats from API');
+          const statsRes = await apiService.getComparisonStats();
+          componentLogger.debug('Received comparison stats', statsRes);
+          setStats(statsRes);
+          comparisonsCache.set(statsCacheKey, statsRes, 120000); // 2 minutes cache
+        } catch (statsError) {
+          // Handle case when there are no comparisons yet
+          componentLogger.warn('Failed to load stats, using default values', { error: statsError });
+          setStats({
+            total_comparisons: 0,
+            avg_score: 0,
+            top_score: 0,
+            recent_comparisons: 0,
+            status_breakdown: {}
+          });
+        }
       } else {
         setStats(cachedStats);
       }
@@ -125,6 +166,7 @@ function ComparisonsPageContent() {
     }
   }, [filters, currentPage, componentLogger]);
 
+  // Use effect with proper dependency management
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -132,7 +174,7 @@ function ComparisonsPageContent() {
   const handleFilterChange = useCallback((key: keyof ComparisonFilters, value: string | number) => {
     componentLogger.userAction('filter_changed', { filterKey: key, filterValue: value });
     setFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to first page when filters change
   }, [componentLogger]);
 
   const resetFilters = useCallback(() => {
@@ -204,6 +246,7 @@ function ComparisonsPageContent() {
               onClick={() => {
                 setError(null);
                 setLoading(true);
+                hasLoadedData.current = false; // Reset the loaded flag to allow reload
                 loadData();
               }}
             >
@@ -221,10 +264,32 @@ function ComparisonsPageContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Resume Comparisons</h1>
-          <p className="text-gray-600 mt-2">View and manage ATS scoring results</p>
+        {/* Header with Back Button */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Resume Comparisons</h1>
+            <p className="text-gray-600 mt-1">Compare candidates against job requirements</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => {
+                componentLogger.userAction('back_button_clicked');
+                router.back();
+              }}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <Link
+              href="/comparisons/create"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <BarChart3 className="w-5 h-5 mr-2" />
+              New Comparison
+            </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -400,7 +465,7 @@ function ComparisonsPageContent() {
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-        ) : comparisons.length === 0 ? (
+        ) : noComparisons ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No comparisons found</h3>
@@ -531,7 +596,7 @@ function ComparisonsPageContent() {
 // Main component wrapped with error boundary
 export default function ComparisonsPage() {
   useEffect(() => {
-    logger.pageView('/comparisions');
+    logger.pageView('/comparisons');
   }, []);
 
   return (

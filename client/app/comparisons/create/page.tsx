@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Users, Briefcase, Zap, Upload, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Users, Briefcase, Zap, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
 import { JobDescriptionResponse, ParsedResume } from '@/lib/types';
 import { apiService } from '@/lib/api';
 
@@ -23,6 +23,7 @@ export default function CreateComparisonPage() {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const modes: ComparisonMode[] = [
     {
@@ -41,19 +42,54 @@ export default function CreateComparisonPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    
+    // Set up periodic refresh to prevent stale data
+    const interval = setInterval(() => {
+      if (!creating) {
+        loadData();
+      }
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [creating]);
 
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const [jobsRes, resumesRes] = await Promise.all([
         apiService.getJobs({ limit: 1000, status: 'active' }),
         apiService.getParsedResumes()
       ]);
+      
+      // Further validate that each resume actually exists and is accessible
+      const validatedResumes = [];
+      const validationErrors = [];
+      
+      for (const resume of resumesRes) {
+        try {
+          // Try to fetch the individual resume to ensure it's accessible
+          await apiService.getParsedResume(resume.id);
+          validatedResumes.push(resume);
+        } catch (error) {
+          console.warn(`Resume ${resume.id} failed validation:`, error);
+          validationErrors.push(resume.id);
+        }
+      }
+      
+      if (validationErrors.length > 0) {
+        console.log(`Filtered out ${validationErrors.length} invalid resumes`);
+      }
+      
       setJobs(jobsRes.jobs);
-      setResumes(resumesRes.filter(r => r.parsing_status === 'completed'));
+      setResumes(validatedResumes.filter(r => r.parsing_status === 'completed'));
+      
+      // Clean up selected resumes that no longer exist
+      const validResumeIds = new Set(validatedResumes.map(r => r.id));
+      setSelectedResumeIds(prev => prev.filter(id => validResumeIds.has(id)));
     } catch (error) {
       console.error('Error loading data:', error);
+      setError('Failed to load jobs or resumes. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -76,18 +112,59 @@ export default function CreateComparisonPage() {
 
     try {
       setCreating(true);
+      setError(null);
       setProgress({ completed: 0, total: selectedResumeIds.length });
 
+      // Validate that all selected resumes still exist before creating comparisons
+      const validResumeIds = [];
+      const invalidResumeIds = [];
+      
+      for (const resumeId of selectedResumeIds) {
+        try {
+          await apiService.getParsedResume(resumeId);
+          validResumeIds.push(resumeId);
+        } catch (error) {
+          console.warn(`Resume ${resumeId} is no longer available:`, error);
+          invalidResumeIds.push(resumeId);
+        }
+      }
+      
+      if (invalidResumeIds.length > 0) {
+        // Update the selected resumes list to remove invalid ones
+        setSelectedResumeIds(validResumeIds);
+        
+        if (validResumeIds.length === 0) {
+          // No valid resumes left
+          await loadData(); // Refresh all data
+          throw new Error('All selected resumes are no longer available. The resume list has been refreshed.');
+        } else {
+          // Some resumes are invalid, but we can proceed with valid ones
+          setError(`Some selected resumes (${invalidResumeIds.length}) are no longer available and have been removed from selection.`);
+        }
+      }
+
       if (mode === 'single') {
+        // Double-check the single resume still exists
+        try {
+          await apiService.getParsedResume(validResumeIds[0]);
+        } catch (error) {
+          await loadData();
+          throw new Error('The selected resume is no longer available. The resume list has been refreshed.');
+        }
+        
         const comparison = await apiService.createComparison({
           job_id: selectedJobId,
-          resume_id: selectedResumeIds[0]
+          resume_id: validResumeIds[0]
         });
         router.push(`/comparisons/${comparison.id}`);
       } else {
+        if (validResumeIds.length === 0) {
+          throw new Error('No valid resumes selected for bulk comparison.');
+        }
+        
         const response = await apiService.createBulkComparisons({
           job_id: selectedJobId,
-          resume_ids: selectedResumeIds
+          resume_ids: validResumeIds
         });
 
         // Poll for completion status
@@ -108,6 +185,7 @@ export default function CreateComparisonPage() {
             }
           } catch (error) {
             console.error('Error checking progress:', error);
+            setError('Failed to process batch comparisons. Please try again.');
             setCreating(false);
           }
         };
@@ -116,6 +194,22 @@ export default function CreateComparisonPage() {
       }
     } catch (error) {
       console.error('Error creating comparisons:', error);
+      // Handle specific error cases
+      if (error instanceof Error) {
+        if (error.message.includes('Resume not found')) {
+          // Refresh the resume list since some resumes may have been deleted
+          await loadData();
+          setError('Some selected resumes are no longer available. The resume list has been refreshed. Please select resumes again.');
+        } else if (error.message.includes('Job not found')) {
+          // Refresh the job list since the job may have been deleted
+          await loadData();
+          setError('The selected job is no longer available. The job list has been refreshed. Please select a job again.');
+        } else {
+          setError(error.message);
+        }
+      } else {
+        setError('Failed to create comparisons. Please try again.');
+      }
       setCreating(false);
     }
   };
@@ -145,6 +239,23 @@ export default function CreateComparisonPage() {
             <p className="text-gray-600 mt-1">Compare resumes against job descriptions using ATS scoring</p>
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+              <h3 className="text-red-800 font-medium">Error</h3>
+            </div>
+            <p className="text-red-700 mt-2 text-sm">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="mt-3 text-red-700 hover:text-red-900 text-sm font-medium"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {creating && progress && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
@@ -243,11 +354,23 @@ export default function CreateComparisonPage() {
                   <h2 className="text-xl font-semibold text-gray-900">
                     Select Resume{mode === 'bulk' ? 's' : ''}
                   </h2>
-                  {mode === 'bulk' && selectedResumeIds.length > 0 && (
-                    <span className="text-sm text-gray-600">
-                      {selectedResumeIds.length} selected
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-3">
+                    {mode === 'bulk' && selectedResumeIds.length > 0 && (
+                      <span className="text-sm text-gray-600">
+                        {selectedResumeIds.length} selected
+                      </span>
+                    )}
+                    <button
+                      onClick={loadData}
+                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                      disabled={loading}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Refresh
+                    </button>
+                  </div>
                 </div>
 
                 {resumes.length === 0 ? (

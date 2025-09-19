@@ -3,8 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Job, CreateJobRequest, JobType, ExperienceLevel } from '@/lib/types';
+import { Job, CreateJobRequest, JobType, ExperienceLevel, JobStatus } from '@/lib/types';
 import { apiService } from '@/lib/api';
+import { CacheInvalidation } from '@/lib/cache';
 
 interface JobFormProps {
   job?: Job;
@@ -31,6 +32,7 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
     salary_min: job?.salary_min || 0,
     salary_max: job?.salary_max || 0,
     currency: job?.currency || 'USD',
+    status: job?.status || 'draft' as JobStatus, // Add status field
     // Use direct weight fields from backend
     weight_skills: (job?.weight_skills || 0.4) * 100, // Convert to percentage
     weight_experience: (job?.weight_experience || 0.3) * 100,
@@ -123,6 +125,7 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
         weight_experience: formData.weight_experience / 100,
         weight_education: formData.weight_education / 100,
         weight_keywords: formData.weight_keywords / 100
+        // Note: Status is not included in CreateJobRequest, will be set after creation if needed
       };
 
       console.log('Submitting job data:', JSON.stringify(jobData, null, 2));
@@ -130,14 +133,44 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
       let result;
       if (isEdit && job) {
         console.log('Updating existing job:', job.id);
-        result = await apiService.updateJob(job.id, jobData);
+        // For editing, we can include status in the update
+        const updateData = {
+          ...jobData,
+          status: formData.status
+        };
+        result = await apiService.updateJob(job.id, updateData);
+        
+        // Dispatch a custom event to notify the jobs page to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('jobUpdated', { detail: result }));
+          // Also dispatch a general refresh event
+          window.dispatchEvent(new CustomEvent('jobListRefresh'));
+          // Force cache invalidation
+          CacheInvalidation.onJobUpdate(result.id);
+        }
       } else {
         console.log('Creating new job');
         result = await apiService.createJob(jobData);
+        
+        // If the status is not draft, we need to update it immediately after creation
+        if (formData.status !== 'draft') {
+          console.log('Updating job status to:', formData.status);
+          const updatedResult = await apiService.updateJob(result.id, { status: formData.status });
+          result = updatedResult; // Use the updated result
+        }
+        
+        // Dispatch a custom event to notify the jobs page to refresh
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('jobCreated', { detail: result }));
+          // Also dispatch a general refresh event
+          window.dispatchEvent(new CustomEvent('jobListRefresh'));
+          // Force cache invalidation
+          CacheInvalidation.onJobCreate();
+        }
       }
-
-      console.log('Job creation result:', result);
-      console.log('Redirecting to /jobs');
+      
+      // Add a small delay to ensure events are processed
+      await new Promise(resolve => setTimeout(resolve, 100));
       router.push('/jobs');
     } catch (error) {
       console.error('Job creation/update error:', error);
@@ -316,6 +349,24 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
                 <option value="senior">Senior Level</option>
                 <option value="lead">Lead Level</option>
                 <option value="executive">Executive</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Job Status
+              </label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                aria-label="Select job status"
+              >
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+                <option value="closed">Closed</option>
               </select>
             </div>
           </div>
