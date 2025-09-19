@@ -63,5 +63,18 @@
     "parsed_at": 1758180795.591232,
     "processing_time": 0.04029512405395508,
     "processing_started_at": 1758180795.550937
+  },
+  "2d80bdaf-6c56-4ea5-9f35-8da7c39c2d16": {
+    "file_id": "2d80bdaf-6c56-4ea5-9f35-8da7c39c2d16",
+    "original_filename": "Puneeth_K_Resume.pdf",
+    "filename": "2d80bdaf-6c56-4ea5-9f35-8da7c39c2d16.pdf",
+    "file_size": 0,
+    "file_type": ".pdf",
+    "uploaded_at": 1758210082.322523,
+    "status": "completed",
+    "error_message": null,
+    "parsed_at": 1758210086.978735,
+    "processing_time": 0.05280590057373047,
+    "processing_started_at": 1758210086.925929
   }
 }

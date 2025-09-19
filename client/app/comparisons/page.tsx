@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { Search, Filter, Download, BarChart3, Users, Trophy, Clock, XCircle } from 'lucide-react';
 import { ResumeJobComparison, JobDescriptionResponse } from '@/lib/types';
 import { apiService } from '@/lib/api';
 import ErrorBoundary from '@/components/error-boundary';
 import { useLogger, logger } from '@/lib/logger';
 import { comparisonsCache, jobsCache, CacheKeys } from '@/lib/cache';
-import { ComparisonsPageSkeleton, CardSkeleton } from '@/components/ui/skeleton';
+import { ComparisonsPageSkeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 
 interface ComparisonStats {
@@ -403,7 +404,21 @@ function ComparisonsPageContent() {
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No comparisons found</h3>
-            <p className="text-gray-600">Try adjusting your filters or create some new comparisons.</p>
+            <p className="text-gray-600 mb-4">Create comparisons by matching resumes with job descriptions.</p>
+            <div className="flex justify-center gap-3">
+              <Link
+                href="/jobs"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                View Jobs
+              </Link>
+              <Link
+                href="/upload"
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Upload Resumes
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
@@ -451,12 +466,12 @@ function ComparisonsPageContent() {
                 
                 <div className="flex justify-between items-center text-xs text-gray-500">
                   <span>{new Date(comparison.created_at).toLocaleDateString()}</span>
-                  <a
+                  <Link
                     href={`/comparisons/${comparison.id}`}
                     className="text-blue-600 hover:text-blue-800 font-medium"
                   >
                     View Details →
-                  </a>
+                  </Link>
                 </div>
               </div>
             ))}

@@ -107,7 +107,7 @@
       ],
       "requirements": [
         "BE in computer science ",
-        "expereince as a software developer in java devops"
+        "expereince as a software developer in aws devops"
       ],
       "nice_to_have": [],
       "required_skills": [
@@ -125,7 +125,47 @@
       "posted_date": null,
       "application_deadline": null,
       "created_at": "2025-09-18 19:57:37.099810",
-      "updated_at": "2025-09-18 19:57:37.099810",
+      "updated_at": "2025-09-18 20:03:06.889125",
+      "created_by": null,
+      "keywords": [],
+      "weight_skills": 0.4,
+      "weight_experience": 0.3,
+      "weight_education": 0.2,
+      "weight_keywords": 0.1
+    },
+    {
+      "id": "3a336f0e-7cfc-4101-984d-8538909c515a",
+      "title": "abc",
+      "company": "google",
+      "department": null,
+      "location": "USA",
+      "job_type": "part_time",
+      "experience_level": "junior",
+      "salary_min": 1000,
+      "salary_max": 4000,
+      "currency": "USD",
+      "description": "xyz imp",
+      "responsibilities": [
+        "developing softwares"
+      ],
+      "requirements": [
+        "team collobarative skilss"
+      ],
+      "nice_to_have": [],
+      "required_skills": [
+        "abc",
+        "c++"
+      ],
+      "preferred_skills": [
+        "postgres"
+      ],
+      "education_requirements": [],
+      "certifications": [],
+      "status": "draft",
+      "posted_date": null,
+      "application_deadline": null,
+      "created_at": "2025-09-18 20:01:28.314065",
+      "updated_at": "2025-09-18 20:01:28.314065",
       "created_by": null,
       "keywords": [],
       "weight_skills": 0.4,
@@ -136,7 +176,7 @@
   ],
   "metadata": {
     "created_at": "2025-09-15T11:26:27.208528",
-    "last_updated": "2025-09-18T19:57:37.099810",
+    "last_updated": "2025-09-18T20:03:06.889125",
     "version": "1.0"
   }
 }

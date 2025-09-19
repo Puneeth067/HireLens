@@ -412,23 +412,31 @@ app.include_router(ranking)
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Custom 404 handler"""
-    return {
-        "error": "Not Found",
-        "message": f"The requested endpoint was not found",
-        "status_code": 404,
-        "timestamp": time.time()
-    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "Not Found",
+            "message": f"The requested endpoint was not found",
+            "status_code": 404,
+            "timestamp": time.time()
+        }
+    )
 
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Custom 500 handler"""
     logger.error(f"Internal server error: {exc}")
-    return {
-        "error": "Internal Server Error",
-        "message": "An internal server error occurred",
-        "status_code": 500,
-        "timestamp": time.time()
-    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "message": "An internal server error occurred",
+            "status_code": 500,
+            "timestamp": time.time()
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn
