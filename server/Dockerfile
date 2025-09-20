@@ -18,9 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Download NLTK data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger')"
 
-# Install spaCy English model
-RUN python -m spacy download en_core_web_sm
-
 # Copy server code
 COPY server/ .
 

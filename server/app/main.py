@@ -66,12 +66,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Failed to download NLTK data: {e}")
     
+    # Handle spaCy model download/installation at runtime
     try:
         import spacy
-        spacy.load("en_core_web_sm")
-        logger.info("spaCy model loaded successfully")
+        try:
+            spacy.load("en_core_web_sm")
+            logger.info("spaCy model loaded successfully")
+        except OSError:
+            logger.info("Downloading spaCy English model...")
+            spacy.cli.download("en_core_web_sm")
+            logger.info("spaCy English model downloaded successfully")
     except Exception as e:
-        logger.error(f"spaCy model not found: {e}")
+        logger.error(f"spaCy model handling failed: {e}")
         logger.info("Install spaCy English model with: python -m spacy download en_core_web_sm")
     
     # Check scikit-learn availability for ATS scoring
