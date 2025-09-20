@@ -1,0 +1,27 @@
+{
+  "id": "ranking_20250921_011746",
+  "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
+  "criteria": {
+    "skills_weight": 0.49991062276824844,
+    "experience_weight": 0.25004468861587575,
+    "education_weight": 0.16669645907725048,
+    "keyword_weight": 0.08334822953862524,
+    "min_overall_score": null,
+    "min_skills_score": null,
+    "min_experience_score": null,
+    "min_education_score": null,
+    "require_degree": false,
+    "min_years_experience": null,
+    "required_skills": [],
+    "preferred_skills": []
+  },
+  "candidates": [],
+  "total_candidates": 0,
+  "created_at": "2025-09-21 01:17:46.147238",
+  "updated_at": null,
+  "created_by": null,
+  "average_score": null,
+  "median_score": null,
+  "top_score": null,
+  "candidates_meeting_requirements": null
+}

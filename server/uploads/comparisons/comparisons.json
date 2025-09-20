@@ -12,7 +12,7 @@
       "ats_score": null,
       "status": "processing",
       "created_at": "2025-09-06T12:20:50.174187",
-      "updated_at": "2025-09-20T16:06:04.139032",
+      "updated_at": "2025-09-20T18:24:15.669251",
       "completed_at": null,
       "processing_time_seconds": null,
       "error_message": null
@@ -29,7 +29,7 @@
       "ats_score": null,
       "status": "failed",
       "created_at": "2025-08-30T12:20:50.174187",
-      "updated_at": "2025-09-20T16:06:04.139032",
+      "updated_at": "2025-09-20T18:24:15.669558",
       "completed_at": null,
       "processing_time_seconds": null,
       "error_message": "Processing failed due to parsing error"
@@ -107,7 +107,7 @@
       },
       "status": "completed",
       "created_at": "2025-09-20T15:40:18.338916",
-      "updated_at": "2025-09-20T16:06:04.139032",
+      "updated_at": "2025-09-20T18:24:15.669558",
       "completed_at": "2025-09-20T15:40:20.726325",
       "processing_time_seconds": 2.3754467964172363,
       "error_message": null
@@ -187,7 +187,7 @@
       },
       "status": "completed",
       "created_at": "2025-09-20T15:54:42.718169",
-      "updated_at": "2025-09-20T16:06:04.140547",
+      "updated_at": "2025-09-20T18:24:15.669558",
       "completed_at": "2025-09-20T15:54:45.488131",
       "processing_time_seconds": 2.73372220993042,
       "error_message": null
@@ -267,11 +267,181 @@
       },
       "status": "completed",
       "created_at": "2025-09-20T15:54:42.736260",
-      "updated_at": "2025-09-20T16:06:04.140547",
+      "updated_at": "2025-09-20T18:24:15.669558",
       "completed_at": "2025-09-20T15:54:47.992234",
       "processing_time_seconds": 2.492152214050293,
       "error_message": null
+    },
+    {
+      "id": "67e54011-c574-4d15-a888-72660766157d",
+      "batch_id": "bff6c6ed-3c4f-478c-b07e-ab2a019f212c",
+      "resume_id": "62e0891d-abd2-457b-8e8c-69ffb36bc8f9",
+      "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
+      "resume_filename": "Puneeth_Resume (4).pdf",
+      "candidate_name": "Puneeth Kumar",
+      "job_title": "Senior Software Engineer",
+      "company": "Tech Corp",
+      "ats_score": {
+        "overall_score": 90.3,
+        "skills_score": 100.0,
+        "experience_score": 100.0,
+        "education_score": 100.0,
+        "keywords_score": 2.96,
+        "breakdown": {
+          "skills": {
+            "score": 100.0,
+            "weight": 40.0,
+            "weighted_score": 40.0,
+            "details": {
+              "required_matches": 3,
+              "required_partial": 3,
+              "preferred_matches": 1,
+              "preferred_partial": 1,
+              "total_required": 3,
+              "total_preferred": 2
+            }
+          },
+          "experience": {
+            "score": 100.0,
+            "weight": 30.0,
+            "weighted_score": 30.0,
+            "details": {
+              "total_experience": 3.0,
+              "relevant_experience": 1.0,
+              "required_years": 3,
+              "experience_positions": 3
+            }
+          },
+          "education": {
+            "score": 100.0,
+            "weight": 20.0,
+            "weighted_score": 20.0,
+            "details": {
+              "education_required": false
+            }
+          },
+          "keywords": {
+            "score": 2.959786117179147,
+            "weight": 10.0,
+            "weighted_score": 0.29597861171791473,
+            "details": {
+              "similarity_score": 0.02959786117179147,
+              "total_keyword_matches": 3,
+              "job_word_count": 17,
+              "resume_word_count": 66
+            }
+          }
+        },
+        "matched_skills": [
+          "javascript",
+          "aws",
+          "python",
+          "react"
+        ],
+        "missing_skills": [
+          "docker"
+        ],
+        "keyword_matches": [
+          "engineer",
+          "aws",
+          "react"
+        ],
+        "recommendations": [
+          "Include more job-specific keywords from the job description in your resume"
+        ]
+      },
+      "status": "completed",
+      "created_at": "2025-09-20T20:02:09.846580",
+      "updated_at": "2025-09-20T20:02:09.846580",
+      "completed_at": "2025-09-20T20:02:10.817231",
+      "processing_time_seconds": 0.9501447677612305,
+      "error_message": null
+    },
+    {
+      "id": "f48200c8-60ad-4481-99b8-94382c9c7941",
+      "batch_id": "bff6c6ed-3c4f-478c-b07e-ab2a019f212c",
+      "resume_id": "6cda3246-300c-4d58-aaf4-ddcd0afe3726",
+      "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
+      "resume_filename": "Puneeth_K_Resume.pdf",
+      "candidate_name": "Puneeth Kumar",
+      "job_title": "Senior Software Engineer",
+      "company": "Tech Corp",
+      "ats_score": {
+        "overall_score": 90.29,
+        "skills_score": 100.0,
+        "experience_score": 100.0,
+        "education_score": 100.0,
+        "keywords_score": 2.94,
+        "breakdown": {
+          "skills": {
+            "score": 100.0,
+            "weight": 40.0,
+            "weighted_score": 40.0,
+            "details": {
+              "required_matches": 3,
+              "required_partial": 3,
+              "preferred_matches": 1,
+              "preferred_partial": 1,
+              "total_required": 3,
+              "total_preferred": 2
+            }
+          },
+          "experience": {
+            "score": 100.0,
+            "weight": 30.0,
+            "weighted_score": 30.0,
+            "details": {
+              "total_experience": 3.0,
+              "relevant_experience": 1.0,
+              "required_years": 3,
+              "experience_positions": 3
+            }
+          },
+          "education": {
+            "score": 100.0,
+            "weight": 20.0,
+            "weighted_score": 20.0,
+            "details": {
+              "education_required": false
+            }
+          },
+          "keywords": {
+            "score": 2.938495284620699,
+            "weight": 10.0,
+            "weighted_score": 0.2938495284620699,
+            "details": {
+              "similarity_score": 0.02938495284620699,
+              "total_keyword_matches": 3,
+              "job_word_count": 17,
+              "resume_word_count": 65
+            }
+          }
+        },
+        "matched_skills": [
+          "javascript",
+          "aws",
+          "python",
+          "react"
+        ],
+        "missing_skills": [
+          "docker"
+        ],
+        "keyword_matches": [
+          "engineer",
+          "aws",
+          "react"
+        ],
+        "recommendations": [
+          "Include more job-specific keywords from the job description in your resume"
+        ]
+      },
+      "status": "completed",
+      "created_at": "2025-09-20T20:02:09.860066",
+      "updated_at": "2025-09-20T20:02:09.860066",
+      "completed_at": "2025-09-20T20:02:12.050560",
+      "processing_time_seconds": 1.2268707752227783,
+      "error_message": null
     }
   ],
-  "last_updated": "2025-09-20T17:14:50.429038"
+  "last_updated": "2025-09-20T20:02:12.051524"
 }

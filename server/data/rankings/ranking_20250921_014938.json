@@ -1,0 +1,32 @@
+{
+  "id": "ranking_20250921_014938",
+  "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
+  "criteria": {
+    "skills_weight": 0.43438222889342903,
+    "experience_weight": 0.26671701211086785,
+    "education_weight": 0.2099950882920806,
+    "keyword_weight": 0.0889056707036226,
+    "min_overall_score": null,
+    "min_skills_score": null,
+    "min_experience_score": null,
+    "min_education_score": null,
+    "require_degree": true,
+    "min_years_experience": null,
+    "required_skills": [
+      "css",
+      "java"
+    ],
+    "preferred_skills": [
+      "python"
+    ]
+  },
+  "candidates": [],
+  "total_candidates": 0,
+  "created_at": "2025-09-21 01:49:38.962043",
+  "updated_at": null,
+  "created_by": null,
+  "average_score": null,
+  "median_score": null,
+  "top_score": null,
+  "candidates_meeting_requirements": null
+}
