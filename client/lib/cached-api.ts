@@ -421,6 +421,13 @@ class CachedApiService {
     // In a production environment, you might want to add proper caching
     return await this.originalApi.getShortlistSuggestions(jobId, count);
   }
+
+  async deleteRanking(rankingId: string): Promise<{ success: boolean; message: string }> {
+    const result = await this.originalApi.deleteRanking(rankingId);
+    // Invalidate related caches
+    CacheInvalidation.onRankingDelete();
+    return result;
+  }
 }
 
 // Create and export a singleton instance

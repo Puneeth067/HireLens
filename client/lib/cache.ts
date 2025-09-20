@@ -339,6 +339,13 @@ export const CacheInvalidation = {
     apiCache.clear();
   },
   
+  onRankingDelete: () => {
+    // Invalidate all ranking-related caches
+    jobsCache.clear();
+    // Invalidate analytics caches that might be affected by ranking deletion
+    apiCache.clear();
+  },
+  
   onUserAction: () => {
     // Clear all caches for maximum freshness
     [apiCache, jobsCache, comparisonsCache, systemCache, userCache, searchCache].forEach(cache => cache.clear());

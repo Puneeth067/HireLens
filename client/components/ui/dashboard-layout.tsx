@@ -4,6 +4,7 @@ import { useState, ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Toaster } from '@/components/ui/toaster';
 import { 
   BarChart3, 
   Upload, 
@@ -186,6 +187,9 @@ export default function DashboardLayout({
           onClick={() => setIsMenuOpen(false)}
         />
       )}
+      
+      {/* Toast notifications */}
+      <Toaster />
     </div>
   );
 }

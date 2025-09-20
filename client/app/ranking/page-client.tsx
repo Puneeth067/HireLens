@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { cachedApiService } from '@/lib/cached-api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Search, Users, TrendingUp, Award, Plus, ArrowLeft, CheckCircle, BarChart3 } from 'lucide-react'
+import { Search, Users, TrendingUp, Award, Plus, ArrowLeft, Trash2 } from 'lucide-react'
 import { 
   JobDescriptionResponse, 
   RankingListResponse, 
@@ -18,9 +19,19 @@ import {
   RankedCandidate,
   RankingCriteria
 } from '@/lib/types'
-import { FormSkeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { toast } from '@/hooks/use-toast'
 
-export default function RankingPageClient() {
+export default function RankingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<JobDescriptionResponse[]>([])
@@ -32,6 +43,8 @@ export default function RankingPageClient() {
   const [filterRequirements, setFilterRequirements] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('rank')
   const [loading, setLoading] = useState(false)
+  const [deletingRankingId, setDeletingRankingId] = useState<string | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [statistics, setStatistics] = useState({
     total_rankings: 0,
     total_candidates: 0,
@@ -198,10 +211,12 @@ export default function RankingPageClient() {
       switch (sortBy) {
         case 'rank':
           return a.rank - b.rank
+        case 'score_desc':
+          return b.composite_score - a.composite_score
+        case 'score_asc':
+          return a.composite_score - b.composite_score
         case 'name':
           return (a.candidate_name || '').localeCompare(b.candidate_name || '')
-        case 'score':
-          return (b.composite_score || 0) - (a.composite_score || 0)
         default:
           return a.rank - b.rank
       }
@@ -210,45 +225,72 @@ export default function RankingPageClient() {
     return filtered
   }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600'
-    if (score >= 60) return 'text-blue-600'
-    if (score >= 40) return 'text-yellow-600'
-    return 'text-red-600'
+  const getScoreColor = (score: number): string => {
+    if (score >= 80) return 'text-green-600 bg-green-50'
+    if (score >= 60) return 'text-yellow-600 bg-yellow-50'
+    return 'text-red-600 bg-red-50'
   }
 
-  const getScoreBadgeColor = (score: number) => {
+  const getScoreBadgeColor = (score: number): string => {
     if (score >= 80) return 'bg-green-500'
-    if (score >= 60) return 'bg-blue-500'
-    if (score >= 40) return 'bg-yellow-500'
+    if (score >= 60) return 'bg-yellow-500'
     return 'bg-red-500'
   }
 
-  const getRequirementBadge = (meets: boolean) => {
-    return meets ? (
-      <Badge variant="default" className="bg-green-100 text-green-800">
-        Meets Requirements
-      </Badge>
-    ) : (
-      <Badge variant="secondary" className="bg-red-100 text-red-800">
-        Doesn&apos;t Meet
-      </Badge>
-    )
+  const handleDeleteRanking = (rankingId: string) => {
+    setDeletingRankingId(rankingId)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDeleteRanking = async () => {
+    if (!deletingRankingId) return
+
+    try {
+      const response = await cachedApiService.deleteRanking(deletingRankingId)
+      if (response.success) {
+        // Remove the deleted ranking from the state
+        setRankings(prev => prev.filter(ranking => ranking.id !== deletingRankingId))
+        // If the current ranking was deleted, clear it
+        if (currentRanking?.id === deletingRankingId) {
+          setCurrentRanking(null)
+        }
+        toast({
+          title: "Success",
+          description: "Ranking deleted successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: response.message || "Failed to delete ranking",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Failed to delete ranking:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete ranking",
+        variant: "destructive",
+      })
+    } finally {
+      setShowDeleteDialog(false)
+      setDeletingRankingId(null)
+    }
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Candidate Ranking</h1>
             <p className="text-gray-600">
-              Analyze and rank candidates based on job requirements and qualifications
+              Rank and compare candidates using advanced scoring algorithms
             </p>
           </div>
           <Button
-            variant="outline"
             onClick={() => router.back()}
+            variant="outline"
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -257,329 +299,414 @@ export default function RankingPageClient() {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <Select value={selectedJob} onValueChange={setSelectedJob}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a job position" />
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              {jobs.map((job) => (
-                <SelectItem key={job.id} value={job.id}>
-                  {job.title} at {job.company}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {selectedJob && (
-          <Button 
-            onClick={() => router.push(`/ranking/create?job=${selectedJob}`)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Create New Ranking
-          </Button>
-        )}
-      </div>
+      {/* Job Selection */}
+      <Card className="mb-6 bg-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Select Job Position
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4 items-center">
+            <Select value={selectedJob} onValueChange={setSelectedJob}>
+              <SelectTrigger className="flex-1 bg-white">
+                <SelectValue placeholder="Choose a job position to rank candidates" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                {jobs.map(job => (
+                  <SelectItem 
+                    key={job.id} 
+                    value={job.id}
+                    className="hover:bg-blue-50 cursor-pointer transition-colors duration-200"
+                  >
+                    {job.title} at {job.company}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {selectedJob && (
+              <div className="flex gap-2">
+                <Link href={`/ranking/create?job=${selectedJob}`}>
+                  <Button 
+                    variant="outline" 
+                    className="hover:bg-gray-100 transition-colors"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Ranking
+                  </Button>
+                </Link>
+                <Button 
+                  onClick={generateShortlist} 
+                  disabled={loading}
+                  className="hover:bg-blue-600 transition-colors"
+                >
+                  <Award className="h-4 w-4 mr-2" />
+                  AI Shortlist
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {selectedJob && (
         <>
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-            <Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card className="bg-white hover:shadow-md transition-shadow duration-200">
               <CardContent className="pt-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Users className="h-6 w-6 text-blue-600" />
-                  </div>
+                  <TrendingUp className="h-8 w-8 text-blue-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Candidates</p>
+                    <p className="text-sm font-medium text-gray-500">Total Rankings</p>
+                    <p className="text-2xl font-bold text-gray-900">{statistics.total_rankings}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white hover:shadow-md transition-shadow duration-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center">
+                  <Users className="h-8 w-8 text-green-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Total Candidates</p>
                     <p className="text-2xl font-bold text-gray-900">{statistics.total_candidates}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className="bg-white hover:shadow-md transition-shadow duration-200">
               <CardContent className="pt-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <TrendingUp className="h-6 w-6 text-green-600" />
-                  </div>
+                  <Award className="h-8 w-8 text-yellow-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Average Score</p>
+                    <p className="text-sm font-medium text-gray-500">Average Score</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {typeof statistics.average_score === 'number' ? statistics.average_score.toFixed(1) : '0.0'}%
+                      {statistics.average_score?.toFixed(1) || '0.0'}%
                     </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className="bg-white hover:shadow-md transition-shadow duration-200">
               <CardContent className="pt-6">
                 <div className="flex items-center">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Award className="h-6 w-6 text-purple-600" />
-                  </div>
+                  <TrendingUp className="h-8 w-8 text-purple-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Top Score</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {typeof statistics.top_score === 'number' ? statistics.top_score.toFixed(1) : '0.0'}%
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <CheckCircle className="h-6 w-6 text-yellow-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Meet Requirements</p>
+                    <p className="text-sm font-medium text-gray-500">Meeting Requirements</p>
                     <p className="text-2xl font-bold text-gray-900">{statistics.candidates_meeting_requirements}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-indigo-100 rounded-lg">
-                    <BarChart3 className="h-6 w-6 text-indigo-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Rankings</p>
-                    <p className="text-2xl font-bold text-gray-900">{statistics.total_rankings}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Tabs defaultValue="current" className="w-full">
-            <TabsList className="inline-flex h-12 items-center justify-center rounded-lg bg-gray-100 p-1.5 text-muted-foreground mb-6">
+          {/* Main Content */}
+          <Tabs defaultValue="ranking" className="space-y-4">
+            <TabsList className="bg-white p-1 rounded-lg">
               <TabsTrigger 
-                value="current" 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200"
+                value="ranking" 
+                className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 hover:bg-gray-100 data-[state=active]:hover:bg-blue-600"
               >
                 Current Ranking
               </TabsTrigger>
+              {selectedCandidates.size > 0 && (
+                <TabsTrigger 
+                  value="compare" 
+                  className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 hover:bg-gray-100 data-[state=active]:hover:bg-blue-600"
+                >
+                  Compare Candidates
+                </TabsTrigger>
+              )}
               <TabsTrigger 
                 value="history" 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200"
+                className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 hover:bg-gray-100 data-[state=active]:hover:bg-blue-600"
               >
                 Ranking History
               </TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="current" className="mt-0">
-              {loading ? (
-                <Card className="border border-gray-200 shadow-sm">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-600">Loading ranking data...</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : currentRanking ? (
-                <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Ranking Criteria</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600">Skills Weight</p>
-                          <p className="font-medium">{(currentRanking.criteria.skills_weight * 100).toFixed(0)}%</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Experience Weight</p>
-                          <p className="font-medium">{(currentRanking.criteria.experience_weight * 100).toFixed(0)}%</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Education Weight</p>
-                          <p className="font-medium">{(currentRanking.criteria.education_weight * 100).toFixed(0)}%</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Keyword Weight</p>
-                          <p className="font-medium">{(currentRanking.criteria.keyword_weight * 100).toFixed(0)}%</p>
-                        </div>
-                      </div>
-                      {currentRanking.criteria.required_skills.length > 0 && (
-                        <div className="mt-4">
-                          <p className="text-sm text-gray-600 mb-2">Required Skills</p>
-                          <div className="flex flex-wrap gap-2">
-                            {currentRanking.criteria.required_skills.map((skill, index) => (
-                              <Badge key={index} variant="default">{skill}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {currentRanking.criteria.preferred_skills.length > 0 && (
-                        <div className="mt-4">
-                          <p className="text-sm text-gray-600 mb-2">Preferred Skills</p>
-                          <div className="flex flex-wrap gap-2">
-                            {currentRanking.criteria.preferred_skills.map((skill, index) => (
-                              <Badge key={index} variant="secondary">{skill}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <CardTitle>Candidate Rankings</CardTitle>
-                        <div className="flex flex-col sm:flex-row gap-2">
+            <TabsContent value="ranking" className="space-y-4">
+              {currentRanking && (
+                <>
+                  {/* Search and Filters */}
+                  <Card className="bg-white">
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1">
                           <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
                               placeholder="Search candidates..."
                               value={searchTerm}
                               onChange={(e) => setSearchTerm(e.target.value)}
-                              className="pl-10 w-full sm:w-64"
+                              className="pl-10 bg-white"
                             />
                           </div>
-                          <Select value={filterRequirements} onValueChange={setFilterRequirements}>
-                            <SelectTrigger className="w-full sm:w-48">
-                              <SelectValue placeholder="Filter by requirements" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Candidates</SelectItem>
-                              <SelectItem value="meets">Meet Requirements</SelectItem>
-                              <SelectItem value="doesnt_meet">Don&apos;t Meet Requirements</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger className="w-full sm:w-32">
-                              <SelectValue placeholder="Sort by" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="rank">Rank</SelectItem>
-                              <SelectItem value="name">Name</SelectItem>
-                              <SelectItem value="score">Score</SelectItem>
-                            </SelectContent>
-                          </Select>
                         </div>
+                        
+                        <Select value={filterRequirements} onValueChange={setFilterRequirements}>
+                          <SelectTrigger className="w-48 bg-white hover:bg-gray-50 transition-colors">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem 
+                              value="all" 
+                              className="hover:bg-blue-50 cursor-pointer transition-colors duration-200"
+                            >
+                              All Candidates
+                            </SelectItem>
+                            <SelectItem 
+                              value="meets" 
+                              className="hover:bg-blue-50 cursor-pointer transition-colors duration-200"
+                            >
+                              Meets Requirements
+                            </SelectItem>
+                            <SelectItem 
+                              value="doesnt_meet" 
+                              className="hover:bg-blue-50 cursor-pointer transition-colors duration-200"
+                            >
+                              Doesn&apos;t Meet Requirements
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={sortBy} onValueChange={setSortBy}>
+                          <SelectTrigger className="w-48 bg-white hover:bg-gray-50 transition-colors">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem 
+                              value="rank" 
+                              className="hover:bg-blue-50 cursor-pointer transition-colors duration-200"
+                            >
+                              Sort by Rank
+                            </SelectItem>
+                            <SelectItem 
+                              value="score_desc" 
+                              className="hover:bg-blue-50 cursor-pointer transition-colors duration-200"
+                            >
+                              Score (High to Low)
+                            </SelectItem>
+                            <SelectItem 
+                              value="score_asc" 
+                              className="hover:bg-blue-50 cursor-pointer transition-colors duration-200"
+                            >
+                              Score (Low to High)
+                            </SelectItem>
+                            <SelectItem 
+                              value="name" 
+                              className="hover:bg-blue-50 cursor-pointer transition-colors duration-200"
+                            >
+                              Name (A-Z)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b">
-                              <th className="text-left py-3 px-4 font-medium text-gray-600">Rank</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-600">Candidate</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-600">Requirements</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-600">Score</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-600">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredAndSortedCandidates().map((candidate) => (
-                              <tr key={candidate.resume_id} className="border-b hover:bg-gray-50">
-                                <td className="py-3 px-4 font-medium">#{candidate.rank}</td>
-                                <td className="py-3 px-4">
-                                  <div>
-                                    <p className="font-medium">{candidate.candidate_name || 'Unknown'}</p>
-                                    <p className="text-sm text-gray-600">{candidate.resume_filename}</p>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4">
-                                  {getRequirementBadge(candidate.meets_requirements)}
-                                </td>
-                                <td className="py-3 px-4">
-                                  <Badge className={`${getScoreBadgeColor(candidate.composite_score)} text-white`}>
-                                    {typeof candidate.composite_score === 'number' ? candidate.composite_score.toFixed(1) : 'N/A'}%
-                                  </Badge>
-                                </td>
-                                <td className="py-3 px-4">
-                                  <Button variant="outline" size="sm">
-                                    View Details
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      {filteredAndSortedCandidates().length === 0 && (
-                        <div className="text-center py-12">
-                          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No candidates found</h3>
-                          <p className="text-gray-500">
-                            Try adjusting your search or filter criteria.
-                          </p>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
-                </div>
-              ) : (
-                <Card className="border border-gray-200 shadow-sm">
+
+                  {/* Candidates List */}
+                  <div className="space-y-4">
+                    {filteredAndSortedCandidates().map(candidate => (
+                      <Card 
+                        key={candidate.resume_id}
+                        className={`transition-all duration-200 hover:shadow-lg hover:border-blue-300 cursor-pointer bg-white ${
+                          selectedCandidates.has(candidate.resume_id) ? 'ring-2 ring-blue-500' : ''
+                        }`}
+                        onClick={() => toggleCandidateSelection(candidate.resume_id)}
+                      >
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-4 flex-1">
+                              <div className="flex-shrink-0">
+                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100">
+                                  <span className="text-lg font-bold text-blue-800">
+                                    #{candidate.rank}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h3 className="text-lg font-semibold text-gray-900 truncate">
+                                    {candidate.candidate_name || 'Unknown Candidate'}
+                                  </h3>
+                                  <div className="flex items-center space-x-2">
+                                    <Badge 
+                                      className={`${getScoreBadgeColor(candidate.composite_score)} text-white`}
+                                    >
+                                      {candidate.composite_score.toFixed(1)}%
+                                    </Badge>
+                                    {candidate.meets_requirements ? (
+                                      <Badge variant="outline" className="text-green-600 border-green-600">
+                                        ✓ Qualified
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-gray-500 border-gray-500">
+                                        Needs Review
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <p className="text-sm text-gray-500 mb-3">{candidate.resume_filename}</p>
+                                
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <p className="text-xs text-gray-500">Skills</p>
+                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.skills_score)}`}>
+                                      {candidate.skills_score.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Experience</p>
+                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.experience_score)}`}>
+                                      {candidate.experience_score.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Education</p>
+                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.education_score)}`}>
+                                      {candidate.education_score.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Keywords</p>
+                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.keyword_score)}`}>
+                                      {candidate.keyword_score.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {filteredAndSortedCandidates().length === 0 && (
+                    <Card className="bg-white">
+                      <CardContent className="pt-6 text-center py-12">
+                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No candidates found</h3>
+                        <p className="text-gray-500">
+                          Try adjusting your search terms or filters to find candidates.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
+
+              {!currentRanking && !loading && (
+                <Card className="bg-white">
                   <CardContent className="pt-6 text-center py-12">
-                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No ranking data available</h3>
-                    <p className="text-gray-500 mb-4">
-                      Create a new ranking for this job position to get started.
+                    <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No ranking available</h3>
+                    <p className="text-gray-500 mb-6">
+                      Create a new ranking or generate an AI shortlist to get started. 
+                      Make sure you have uploaded resumes and associated them with this job.
                     </p>
-                    <Button onClick={() => router.push(`/ranking/create?job=${selectedJob}`)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Ranking
-                    </Button>
+                    <div className="flex justify-center gap-4">
+                      <Link href={`/ranking/create?job=${selectedJob}`}>
+                        <Button className="hover:bg-blue-600 transition-colors">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Ranking
+                        </Button>
+                      </Link>
+                      <Button 
+                        variant="outline" 
+                        onClick={generateShortlist}
+                        className="hover:bg-gray-100 transition-colors"
+                      >
+                        <Award className="h-4 w-4 mr-2" />
+                        Generate Shortlist
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
             </TabsContent>
-            
-            <TabsContent value="history" className="mt-0">
+
+            {selectedCandidates.size > 0 && (
+              <TabsContent value="compare" className="space-y-4">
+                {selectedCandidates.size > 1 ? (
+                  <Card className="bg-white">
+                    <CardHeader>
+                      <CardTitle>
+                        Compare Selected Candidates ({selectedCandidates.size})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <p className="text-gray-600">
+                          Compare the selected candidates side by side to make informed decisions.
+                        </p>
+                        <Link href={`/ranking/compare?job=${selectedJob}&candidates=${Array.from(selectedCandidates).join(',')}`}>
+                          <Button className="hover:bg-blue-600 transition-colors">
+                            Compare Now
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="bg-white">
+                    <CardContent className="pt-6 text-center py-12">
+                      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Select more candidates to compare</h3>
+                      <p className="text-gray-500 mb-4">
+                        You need at least 2 candidates to perform a comparison.
+                      </p>
+                      <p className="text-gray-500">
+                        Click on candidate cards in the ranking tab to select more candidates for comparison.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
+
+            <TabsContent value="history" className="space-y-4">
               {rankings.length > 0 ? (
                 <div className="space-y-4">
-                  {rankings.map((ranking) => (
-                    <Card key={ranking.id} className="border border-gray-200 shadow-sm">
-                      <CardHeader>
+                  {rankings.map(ranking => (
+                    <Card key={ranking.id} className="bg-white hover:shadow-md transition-shadow duration-200">
+                      <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
-                          <CardTitle>
-                            Ranking from {new Date(ranking.created_at).toLocaleDateString()}
-                          </CardTitle>
-                          <Button variant="outline" size="sm">
-                            View Details
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div>
-                            <p className="text-sm text-gray-600">Total Candidates</p>
-                            <p className="font-medium">{ranking.total_candidates}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Average Score</p>
-                            <p className="font-medium">
-                              {typeof ranking.average_score === 'number' ? ranking.average_score.toFixed(1) : '0.0'}%
+                            <h3 className="text-lg font-semibold">
+                              Ranking from {new Date(ranking.created_at).toLocaleDateString()}
+                            </h3>
+                            <p className="text-gray-500">
+                              {ranking.total_candidates} candidates • 
+                              Average score: {ranking.average_score?.toFixed(1)}% •
+                              {ranking.candidates_meeting_requirements} meeting requirements
                             </p>
                           </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Top Score</p>
-                            <p className="font-medium">
-                              {typeof ranking.top_score === 'number' ? ranking.top_score.toFixed(1) : '0.0'}%
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Meet Requirements</p>
-                            <p className="font-medium">{ranking.candidates_meeting_requirements}</p>
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="outline" 
+                              onClick={() => setCurrentRanking(ranking)}
+                              className="hover:bg-gray-100 transition-colors"
+                            >
+                              View Ranking
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              onClick={() => handleDeleteRanking(ranking.id)}
+                              className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -587,7 +714,7 @@ export default function RankingPageClient() {
                   ))}
                 </div>
               ) : (
-                <Card className="border border-gray-200 shadow-sm">
+                <Card className="bg-white">
                   <CardContent className="pt-6 text-center py-12">
                     <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No ranking history</h3>
@@ -603,7 +730,7 @@ export default function RankingPageClient() {
       )}
 
       {!selectedJob && (
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-white">
           <CardContent className="pt-6 text-center py-12">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Select a job position</h3>
@@ -613,6 +740,26 @@ export default function RankingPageClient() {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this ranking?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the ranking and remove it from your history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteRanking}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

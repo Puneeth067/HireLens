@@ -273,93 +273,8 @@
       "error_message": null
     },
     {
-      "id": "67e54011-c574-4d15-a888-72660766157d",
-      "batch_id": "bff6c6ed-3c4f-478c-b07e-ab2a019f212c",
-      "resume_id": "62e0891d-abd2-457b-8e8c-69ffb36bc8f9",
-      "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
-      "resume_filename": "Puneeth_Resume (4).pdf",
-      "candidate_name": "Puneeth Kumar",
-      "job_title": "Senior Software Engineer",
-      "company": "Tech Corp",
-      "ats_score": {
-        "overall_score": 90.3,
-        "skills_score": 100.0,
-        "experience_score": 100.0,
-        "education_score": 100.0,
-        "keywords_score": 2.96,
-        "breakdown": {
-          "skills": {
-            "score": 100.0,
-            "weight": 40.0,
-            "weighted_score": 40.0,
-            "details": {
-              "required_matches": 3,
-              "required_partial": 3,
-              "preferred_matches": 1,
-              "preferred_partial": 1,
-              "total_required": 3,
-              "total_preferred": 2
-            }
-          },
-          "experience": {
-            "score": 100.0,
-            "weight": 30.0,
-            "weighted_score": 30.0,
-            "details": {
-              "total_experience": 3.0,
-              "relevant_experience": 1.0,
-              "required_years": 3,
-              "experience_positions": 3
-            }
-          },
-          "education": {
-            "score": 100.0,
-            "weight": 20.0,
-            "weighted_score": 20.0,
-            "details": {
-              "education_required": false
-            }
-          },
-          "keywords": {
-            "score": 2.959786117179147,
-            "weight": 10.0,
-            "weighted_score": 0.29597861171791473,
-            "details": {
-              "similarity_score": 0.02959786117179147,
-              "total_keyword_matches": 3,
-              "job_word_count": 17,
-              "resume_word_count": 66
-            }
-          }
-        },
-        "matched_skills": [
-          "javascript",
-          "aws",
-          "python",
-          "react"
-        ],
-        "missing_skills": [
-          "docker"
-        ],
-        "keyword_matches": [
-          "engineer",
-          "aws",
-          "react"
-        ],
-        "recommendations": [
-          "Include more job-specific keywords from the job description in your resume"
-        ]
-      },
-      "status": "completed",
-      "created_at": "2025-09-20T20:02:09.846580",
-      "updated_at": "2025-09-20T20:02:09.846580",
-      "completed_at": "2025-09-20T20:02:10.817231",
-      "processing_time_seconds": 0.9501447677612305,
-      "error_message": null
-    },
-    {
-      "id": "f48200c8-60ad-4481-99b8-94382c9c7941",
-      "batch_id": "bff6c6ed-3c4f-478c-b07e-ab2a019f212c",
+      "id": "0aa85d3c-b9bf-4086-90be-be9b8459f694",
+      "batch_id": "218f6cad-25bf-4253-9079-078ded3f04c5",
       "resume_id": "6cda3246-300c-4d58-aaf4-ddcd0afe3726",
       "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
       "resume_filename": "Puneeth_K_Resume.pdf",
@@ -436,12 +351,97 @@
         ]
       },
       "status": "completed",
-      "created_at": "2025-09-20T20:02:09.860066",
-      "updated_at": "2025-09-20T20:02:09.860066",
-      "completed_at": "2025-09-20T20:02:12.050560",
-      "processing_time_seconds": 1.2268707752227783,
+      "created_at": "2025-09-20T20:27:39.397296",
+      "updated_at": "2025-09-20T20:27:39.397296",
+      "completed_at": "2025-09-20T20:27:42.156752",
+      "processing_time_seconds": 2.6241095066070557,
+      "error_message": null
+    },
+    {
+      "id": "e47b9a37-68fd-43e3-8650-3880abcaa99e",
+      "batch_id": "218f6cad-25bf-4253-9079-078ded3f04c5",
+      "resume_id": "62e0891d-abd2-457b-8e8c-69ffb36bc8f9",
+      "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
+      "resume_filename": "Puneeth_Resume (4).pdf",
+      "candidate_name": "Puneeth Kumar",
+      "job_title": "Senior Software Engineer",
+      "company": "Tech Corp",
+      "ats_score": {
+        "overall_score": 90.3,
+        "skills_score": 100.0,
+        "experience_score": 100.0,
+        "education_score": 100.0,
+        "keywords_score": 2.96,
+        "breakdown": {
+          "skills": {
+            "score": 100.0,
+            "weight": 40.0,
+            "weighted_score": 40.0,
+            "details": {
+              "required_matches": 3,
+              "required_partial": 3,
+              "preferred_matches": 1,
+              "preferred_partial": 1,
+              "total_required": 3,
+              "total_preferred": 2
+            }
+          },
+          "experience": {
+            "score": 100.0,
+            "weight": 30.0,
+            "weighted_score": 30.0,
+            "details": {
+              "total_experience": 3.0,
+              "relevant_experience": 1.0,
+              "required_years": 3,
+              "experience_positions": 3
+            }
+          },
+          "education": {
+            "score": 100.0,
+            "weight": 20.0,
+            "weighted_score": 20.0,
+            "details": {
+              "education_required": false
+            }
+          },
+          "keywords": {
+            "score": 2.959786117179147,
+            "weight": 10.0,
+            "weighted_score": 0.29597861171791473,
+            "details": {
+              "similarity_score": 0.02959786117179147,
+              "total_keyword_matches": 3,
+              "job_word_count": 17,
+              "resume_word_count": 66
+            }
+          }
+        },
+        "matched_skills": [
+          "javascript",
+          "aws",
+          "python",
+          "react"
+        ],
+        "missing_skills": [
+          "docker"
+        ],
+        "keyword_matches": [
+          "engineer",
+          "aws",
+          "react"
+        ],
+        "recommendations": [
+          "Include more job-specific keywords from the job description in your resume"
+        ]
+      },
+      "status": "completed",
+      "created_at": "2025-09-20T20:27:39.482102",
+      "updated_at": "2025-09-20T20:27:39.482102",
+      "completed_at": "2025-09-20T20:27:44.716613",
+      "processing_time_seconds": 2.539621353149414,
       "error_message": null
     }
   ],
-  "last_updated": "2025-09-20T20:02:12.051524"
+  "last_updated": "2025-09-20T20:27:44.718615"
 }
