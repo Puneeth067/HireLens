@@ -21,11 +21,13 @@ from app.models.comparison import (
     ComparisonStatus
 )
 from app.services.comparison_service import ComparisonService
+from app.services.job_service import JobService
 
 router = APIRouter(prefix="/api/comparisons", tags=["comparisons"])
 
-# Initialize service
-comparison_service = ComparisonService()
+# Initialize services
+job_service_instance = JobService()
+comparison_service = ComparisonService(job_service_instance=job_service_instance)
 logger = logging.getLogger(__name__)
 
 class ComparisonStatsResponse(BaseModel):

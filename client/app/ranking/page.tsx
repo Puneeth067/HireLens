@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { cachedApiService } from '@/lib/cached-api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +22,7 @@ import {
 
 export default function RankingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<JobDescriptionResponse[]>([])
   const [selectedJob, setSelectedJob] = useState<string>('')
   const [rankings, setRankings] = useState<CandidateRanking[]>([])
@@ -53,6 +54,13 @@ export default function RankingPage() {
     fetchJobs()
   }, [])
 
+  // Effect to handle job selection from query parameters
+  useEffect(() => {
+    const jobId = searchParams.get('job');
+    if (jobId && !selectedJob) {
+      setSelectedJob(jobId);
+    }
+  }, [searchParams, selectedJob]);
   
   const fetchRankings = useCallback(async () => {
     if (!selectedJob) return
@@ -63,6 +71,36 @@ export default function RankingPage() {
       setRankings(response.rankings || [])
       if (response.rankings && response.rankings.length > 0) {
         setCurrentRanking(response.rankings[0]) // Most recent ranking
+      } else {
+        // If no rankings exist, fetch raw candidates for the job
+        const candidatesResponse = await cachedApiService.getCandidatesForJob(selectedJob)
+        if (candidatesResponse.success && candidatesResponse.candidates.length > 0) {
+          // Create a temporary ranking display with raw candidates
+          const tempRanking: CandidateRanking = {
+            id: 'temp',
+            job_id: selectedJob,
+            criteria: {
+              skills_weight: 0.4,
+              experience_weight: 0.3,
+              education_weight: 0.2,
+              keyword_weight: 0.1,
+              require_degree: false,
+              required_skills: [],
+              preferred_skills: []
+            },
+            candidates: candidatesResponse.candidates.map((candidate, index) => ({
+              ...candidate,
+              rank: index + 1
+            })),
+            total_candidates: candidatesResponse.candidates.length,
+            created_at: new Date().toISOString(),
+            average_score: 0,
+            median_score: 0,
+            top_score: 0,
+            candidates_meeting_requirements: 0
+          }
+          setCurrentRanking(tempRanking)
+        }
       }
     } catch (error) {
       console.error('Failed to fetch rankings:', error)
@@ -100,10 +138,8 @@ export default function RankingPage() {
     
     setLoading(true)
     try {
-      // Using the original apiService for methods not in cachedApiService
-      const response = await fetch(`/api/ranking/shortlist/${selectedJob}?count=10`)
-      if (response.ok) {
-        const data = await response.json()
+      const response = await cachedApiService.getShortlistSuggestions(selectedJob, 10)
+      if (response.success) {
         // Create a temporary ranking display for shortlist
         const shortlistRanking: CandidateRanking = {
           id: 'shortlist',
@@ -117,8 +153,8 @@ export default function RankingPage() {
             required_skills: [],
             preferred_skills: []
           },
-          candidates: data.suggestions || [],
-          total_candidates: data.suggestions?.length || 0,
+          candidates: response.suggestions || [],
+          total_candidates: response.suggestions?.length || 0,
           created_at: new Date().toISOString(),
           average_score: 0,
           median_score: 0,
@@ -148,8 +184,8 @@ export default function RankingPage() {
     if (!currentRanking) return []
     
     const filtered = currentRanking.candidates.filter(candidate => {
-      const matchesSearch = candidate.candidate_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           candidate.resume_filename.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesSearch = (candidate.candidate_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           candidate.resume_filename.toLowerCase().includes(searchTerm.toLowerCase())) ?? false
       
       const matchesRequirements = filterRequirements === 'all' ||
                                  (filterRequirements === 'meets' && candidate.meets_requirements) ||
@@ -167,7 +203,7 @@ export default function RankingPage() {
         case 'score_asc':
           return a.composite_score - b.composite_score
         case 'name':
-          return a.candidate_name.localeCompare(b.candidate_name)
+          return (a.candidate_name || '').localeCompare(b.candidate_name || '')
         default:
           return a.rank - b.rank
       }
@@ -382,7 +418,7 @@ export default function RankingPage() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-2">
                                   <h3 className="text-lg font-semibold text-gray-900 truncate">
-                                    {candidate.candidate_name}
+                                    {candidate.candidate_name || 'Unknown Candidate'}
                                   </h3>
                                   <div className="flex items-center space-x-2">
                                     <Badge 

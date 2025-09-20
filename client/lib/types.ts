@@ -156,6 +156,7 @@ export interface Job {
   posted_date?: string; // Added missing field
   application_deadline?: string; // Added missing field
   created_by?: string; // Added missing field
+  resumes: string[];
 }
 
 export interface CreateJobRequest {
@@ -277,7 +278,7 @@ export interface JobStats {
   active_jobs: number;
   draft_jobs: number;
   closed_jobs: number;
-  recent_jobs: number; // Jobs created in last 7 days
+  recent_jobs: number;
 }
 
 // Job creation payload
@@ -737,9 +738,9 @@ export interface AnalyticsData {
   total_comparisons: number;
   avg_ats_score: number;
   top_skills: Array<{ skill: string; count: number }>;
-  recent_activity: Array<{ 
-    type: string; 
-    timestamp: string; 
+  recent_activity: Array<{
+    type: string;
+    timestamp: string;
     details: string;
     file_id?: string;
     resume_id?: string;

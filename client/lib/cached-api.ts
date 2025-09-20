@@ -24,7 +24,11 @@ import {
   ScoreDistribution,
   JobPerformanceMetric,
   RecruiterInsights,
-  AnalyticsExport
+  AnalyticsExport,
+  RankedCandidate,
+  RankingCriteria,
+  RankingStatisticsResponse,
+  RankingListResponse,
 } from './types';
 
 // Import the original API service
@@ -374,16 +378,48 @@ class CachedApiService {
     jobId: string,
     page: number = 1,
     limit: number = 20
-  ): Promise<import('./types').RankingListResponse> {
+  ): Promise<RankingListResponse> {
     // For now, we'll bypass caching for ranking methods to ensure they work
     // In a production environment, you might want to add proper caching
     return await this.originalApi.getRankingsByJob(jobId, page, limit);
   }
 
-  async getRankingStatistics(jobId: string): Promise<import('./types').RankingStatisticsResponse> {
+  async getCandidatesForJob(
+    jobId: string
+  ): Promise<{
+    success: boolean;
+    candidates: RankedCandidate[];
+    total_candidates: number;
+    message: string;
+  }> {
+    // Bypass caching for this method
+    return await this.originalApi.getCandidatesForJob(jobId);
+  }
+
+  async getRankingStatistics(jobId: string): Promise<RankingStatisticsResponse> {
     // For now, we'll bypass caching for ranking methods to ensure they work
     // In a production environment, you might want to add proper caching
     return await this.originalApi.getRankingStatistics(jobId);
+  }
+
+  async createRanking(
+    jobId: string,
+    resumeIds: string[],
+    criteria: RankingCriteria
+  ): Promise<{ ranking_id: string }> {
+    const result = await this.originalApi.createRanking(jobId, resumeIds, criteria);
+    // Invalidate ranking lists for this job
+    CacheInvalidation.onRankingCreate(jobId);
+    return result;
+  }
+
+  async getShortlistSuggestions(
+    jobId: string,
+    count: number = 10
+  ): Promise<import('./types').ShortlistResponse> {
+    // For now, we'll bypass caching for ranking methods to ensure they work
+    // In a production environment, you might want to add proper caching
+    return await this.originalApi.getShortlistSuggestions(jobId, count);
   }
 }
 

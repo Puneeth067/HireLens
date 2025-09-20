@@ -217,7 +217,7 @@ async def health_check():
             
             file_service = FileService()
             job_service = JobService()
-            comparison_service = ComparisonService()
+            comparison_service = ComparisonService(job_service_instance=job_service)
             ranking_service = RankingService()
             
             file_stats = file_service.get_file_stats()
@@ -325,7 +325,7 @@ async def system_info():
         
         file_service = FileService()
         job_service = JobService()
-        comparison_service = ComparisonService()
+        comparison_service = ComparisonService(job_service_instance=job_service)
         
         # Get detailed statistics
         file_stats = file_service.get_file_stats()

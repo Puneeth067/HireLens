@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional, Dict, Any
+import statistics
 from ..models.ranking import (
     RankingRequest, RankingResponse, RankingListResponse,
     CandidateComparisonResponse, ShortlistResponse,
@@ -10,7 +11,13 @@ from ..services.job_service import JobService
 
 router = APIRouter(prefix="/api/ranking", tags=["ranking"])
 ranking_service = RankingService()
+# Use singleton instance of JobService
 job_service = JobService()
+
+@router.get("/create")
+async def get_create_ranking_page():
+    """Endpoint to serve the ranking creation page"""
+    return {"message": "Ranking creation page loaded successfully"}
 
 @router.post("/create", response_model=RankingResponse)
 async def create_ranking(request: RankingRequest):
@@ -18,6 +25,7 @@ async def create_ranking(request: RankingRequest):
     try:
         # Validate job exists
         job = job_service.get_job(request.job_id)
+        print(f"DEBUG: In create_ranking, job_service.get_job returned: {job}")
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         
@@ -233,21 +241,62 @@ async def get_ranking_statistics(job_id: str):
         rankings = ranking_service.get_rankings_by_job(job_id)
         
         if not rankings:
+            # If no rankings exist, derive statistics from raw comparisons
+            from ..services.comparison_service import ComparisonService
+            from ..services.job_service import JobService
+            
+            # Use singleton instances
+            comparison_service = ComparisonService()
+            job_service = JobService()
+            # Set job_service in comparison_service to resolve circular dependency
+            comparison_service.job_service = job_service
+            
+            comparisons = comparison_service.get_comparisons_by_job(job_id)
+            
+            # Filter for completed comparisons with scores
+            completed_comparisons = [c for c in comparisons if c.status == "completed" and c.ats_score]
+            
+            if not completed_comparisons:
+                return {
+                    "success": True,
+                    "statistics": {
+                        "total_rankings": 0,
+                        "latest_ranking": None,
+                        "total_candidates": 0,
+                        "average_score": 0,
+                        "median_score": 0,
+                        "top_score": 0,
+                        "candidates_meeting_requirements": 0
+                    },
+                    "message": "No comparisons found for this job"
+                }
+            
+            # Calculate statistics from comparisons
+            scores = [c.ats_score.overall_score for c in completed_comparisons if c.ats_score]
+            total_candidates = len(completed_comparisons)
+            
+            # Simple calculation for meeting requirements (assuming all meet for now)
+            candidates_meeting_requirements = total_candidates
+            
+            stats_data = {
+                "total_rankings": 0,
+                "latest_ranking": None,
+                "total_candidates": total_candidates,
+                "average_score": statistics.mean(scores) if scores else 0,
+                "median_score": statistics.median(scores) if scores else 0,
+                "top_score": max(scores) if scores else 0,
+                "candidates_meeting_requirements": candidates_meeting_requirements
+            }
+            
             return {
                 "success": True,
-                "statistics": {
-                    "total_rankings": 0,
-                    "latest_ranking": None,
-                    "total_candidates": 0,
-                    "average_score": 0,
-                    "top_score": 0
-                },
-                "message": "No rankings found for this job"
+                "statistics": stats_data,
+                "message": f"Derived statistics from {total_candidates} comparisons"
             }
         
         latest_ranking = rankings[0]  # Most recent
         
-        statistics = {
+        stats_data = {
             "total_rankings": len(rankings),
             "latest_ranking": {
                 "id": latest_ranking.id,
@@ -264,12 +313,61 @@ async def get_ranking_statistics(job_id: str):
         
         return {
             "success": True,
-            "statistics": statistics,
+            "statistics": stats_data,
             "message": "Retrieved ranking statistics"
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve statistics: {str(e)}")
+
+@router.get("/job/{job_id}/candidates")
+async def get_candidates_for_job(job_id: str):
+    """Get all candidates that have been compared to a job (before ranking creation)"""
+    try:
+        # Get all comparisons for this job
+        from ..services.comparison_service import ComparisonService
+        from ..services.job_service import JobService
+        
+        # Use singleton instances
+        comparison_service = ComparisonService()
+        job_service = JobService()
+        # Set job_service in comparison_service to resolve circular dependency
+        comparison_service.job_service = job_service
+        
+        comparisons = comparison_service.get_comparisons_by_job(job_id)
+        
+        # Convert to ranked candidate format (without actual ranking)
+        candidates = []
+        for comparison in comparisons:
+            if comparison.status == "completed" and comparison.ats_score:
+                candidate = {
+                    "resume_id": comparison.resume_id,
+                    "comparison_id": comparison.id,
+                    "composite_score": comparison.ats_score.overall_score,
+                    "skills_score": comparison.ats_score.skills_score,
+                    "experience_score": comparison.ats_score.experience_score,
+                    "education_score": comparison.ats_score.education_score,
+                    "keyword_score": comparison.ats_score.keywords_score,
+                    "skill_match_percentage": comparison.ats_score.skills_score,  # Using as proxy
+                    "meets_requirements": True,  # Default to True for display purposes
+                    "resume_filename": comparison.resume_filename,
+                    "candidate_name": getattr(comparison, 'candidate_name', 'Unknown'),
+                    "rank": 0  # Not ranked yet
+                }
+                candidates.append(candidate)
+        
+        # Sort by composite score (descending)
+        candidates.sort(key=lambda x: x["composite_score"], reverse=True)
+        
+        return {
+            "success": True,
+            "candidates": candidates,
+            "total_candidates": len(candidates),
+            "message": f"Retrieved {len(candidates)} candidates for job {job_id}"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve candidates: {str(e)}")
 
 @router.post("/bulk-compare")
 async def bulk_compare_candidates(
@@ -303,4 +401,4 @@ async def bulk_compare_candidates(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to perform bulk comparison: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to perform bulk comparison: {str(e)}")

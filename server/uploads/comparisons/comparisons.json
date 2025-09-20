@@ -1,169 +1,86 @@
 {
   "comparisons": [
     {
-      "id": "bc184066-3879-445d-a9a1-1554fd47ceb0",
-      "batch_id": null,
-      "resume_id": "c1690ec3-2bbb-4b6f-bfe4-309896f195c4",
-      "job_id": "ffc004d3-0c13-446e-9162-ee7ac66954ff",
-      "resume_filename": "Puneeth_Resume (5).pdf",
-      "candidate_name": "Puneeth Kumar",
-      "job_title": "new job",
-      "company": " mnc ",
-      "ats_score": {
-        "overall_score": 80.2,
-        "skills_score": 75.0,
-        "experience_score": 100.0,
-        "education_score": 100.0,
-        "keywords_score": 2.0,
-        "breakdown": {
-          "skills": {
-            "score": 74.99999999999999,
-            "weight": 40.0,
-            "weighted_score": 29.999999999999996,
-            "details": {
-              "required_matches": 1,
-              "required_partial": 1,
-              "preferred_matches": 1,
-              "preferred_partial": 1,
-              "total_required": 2,
-              "total_preferred": 2
-            }
-          },
-          "experience": {
-            "score": 100.0,
-            "weight": 30.0,
-            "weighted_score": 30.0,
-            "details": {
-              "total_experience": 3.0,
-              "relevant_experience": 1,
-              "required_years": 7,
-              "experience_positions": 3
-            }
-          },
-          "education": {
-            "score": 100.0,
-            "weight": 20.0,
-            "weighted_score": 20.0,
-            "details": {
-              "education_required": false
-            }
-          },
-          "keywords": {
-            "score": 2.0048488696343436,
-            "weight": 10.0,
-            "weighted_score": 0.20048488696343436,
-            "details": {
-              "similarity_score": 0.020048488696343434,
-              "total_keyword_matches": 1,
-              "job_word_count": 8,
-              "resume_word_count": 75
-            }
-          }
-        },
-        "matched_skills": [
-          "supabase",
-          "java"
-        ],
-        "missing_skills": [
-          "ai",
-          "springboot"
-        ],
-        "keyword_matches": [
-          "supabase"
-        ],
-        "recommendations": [
-          "Include more job-specific keywords from the job description in your resume"
-        ]
-      },
-      "status": "completed",
-      "created_at": "2025-09-19T18:13:23.402459",
-      "updated_at": "2025-09-19T18:36:22.080842",
-      "completed_at": "2025-09-19T18:13:24.334029",
-      "processing_time_seconds": 0.924433708190918,
-      "error_message": null
-    },
-    {
-      "id": "6da2bfd9-6b3a-4c7a-8e06-544da19f4e16",
-      "batch_id": null,
-      "resume_id": "a0621653-6420-4be7-b5f6-c270836d2af6",
+      "id": "3b0e2ab2-1283-4ef3-aac2-bedb1d01db8b",
+      "resume_id": "493d205c-85f8-4e4d-88ac-d296632c827d",
       "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
-      "resume_filename": "Puneeth_K_Resume.pdf",
-      "candidate_name": "Puneeth Kumar",
+      "resume_filename": "resume_LaTeX__Copy_2.pdf",
+      "candidate_name": "Candidate A",
       "job_title": "Senior Software Engineer",
       "company": "Tech Corp",
       "ats_score": {
-        "overall_score": 85.86,
-        "skills_score": 89.17,
-        "experience_score": 100.0,
-        "education_score": 100.0,
-        "keywords_score": 1.89,
-        "breakdown": {
-          "skills": {
-            "score": 89.16666666666666,
-            "weight": 40.0,
-            "weighted_score": 35.66666666666666,
-            "details": {
-              "required_matches": 2,
-              "required_partial": 3,
-              "preferred_matches": 0,
-              "preferred_partial": 1,
-              "total_required": 3,
-              "total_preferred": 2
-            }
-          },
-          "experience": {
-            "score": 100.0,
-            "weight": 30.0,
-            "weighted_score": 30.0,
-            "details": {
-              "total_experience": 3.0,
-              "relevant_experience": 1.0,
-              "required_years": 3,
-              "experience_positions": 3
-            }
-          },
-          "education": {
-            "score": 100.0,
-            "weight": 20.0,
-            "weighted_score": 20.0,
-            "details": {
-              "education_required": false
-            }
-          },
-          "keywords": {
-            "score": 1.894977714992463,
-            "weight": 10.0,
-            "weighted_score": 0.1894977714992463,
-            "details": {
-              "similarity_score": 0.01894977714992463,
-              "total_keyword_matches": 2,
-              "job_word_count": 17,
-              "resume_word_count": 75
-            }
-          }
-        },
+        "overall_score": 77,
+        "skills_score": 54,
+        "experience_score": 65,
+        "education_score": 52,
+        "keywords_score": 54,
+        "recommendations": [
+          "Add more relevant keywords to your resume",
+          "Highlight your experience with required technologies",
+          "Include more specific examples of your achievements"
+        ],
         "matched_skills": [
-          "javascript",
-          "python"
+          "Agile",
+          "Azure",
+          "Data Analysis",
+          "Communication"
         ],
         "missing_skills": [
-          "docker"
+          "Communication",
+          "Kubernetes",
+          "Agile"
         ],
         "keyword_matches": [
-          "aws",
-          "engineer"
+          "Node.js",
+          "Data Analysis",
+          "C++",
+          "Kubernetes",
+          "Machine Learning",
+          "MongoDB",
+          "React",
+          "Project Management"
         ],
-        "recommendations": [
-          "Include more job-specific keywords from the job description in your resume"
-        ]
+        "created_at": "2025-09-20T12:20:50.173204"
       },
       "status": "completed",
-      "created_at": "2025-09-19T18:36:50.705536",
-      "updated_at": "2025-09-19T18:36:50.705536",
-      "completed_at": "2025-09-19T18:36:51.760796",
-      "processing_time_seconds": 1.0491912364959717,
-      "error_message": null
+      "error_message": null,
+      "created_at": "2025-08-29T12:20:50.173204",
+      "updated_at": "2025-09-20T12:20:50.173204",
+      "completed_at": "2025-09-20T12:20:50.173204",
+      "processing_time_seconds": 12
+    },
+    {
+      "id": "c232302e-9c85-4af6-88ad-273d9ec98ca7",
+      "resume_id": "a0621653-6420-4be7-b5f6-c270836d2af6",
+      "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
+      "resume_filename": "Puneeth_K_Resume.pdf",
+      "candidate_name": "Candidate B",
+      "job_title": "Senior Software Engineer",
+      "company": "Tech Corp",
+      "ats_score": null,
+      "status": "processing",
+      "error_message": null,
+      "created_at": "2025-09-06T12:20:50.174187",
+      "updated_at": "2025-09-20T12:20:50.174187",
+      "completed_at": null,
+      "processing_time_seconds": null
+    },
+    {
+      "id": "6a72b6f0-b3dc-4847-b5d1-59f3545380f7",
+      "resume_id": "c1690ec3-2bbb-4b6f-bfe4-309896f195c4",
+      "job_id": "1dcf9940-1466-4747-b9a9-c9de809f7a65",
+      "resume_filename": "Puneeth_Resume (5).pdf",
+      "candidate_name": "Candidate C",
+      "job_title": "Senior Software Engineer",
+      "company": "Tech Corp",
+      "ats_score": null,
+      "status": "failed",
+      "error_message": "Processing failed due to parsing error",
+      "created_at": "2025-08-30T12:20:50.174187",
+      "updated_at": "2025-09-20T12:20:50.174187",
+      "completed_at": null,
+      "processing_time_seconds": null
     }
   ],
-  "last_updated": "2025-09-19T18:36:51.760796"
+  "last_updated": "2025-09-20T12:20:50.174187"
 }

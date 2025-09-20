@@ -350,11 +350,16 @@ class FileService:
         metadata = self._load_metadata()
         cleaned = {'files': 0, 'parsed_data': 0, 'metadata_entries': 0}
         
+        # If metadata is empty, don't delete all files (this would be catastrophic)
+        if not metadata:
+            logger.warning("Metadata is empty. Skipping cleanup to prevent data loss.")
+            return cleaned
+        
         # Clean up physical files without metadata
         for file_path in self.upload_dir.iterdir():
-            if file_path.is_file():
+            if file_path.is_file() and file_path.name != 'file_metadata.json':  # Don't delete the metadata file itself
                 file_id = file_path.stem  # filename without extension
-                if not any(meta['filename'] == file_path.name for meta in metadata.values()):
+                if not any(meta.get('filename') == file_path.name for meta in metadata.values()):
                     try:
                         file_path.unlink()
                         cleaned['files'] += 1
@@ -377,7 +382,7 @@ class FileService:
         # Clean up metadata entries without physical files
         updated_metadata = {}
         for file_id, file_metadata in metadata.items():
-            file_path = self.upload_dir / file_metadata['filename']
+            file_path = self.upload_dir / file_metadata.get('filename', '')
             if file_path.exists():
                 updated_metadata[file_id] = file_metadata
             else:

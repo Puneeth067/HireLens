@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 from datetime import datetime
 from dataclasses import dataclass
 import statistics
@@ -15,20 +15,29 @@ class WeightedScore:
     weighted_value: float
 
 class RankingService:
-    def __init__(self):
+    def __init__(self, job_service_instance: Any = None):
         self.data_dir = "data/rankings"
         os.makedirs(self.data_dir, exist_ok=True)
-        self.comparison_service: ComparisonService = ComparisonService()
+        # Pass the job_service_instance to ComparisonService
+        self.comparison_service: ComparisonService = ComparisonService(job_service_instance=job_service_instance)
     
     def create_ranking(self, request: RankingRequest) -> CandidateRanking:
         """Create a new candidate ranking"""
         ranking_id = f"ranking_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         # Get comparisons for the job
-        comparisons = self.comparison_service.get_comparisons_by_job(request.job_id)
+        all_comparisons = self.comparison_service.get_comparisons_by_job(request.job_id)
         
-        if not comparisons:
+        if not all_comparisons:
             raise ValueError(f"No comparisons found for job {request.job_id}")
+        
+        # Filter comparisons based on provided resume_ids
+        if request.resume_ids:
+            comparisons = [c for c in all_comparisons if c.resume_id in request.resume_ids]
+            if not comparisons:
+                raise ValueError("No comparisons found for the specified resume IDs.")
+        else:
+            comparisons = all_comparisons
         
         # Calculate rankings
         ranked_candidates = self._calculate_rankings(comparisons, request.criteria)
@@ -51,7 +60,7 @@ class RankingService:
         
         return ranking
     
-    def _calculate_rankings(self, comparisons: List[ResumeJobComparison], 
+    def _calculate_rankings(self, comparisons: List[ResumeJobComparison],
                           criteria: RankingCriteria) -> List[RankedCandidate]:
         """Calculate candidate rankings based on criteria"""
         candidates = []
@@ -103,7 +112,7 @@ class RankingService:
         
         return candidates
     
-    def _calculate_composite_score(self, comparison: ResumeJobComparison, 
+    def _calculate_composite_score(self, comparison: ResumeJobComparison,
                                  criteria: RankingCriteria) -> float:
         """Calculate weighted composite score"""
         # Add null safety check for ats_score
@@ -136,7 +145,7 @@ class RankingService:
         # For now, we'll use the skills score as a proxy
         return comparison.ats_score.skills_score
     
-    def _check_minimum_requirements(self, comparison: ResumeJobComparison, 
+    def _check_minimum_requirements(self, comparison: ResumeJobComparison,
                                   criteria: RankingCriteria) -> bool:
         """Check if candidate meets minimum requirements"""
         if not comparison.ats_score:
@@ -155,7 +164,7 @@ class RankingService:
         
         return all(checks) if checks else True
     
-    def _apply_filters(self, candidates: List[RankedCandidate], 
+    def _apply_filters(self, candidates: List[RankedCandidate],
                       filters: Dict) -> List[RankedCandidate]:
         """Apply additional filters to candidates"""
         filtered_candidates = candidates.copy()
@@ -202,7 +211,7 @@ class RankingService:
         
         return sorted(rankings, key=lambda x: x.created_at, reverse=True)
     
-    def compare_candidates(self, candidate_ids: List[str], 
+    def compare_candidates(self, candidate_ids: List[str],
                           job_id: str) -> Dict:
         """Compare specific candidates side by side"""
         comparisons = []
@@ -242,7 +251,7 @@ class RankingService:
             }
         }
     
-    def get_shortlist_suggestions(self, job_id: str, 
+    def get_shortlist_suggestions(self, job_id: str,
                                 count: int = 10) -> List[RankedCandidate]:
         """Get AI-suggested shortlist of top candidates"""
         # Get latest ranking for the job

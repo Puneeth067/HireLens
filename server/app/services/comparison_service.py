@@ -2,7 +2,7 @@ import json
 import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 import asyncio
 from collections import Counter, defaultdict
 import time
@@ -22,7 +22,7 @@ from app.models.resume import ParsedResume
 from app.models.job import JobDescription
 from app.services.ats_scoring_service import calculate_ats_score
 from app.services.file_service import FileService
-from app.services.job_service import JobService
+# from app.services.job_service import JobService # Removed to break circular dependency
 from app.config import settings
 
 import logging
@@ -34,13 +34,14 @@ def default(o):
         return o.isoformat()
 
 class ComparisonService:
-    def __init__(self):
+    def __init__(self, job_service_instance: Any = None):
         """Initialize comparison service"""
         self.comparisons_dir = Path(settings.UPLOAD_DIR) / "comparisons"
         self.comparisons_dir.mkdir(exist_ok=True)
         
         self.file_service = FileService()
-        self.job_service = JobService()
+        # Use provided JobService instance or create a placeholder
+        self.job_service = job_service_instance 
         
         # In-memory cache for active comparisons
         self._comparison_cache = {}
@@ -86,6 +87,12 @@ class ComparisonService:
         if not resume_data:
             raise ValueError(f"Resume not found: {resume_id}")
         
+        # Ensure job_service is available
+        if not self.job_service:
+            # Try to import and create job service instance as fallback
+            from app.services.job_service import JobService
+            self.job_service = JobService()
+
         job_data = self.job_service.get_job(job_id)
         if not job_data:
             raise ValueError(f"Job not found: {job_id}")
@@ -133,6 +140,13 @@ class ComparisonService:
             
             # Get resume and job data
             resume_data = self.file_service.get_parsed_data(comparison.resume_id)
+            
+            # Ensure job_service is available
+            if not self.job_service:
+                # Try to import and create job service instance as fallback
+                from app.services.job_service import JobService
+                self.job_service = JobService()
+
             job_data = self.job_service.get_job(comparison.job_id)
             
             if not resume_data or not job_data:
@@ -175,7 +189,12 @@ class ComparisonService:
         batch_id = str(uuid.uuid4())
         comparisons = []
         
-        # Validate job exists
+        # Ensure job_service is available
+        if not self.job_service:
+            # Try to import and create job service instance as fallback
+            from app.services.job_service import JobService
+            self.job_service = JobService()
+
         job_data = self.job_service.get_job(request.job_id)
         if not job_data:
             raise ValueError(f"Job not found: {request.job_id}")

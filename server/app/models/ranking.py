@@ -88,6 +88,7 @@ class CandidateRanking(BaseModel):
 class RankingRequest(BaseModel):
     """Request to create a new ranking"""
     job_id: str
+    resume_ids: List[str] = Field(default_factory=list)
     criteria: RankingCriteria
     filters: Optional[Dict[str, Any]] = None
     name: Optional[str] = None

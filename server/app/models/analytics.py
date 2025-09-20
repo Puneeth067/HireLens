@@ -29,7 +29,10 @@ class ScoreStatistics(BaseModel):
 class ScoreDistribution(BaseModel):
     """Complete score distribution analysis"""
     distribution: List[ScoreDistributionRange] = Field(description="Score distribution by ranges")
-    statistics: ScoreStatistics = Field(description="Statistical summary")
+    average_score: float = Field(description="Average score")
+    median_score: float = Field(description="Median score")
+    total_candidates: int = Field(description="Total number of candidates")
+    score_trends: Dict[str, int] = Field(description="Score trend analysis")
 
 class SkillDemand(BaseModel):
     """Skill demand analysis from job postings"""
@@ -57,10 +60,12 @@ class SkillsSummary(BaseModel):
 
 class SkillsAnalytics(BaseModel):
     """Complete skills analytics"""
-    top_demanded_skills: List[SkillDemand] = Field(description="Most demanded skills")
-    top_candidate_skills: List[CandidateSkill] = Field(description="Most common candidate skills")
-    skill_gaps: List[SkillGap] = Field(description="Skills gaps in the market")
-    skills_summary: SkillsSummary = Field(description="Summary statistics")
+    top_demanded_skills: List[Dict[str, Any]] = Field(description="Most demanded skills")
+    skill_gaps: List[Dict[str, Any]] = Field(description="Skills gaps in the market")
+    emerging_skills: List[Dict[str, Any]] = Field(description="Emerging skills")
+    total_unique_skills: int = Field(description="Total unique skills")
+    avg_skills_per_job: float = Field(description="Average skills per job")
+    avg_skills_per_candidate: float = Field(description="Average skills per candidate")
 
 class MonthlyTrend(BaseModel):
     """Monthly trend data point"""
@@ -80,8 +85,10 @@ class GrowthMetrics(BaseModel):
 
 class HiringTrends(BaseModel):
     """Complete hiring trends analysis"""
-    monthly_trends: List[MonthlyTrend] = Field(description="Monthly trend data")
-    growth_metrics: GrowthMetrics = Field(description="Growth metrics")
+    monthly_trends: List[Dict[str, Any]] = Field(description="Monthly trend data")
+    overall_growth: Dict[str, Any] = Field(description="Growth metrics")
+    seasonal_patterns: Dict[str, Any] = Field(description="Seasonal patterns")
+    predictions: Dict[str, Any] = Field(description="Predictions")
 
 class JobPerformanceMetric(BaseModel):
     """Performance metrics for a specific job"""
@@ -125,10 +132,10 @@ class ActionableInsight(BaseModel):
 
 class RecruiterInsights(BaseModel):
     """Complete recruiter insights package"""
-    summary: RecruiterInsightSummary = Field(description="High-level summary")
-    recommendations: List[Recommendation] = Field(description="General recommendations")
-    challenging_positions: List[ChallengingPosition] = Field(description="Positions that are hard to fill")
-    actionable_insights: List[ActionableInsight] = Field(description="Specific actionable insights")
+    key_insights: List[Dict[str, Any]] = Field(description="Key insights")
+    recommendations: List[Dict[str, Any]] = Field(description="Recommendations")
+    market_insights: Dict[str, Any] = Field(description="Market insights")
+    challenging_positions: List[Dict[str, Any]] = Field(description="Challenging positions")
 
 class AnalyticsChartData(BaseModel):
     """Generic chart data structure"""

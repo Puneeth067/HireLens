@@ -327,6 +327,17 @@ export const CacheInvalidation = {
     // Clear analytics caches
     apiCache.clear();
   },
+
+  onRankingCreate: (jobId: string) => {
+    // Invalidate caches related to rankings and job details
+    jobsCache.delete(CacheKeys.JOB_DETAIL(jobId));
+    // Invalidate any cached ranking lists for this job
+    jobsCache.keys()
+      .filter(key => key.startsWith(`rankings_list_${jobId}`))
+      .forEach(key => jobsCache.delete(key));
+    // Invalidate analytics caches that might be affected by new ranking data
+    apiCache.clear();
+  },
   
   onUserAction: () => {
     // Clear all caches for maximum freshness

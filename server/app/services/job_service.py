@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 from pathlib import Path
+import logging
 
 from ..models.job import (
     JobDescription, JobDescriptionCreate, JobDescriptionUpdate, 
@@ -12,13 +13,35 @@ from ..models.job import (
     JobType, ExperienceLevel
 )
 from ..config import settings
+from ..services.comparison_service import ComparisonService
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class JobService:
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(JobService, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self):
+        # Ensure initialization only happens once
+        if JobService._initialized:
+            return
+            
         self.jobs_dir = Path(settings.UPLOAD_DIR) / "jobs"
         self.jobs_dir.mkdir(exist_ok=True)
         self.jobs_file = self.jobs_dir / "jobs.json"
         self.ensure_jobs_file()
+        self.comparison_service = ComparisonService()
+        # Set the job service instance in the comparison service to resolve circular dependency
+        self.comparison_service.job_service = self
+        
+        # Mark as initialized
+        JobService._initialized = True
 
     def ensure_jobs_file(self):
         """Ensure jobs.json file exists with proper structure"""
@@ -39,8 +62,10 @@ class JobService:
         try:
             with open(self.jobs_file, 'r') as f:
                 data = json.load(f)
+                logger.info(f"Successfully loaded {len(data.get('jobs', []))} jobs from {self.jobs_file}")
                 return data
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.error(f"Error loading jobs file: {e}")
             self.ensure_jobs_file()
             return self.load_jobs()
 
@@ -49,6 +74,7 @@ class JobService:
         data["metadata"]["last_updated"] = datetime.now().isoformat()
         with open(self.jobs_file, 'w') as f:
             json.dump(data, f, indent=2, default=str)
+        logger.info(f"Saved {len(data.get('jobs', []))} jobs to {self.jobs_file}")
 
     def _validate_job_data(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and clean job data loaded from storage"""
@@ -68,7 +94,8 @@ class JobService:
             "weight_skills": 0.4,
             "weight_experience": 0.3,
             "weight_education": 0.2,
-            "weight_keywords": 0.1
+            "weight_keywords": 0.1,
+            "resumes": [] # Ensure resumes field is present
         }
         
         for key, default_value in defaults.items():
@@ -105,18 +132,44 @@ class JobService:
         # Save data
         self.save_jobs(data)
         
+        logger.info(f"Created new job: {job.title} ({job.id})")
         return job
 
     def get_job(self, job_id: str) -> Optional[JobDescription]:
         """Get a job by ID"""
+        logger.info(f"Attempting to retrieve job with ID: {job_id}")
         data = self.load_jobs()
+        logger.info(f"Loaded {len(data['jobs'])} jobs from storage")
+        
+        # Log all available job IDs for debugging
+        available_job_ids = [job_data["id"] for job_data in data["jobs"]]
+        logger.info(f"Available job IDs: {available_job_ids}")
+        logger.info(f"Searching for job ID: {job_id} (type: {type(job_id)})")
         
         for job_data in data["jobs"]:
+            logger.info(f"Checking job ID: {job_data['id']} (type: {type(job_data['id'])})")
+            logger.info(f"ID match result: {job_data['id'] == job_id}")
             if job_data["id"] == job_id:
+                logger.info(f"Found matching job for ID: {job_id}")
                 # Validate and clean job data before creating model
                 job_data = self._validate_job_data(job_data)
-                return JobDescription(**job_data)
+                
+                # Populate resumes for the job by getting all comparisons for this job
+                try:
+                    comparisons = self.comparison_service.get_comparisons_by_job(job_id)
+                    job_data["resumes"] = [c.resume_id for c in comparisons]
+                    logger.info(f"Populated job with {len(job_data['resumes'])} resumes")
+                except Exception as e:
+                    logger.error(f"Error populating resumes for job {job_id}: {e}")
+                    # Ensure resumes field exists even if there's an error
+                    if "resumes" not in job_data:
+                        job_data["resumes"] = []
+
+                job = JobDescription(**job_data)
+                logger.info(f"Returning job: {job.title} ({job.id}) with {len(job.resumes)} resumes")
+                return job
         
+        logger.warning(f"Job with ID {job_id} not found")
         return None
 
     def update_job(self, job_id: str, updates: JobDescriptionUpdate) -> Optional[JobDescription]:
@@ -142,8 +195,10 @@ class JobService:
                 
                 # Validate and clean job data before creating model
                 job_data = self._validate_job_data(job_data)
+                logger.info(f"Updated job: {job_data['title']} ({job_id})")
                 return JobDescription(**job_data)
         
+        logger.warning(f"Job with ID {job_id} not found for update")
         return None
 
     def delete_job(self, job_id: str) -> bool:
@@ -152,10 +207,12 @@ class JobService:
         
         for i, job_data in enumerate(data["jobs"]):
             if job_data["id"] == job_id:
-                del data["jobs"][i]
+                deleted_job = data["jobs"].pop(i)
                 self.save_jobs(data)
+                logger.info(f"Deleted job: {deleted_job['title']} ({job_id})")
                 return True
         
+        logger.warning(f"Job with ID {job_id} not found for deletion")
         return False
 
     def list_jobs(

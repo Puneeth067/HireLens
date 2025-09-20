@@ -42,7 +42,8 @@ import {
   CandidateComparisonResponse,
   ShortlistResponse,
   RankingUpdate,
-  RankingStatisticsResponse
+  RankingStatisticsResponse,
+  RankingCriteria
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -1383,12 +1384,29 @@ async getJobSummary(jobId: string): Promise<{
   /**
    * Create a new candidate ranking for a job
    */
-  async createRanking(request: RankingRequest): Promise<RankingResponse> {
+  async createRanking(
+    jobId: string,
+    resumeIds: string[],
+    criteria: import('./types').RankingCriteria
+  ): Promise<{ ranking_id: string }> {
+    const requestBody = {
+      job_id: jobId,
+      resume_ids: resumeIds,
+      criteria: criteria,
+    };
     const response = await this.fetchWithAuth('/api/ranking/create', {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify(requestBody),
     });
-    return response.json();
+    const data: import('./types').RankingResponse = await response.json();
+    console.log('API Response for createRanking:', data);
+    // The backend returns a RankingResponse with a ranking object that has an id
+    if (data.success && data.ranking && data.ranking.id) {
+      return { ranking_id: data.ranking.id };
+    } else {
+      console.error('Failed to extract ranking_id from response:', data);
+      return { ranking_id: '' };
+    }
   }
 
   /**
@@ -1405,6 +1423,21 @@ async getJobSummary(jobId: string): Promise<{
     });
     
     const response = await this.fetchWithAuth(`/api/ranking/job/${jobId}?${params.toString()}`);
+    return response.json();
+  }
+
+  /**
+   * Get all candidates that have been compared to a job (before ranking creation)
+   */
+  async getCandidatesForJob(
+    jobId: string
+  ): Promise<{
+    success: boolean;
+    candidates: import('./types').RankedCandidate[];
+    total_candidates: number;
+    message: string;
+  }> {
+    const response = await this.fetchWithAuth(`/api/ranking/job/${jobId}/candidates`);
     return response.json();
   }
 

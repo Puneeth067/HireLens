@@ -1,0 +1,46 @@
+{
+  "id": "ranking_20250920_112000",
+  "job_id": "ffc004d3-0c13-446e-9162-ee7ac66954ff",
+  "criteria": {
+    "skills_weight": 0.5918220874277427,
+    "experience_weight": 0.2040889562861286,
+    "education_weight": 0.13605930419075243,
+    "keyword_weight": 0.06802965209537622,
+    "min_overall_score": null,
+    "min_skills_score": null,
+    "min_experience_score": null,
+    "min_education_score": null,
+    "require_degree": false,
+    "min_years_experience": null,
+    "required_skills": [],
+    "preferred_skills": []
+  },
+  "candidates": [
+    {
+      "resume_id": "c1690ec3-2bbb-4b6f-bfe4-309896f195c4",
+      "comparison_id": "bc184066-3879-445d-a9a1-1554fd47ceb0",
+      "rank": 1,
+      "composite_score": 78.53754190895957,
+      "skills_score": 75.0,
+      "experience_score": 100.0,
+      "education_score": 100.0,
+      "keyword_score": 2.0,
+      "skill_match_percentage": 75.0,
+      "meets_requirements": true,
+      "resume_filename": "Puneeth_Resume (5).pdf",
+      "candidate_name": "Puneeth Kumar",
+      "email": null,
+      "phone": null,
+      "location": null,
+      "linkedin_url": null
+    }
+  ],
+  "total_candidates": 1,
+  "created_at": "2025-09-20 11:20:00.797651",
+  "updated_at": null,
+  "created_by": null,
+  "average_score": 78.53754190895957,
+  "median_score": 78.53754190895957,
+  "top_score": 78.53754190895957,
+  "candidates_meeting_requirements": 1
+}

@@ -67,6 +67,9 @@ class JobDescription(BaseModel):
     weight_education: float = Field(default=0.2, ge=0, le=1)
     weight_keywords: float = Field(default=0.1, ge=0, le=1)
 
+    # Resumes associated with this job
+    resumes: List[str] = Field(default_factory=list)
+
     @field_validator("salary_max")
     def validate_salary_range(cls, v, info: ValidationInfo):
         """
