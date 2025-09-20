@@ -1,0 +1,30 @@
+services:
+  # Backend API service
+  - type: web
+    name: hirelens-api
+    env: docker
+    plan: free
+    dockerfilePath: server/Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: LOG_LEVEL
+        value: INFO
+      - key: UPLOAD_DIR
+        value: uploads
+  
+  # Frontend service
+  - type: web
+    name: hirelens-frontend
+    env: docker
+    plan: free
+    dockerfilePath: client/Dockerfile
+    rootDir: .
+    buildCommand: npm install && npm run build --workspace=packages/shared-types && npm run build --workspace=packages/config && npm run build --workspace=client
+    startCommand: npm run start --workspace=client
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://hirelens-api.onrender.com  # This will be updated with your actual backend URL
+      - key: PORT
+        value: 3000

@@ -21,8 +21,11 @@ import {
   Zap,
   Brain,
   Search,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react'
+import apiService from '@/lib/api'
+import { cachedApiService } from '@/lib/cached-api'
 
 interface SystemStats {
   files: {
@@ -57,6 +60,57 @@ interface RecentActivity {
   status: 'completed' | 'processing' | 'failed'
 }
 
+// Define interfaces for API response types
+interface ParsingStats {
+  total_files: number
+  completed: number
+  processing: number
+  pending: number
+  error: number
+  recent_activity: Array<{
+    file_id: string
+    filename: string
+    status: string
+    parsed_at?: string
+  }>
+}
+
+interface JobStats {
+  total_jobs: number
+  active_jobs: number
+  draft_jobs: number
+  closed_jobs: number
+  recent_jobs: number
+}
+
+interface ComparisonStats {
+  total_comparisons: number
+  avg_score: number
+  top_score: number
+  recent_comparisons: number
+  status_breakdown: {
+    completed?: number
+    pending?: number
+    failed?: number
+  }
+}
+
+interface AnalyticsSummary {
+  total_candidates: number
+  total_jobs: number
+  total_comparisons: number
+  avg_score: number
+  recent_activity: number
+  trending_skills: Array<{ skill: string; count: number }> | string[]
+  top_performing_jobs: Array<{ job_id: string; job_title: string; score: number }> | Array<{ job_id: string; title: string; score: number }>
+}
+
+interface HealthCheck {
+  status: string
+  timestamp: string | number
+  version: string
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<SystemStats>({
     files: { total_files: 0, parsed_files: 0, processing_files: 0, failed_files: 0 },
@@ -67,49 +121,192 @@ export default function DashboardPage() {
   
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [systemHealth, setSystemHealth] = useState<'healthy' | 'degraded' | 'error'>('healthy')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data for demonstration
   useEffect(() => {
-    // Simulate fetching data
-    setStats({
-      files: { total_files: 124, parsed_files: 118, processing_files: 2, failed_files: 4 },
-      jobs: { total_jobs: 18, active_jobs: 12, draft_jobs: 6 },
-      comparisons: { total_comparisons: 86, completed: 79, pending: 3, failed: 4 },
-      analytics: { total_candidates: 342, average_score: 76.5, top_score: 94.2 }
-    })
-    
-    setRecentActivity([
-      {
-        type: 'upload',
-        title: 'Resume Upload',
-        description: '5 resumes uploaded successfully',
-        timestamp: new Date(Date.now() - 300000).toISOString(),
-        status: 'completed'
-      },
-      {
-        type: 'job',
-        title: 'New Job Posted',
-        description: 'Senior Frontend Developer at TechCorp',
-        timestamp: new Date(Date.now() - 600000).toISOString(),
-        status: 'completed'
-      },
-      {
-        type: 'comparison',
-        title: 'ATS Analysis',
-        description: 'Analyzed 12 candidates for Backend Role',
-        timestamp: new Date(Date.now() - 900000).toISOString(),
-        status: 'completed'
-      },
-      {
-        type: 'ranking',
-        title: 'Candidate Ranking',
-        description: 'Generated top 10 shortlist for DevOps position',
-        timestamp: new Date(Date.now() - 1200000).toISOString(),
-        status: 'completed'
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Fetch all required data in parallel with error handling
+        const results = await Promise.allSettled([
+          apiService.getParsingStats().catch(err => {
+            console.warn('Failed to fetch parsing stats:', err)
+            return {
+              total_files: 0,
+              completed: 0,
+              processing: 0,
+              pending: 0,
+              error: 0,
+              recent_activity: []
+            }
+          }),
+          cachedApiService.getJobStats().catch(err => {
+            console.warn('Failed to fetch job stats:', err)
+            return {
+              total_jobs: 0,
+              active_jobs: 0,
+              draft_jobs: 0,
+              closed_jobs: 0,
+              recent_jobs: 0
+            }
+          }),
+          apiService.getComparisonStats().catch(err => {
+            console.warn('Failed to fetch comparison stats:', err)
+            return {
+              total_comparisons: 0,
+              avg_score: 0,
+              top_score: 0,
+              recent_comparisons: 0,
+              status_breakdown: {
+                completed: 0,
+                pending: 0,
+                failed: 0
+              }
+            }
+          }),
+          apiService.getAnalyticsSummary().catch(err => {
+            console.warn('Failed to fetch analytics summary:', err)
+            return {
+              total_candidates: 0,
+              total_jobs: 0,
+              total_comparisons: 0,
+              avg_score: 0,
+              recent_activity: 0,
+              trending_skills: [],
+              top_performing_jobs: []
+            }
+          }),
+          cachedApiService.healthCheck().catch(err => {
+            console.warn('Failed to fetch health check:', err)
+            return {
+              status: 'degraded',
+              timestamp: new Date().toISOString(),
+              version: 'unknown'
+            }
+          })
+        ])
+
+        const [parsingStatsResult, jobStatsResult, comparisonStatsResult, analyticsSummaryResult, healthCheckResult] = results
+
+        // Extract data or use defaults
+        const parsingStats: ParsingStats = parsingStatsResult.status === 'fulfilled' ? parsingStatsResult.value : {
+          total_files: 0,
+          completed: 0,
+          processing: 0,
+          pending: 0,
+          error: 0,
+          recent_activity: []
+        }
+        
+        const jobStats: JobStats = jobStatsResult.status === 'fulfilled' ? jobStatsResult.value : {
+          total_jobs: 0,
+          active_jobs: 0,
+          draft_jobs: 0,
+          closed_jobs: 0,
+          recent_jobs: 0
+        }
+        
+        const comparisonStats: ComparisonStats = comparisonStatsResult.status === 'fulfilled' ? comparisonStatsResult.value : {
+          total_comparisons: 0,
+          avg_score: 0,
+          top_score: 0,
+          recent_comparisons: 0,
+          status_breakdown: {
+            completed: 0,
+            pending: 0,
+            failed: 0
+          }
+        }
+        
+        const analyticsSummary: AnalyticsSummary = analyticsSummaryResult.status === 'fulfilled' ? analyticsSummaryResult.value : {
+          total_candidates: 0,
+          total_jobs: 0,
+          total_comparisons: 0,
+          avg_score: 0,
+          recent_activity: 0,
+          trending_skills: [],
+          top_performing_jobs: []
+        }
+        
+        const healthCheck: HealthCheck = healthCheckResult.status === 'fulfilled' ? healthCheckResult.value : {
+          status: 'degraded',
+          timestamp: new Date().toISOString(),
+          version: 'unknown'
+        }
+
+        // Find the top score from top performing jobs
+        let topScore = 0
+        if (analyticsSummary.top_performing_jobs && analyticsSummary.top_performing_jobs.length > 0) {
+          const scores = analyticsSummary.top_performing_jobs.map(job => 'score' in job ? job.score : 0)
+          topScore = Math.max(...scores)
+        }
+
+        // Update stats with real data
+        setStats({
+          files: {
+            total_files: parsingStats.total_files,
+            parsed_files: parsingStats.completed,
+            processing_files: parsingStats.processing,
+            failed_files: parsingStats.error
+          },
+          jobs: {
+            total_jobs: jobStats.total_jobs,
+            active_jobs: jobStats.active_jobs,
+            draft_jobs: jobStats.draft_jobs
+          },
+          comparisons: {
+            total_comparisons: comparisonStats.total_comparisons,
+            completed: comparisonStats.status_breakdown.completed || 0,
+            pending: comparisonStats.status_breakdown.pending || 0,
+            failed: comparisonStats.status_breakdown.failed || 0
+          },
+          analytics: {
+            total_candidates: analyticsSummary.total_candidates || 0,
+            average_score: analyticsSummary.avg_score || 0,
+            top_score: topScore
+          }
+        })
+
+        // Update recent activity
+        const activities: RecentActivity[] = []
+        
+        // Add recent parsing activities
+        if (parsingStats.recent_activity) {
+          parsingStats.recent_activity.slice(0, 3).forEach(activity => {
+            activities.push({
+              type: 'upload',
+              title: 'Resume Parsed',
+              description: activity.filename,
+              timestamp: activity.parsed_at || new Date().toISOString(),
+              status: activity.status === 'completed' ? 'completed' : activity.status === 'error' ? 'failed' : 'processing'
+            })
+          })
+        }
+
+        // Add recent job activities (mock for now as we don't have a direct API)
+        // In a real implementation, we would fetch recent jobs and add them here
+
+        setRecentActivity(activities)
+
+        // Update system health
+        setSystemHealth(healthCheck.status as 'healthy' | 'degraded' | 'error')
+
+        setLoading(false)
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err)
+        setError('Failed to load dashboard data. Please try again later.')
+        setLoading(false)
       }
-    ])
-    
-    setSystemHealth('healthy')
+    }
+
+    fetchData()
+
+    // Set up periodic refresh
+    const interval = setInterval(fetchData, 30000) // Refresh every 30 seconds
+    return () => clearInterval(interval)
   }, [])
 
   const getStatusColor = (status: string) => {
@@ -201,6 +398,32 @@ export default function DashboardPage() {
       stats: 'Multi-factor scoring system'
     }
   ]
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading dashboard data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Error Loading Dashboard</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4">
@@ -390,6 +613,9 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))}
+                {recentActivity.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+                )}
               </div>
             </CardContent>
           </Card>

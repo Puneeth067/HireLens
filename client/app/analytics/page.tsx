@@ -114,10 +114,14 @@ export default function AnalyticsPage() {
 
   const exportData = async (format: 'csv' | 'json') => {
     try {
+      // Simplified export config with only required fields
       const exportConfig: AnalyticsExport = {
         format,
         sections: ['overview', 'score_distribution', 'skills', 'trends', 'job_performance', 'insights']
+        // Removed date_range and filters as they're not used in the backend and might be causing issues
       };
+
+      console.log('Export config:', exportConfig); // Add logging to see what we're sending
 
       const data = await cachedApiService.exportAnalyticsData(exportConfig);
       
@@ -341,7 +345,7 @@ export default function AnalyticsPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Recent Comparisons</span>
                     <Badge className={getScoreColor(80)}>
-                      {overview.recent_comparisons || 0}
+                      {overview.recent_activity_count || 0}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">

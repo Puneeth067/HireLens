@@ -4,21 +4,21 @@
   "description": "AI-powered resume parsing and ATS scoring platform",
   "private": true,
   "workspaces": [
-    "apps/*",
+    "client",
     "packages/*"
   ],
   "scripts": {
     "dev": "./scripts/dev.sh",
-    "dev:client": "npm run dev --workspace=apps/client",
-    "dev:server": "npm run dev --workspace=apps/server",
-    "build": "npm run build --workspace=apps/client && npm run build --workspace=apps/server",
-    "build:client": "npm run build --workspace=apps/client",
-    "build:server": "npm run build --workspace=apps/server",
-    "start": "npm run start --workspace=apps/client & npm run start --workspace=apps/server",
-    "lint": "npm run lint --workspace=apps/client",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build --workspace=client && npm run build --workspace=server",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "start": "npm run start --workspace=client & npm run start --workspace=server",
+    "lint": "npm run lint --workspace=client",
     "type-check": "npm run type-check --workspace=packages/shared-types",
-    "install-deps": "npm install && npm run install-deps --workspace=apps/server",
-    "clean": "npm run clean --workspace=apps/client && npm run clean --workspace=apps/server"
+    "install-deps": "npm install && npm run install-deps --workspace=server",
+    "clean": "npm run clean --workspace=client && npm run clean --workspace=server"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

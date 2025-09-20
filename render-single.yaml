@@ -1,0 +1,15 @@
+services:
+  # Backend API service
+  - type: web
+    name: hirelens-api
+    env: docker
+    plan: free
+    dockerfilePath: server/Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: LOG_LEVEL
+        value: INFO
+      - key: UPLOAD_DIR
+        value: uploads

@@ -24,7 +24,16 @@ import { LoadingWrapper, useLoadingState } from '@/components/ui/page-wrapper';
 import { JobsPageSkeleton, AnalyticsCardSkeleton } from '@/components/ui/skeleton';
 import ErrorBoundary from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
-
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function JobsPageContent() {
   const router = useRouter();
@@ -35,7 +44,9 @@ function JobsPageContent() {
   
   const [jobs, setJobs] = useState<JobDescriptionList | null>(null);
   const [stats, setStats] = useState<JobStats | null>(null);
-  
+  const [jobToDelete, setJobToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+
   // Filters and search
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -258,8 +269,16 @@ function JobsPageContent() {
     // loadJobs will be called automatically via useEffect when currentPage changes
   }, [searchTerm, statusFilter, companyFilter]);
 
-  const handleDeleteJob = useCallback(async (jobId: string) => {
-    if (!confirm('Are you sure you want to delete this job?')) return;
+  const handleDeleteJob = useCallback(async (jobId: string, jobTitle: string) => {
+    // Set the job to delete and open the confirmation dialog
+    setJobToDelete({ id: jobId, title: jobTitle });
+    setShowDeleteConfirmation(true);
+  }, []);
+
+  const confirmDeleteJob = useCallback(async () => {
+    if (!jobToDelete) return;
+    
+    const { id: jobId } = jobToDelete;
     
     try {
       LoggerUtils.logButtonClick('delete_job', { jobId });
@@ -281,8 +300,12 @@ function JobsPageContent() {
     } catch (err) {
       logger.error('Failed to delete job', { jobId, error: err });
       alert('Failed to delete job');
+    } finally {
+      // Close the dialog and clear the job to delete
+      setShowDeleteConfirmation(false);
+      setJobToDelete(null);
     }
-  }, [loadJobs, loadStats]);
+  }, [jobToDelete, loadJobs, loadStats]);
 
   const handleDuplicateJob = useCallback(async (jobId: string) => {
     try {
@@ -584,92 +607,94 @@ function JobsPageContent() {
                       <DocumentDuplicateIcon className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteJob(job.id)}
+                      onClick={() => handleDeleteJob(job.id, job.title)}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Delete job"
                     >
                       <TrashIcon className="w-4 h-4" />
                     </button>
                   </div>
+
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Empty State */}
-          {jobs.jobs.length === 0 && (
-            <div className="text-center py-12">
-              <BriefcaseIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
-              <p className="text-gray-500 mb-4">
-                {searchTerm || statusFilter || companyFilter 
-                  ? "Try adjusting your search filters"
-                  : "Get started by creating your first job description"
-                }
-              </p>
-              <Link
-                href="/jobs/create"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <PlusIcon className="w-5 h-5 mr-2" />
-                Create Job
-              </Link>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {jobs.total_pages > 1 && (
-            <div className="flex justify-center items-center space-x-2">
+        {/* Pagination */}
+        {jobs && jobs.total_pages > 1 && (
+          <div className="flex justify-center mt-8">
+            <nav className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-2 text-sm bg-white border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 Previous
               </button>
-              
-              <div className="flex space-x-1">
-                {Array.from({ length: Math.min(5, jobs.total_pages) }, (_, i) => {
-                  const page = i + 1;
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-2 text-sm rounded-lg ${
-                        currentPage === page
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white border hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-              </div>
-              
+              {Array.from({ length: jobs.total_pages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 rounded-md border ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
               <button
                 onClick={() => setCurrentPage(prev => Math.min(jobs.total_pages, prev + 1))}
                 disabled={currentPage === jobs.total_pages}
-                className="px-3 py-2 text-sm bg-white border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 Next
               </button>
-            </div>
-          )}
+            </nav>
+          </div>
+        )}
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {jobToDelete ? (
+                <>
+                  Are you sure you want to delete &quot;<strong>{jobToDelete.title}</strong>&quot;? 
+                  This action cannot be undone.
+                </>
+              ) : (
+                "Are you sure you want to delete this job? This action cannot be undone."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setJobToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteJob}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-// Main JobsPage component with error boundary
+// Main component wrapped with error boundary and loading wrapper
 export default function JobsPage() {
   return (
-    <ErrorBoundary
-      errorBoundaryName="JobsPage"
-      showErrorDetails={process.env.NODE_ENV === 'development'}
-    >
-      <JobsPageContent />
+    <ErrorBoundary errorBoundaryName="JobsPage">
+      <LoadingWrapper loading={false}>
+        <JobsPageContent />
+      </LoadingWrapper>
     </ErrorBoundary>
   );
 }

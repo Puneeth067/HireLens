@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,25 @@ export default function DashboardLayout({
   systemHealth = 'healthy'
 }: DashboardLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const pathname = usePathname();
+
+  // Load sidebar state from localStorage on component mount
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    if (savedState) {
+      setIsSidebarCollapsed(JSON.parse(savedState));
+    }
+  }, []);
+
+  // Save sidebar state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  // Determine if sidebar should be expanded
+  const isSidebarExpanded = isSidebarHovered || isMenuOpen;
 
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
@@ -83,18 +101,22 @@ export default function DashboardLayout({
 
       {/* Sidebar Navigation */}
       <div 
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 bg-white shadow-lg transform transition-all duration-300 ease-in-out md:translate-x-0 ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } ${isSidebarExpanded ? 'w-64' : 'w-20'}`}
+        onMouseEnter={() => setIsSidebarHovered(true)}
+        onMouseLeave={() => setIsSidebarHovered(false)}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center px-6 py-4 border-b">
-            <div className="flex items-center space-x-3">
+          <div className={`flex items-center px-4 py-4 border-b ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
+            <div className="flex items-center">
               <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">RP</span>
+                <span className="text-white font-semibold text-sm">HL</span>
               </div>
-              <h1 className="text-lg font-semibold text-gray-900">Resume Parser</h1>
+              {isSidebarExpanded && (
+                <h1 className="text-lg font-semibold text-gray-900 ml-3">HireLens</h1>
+              )}
             </div>
           </div>
 
@@ -111,37 +133,26 @@ export default function DashboardLayout({
                         isActive 
                           ? 'bg-blue-50 text-blue-600 font-medium' 
                           : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                      }`}
+                      } ${isSidebarExpanded ? '' : 'justify-center'}`}
                       onClick={() => setIsMenuOpen(false)}
                     >
-                      <item.icon className="h-5 w-5 mr-3" />
-                      <span>{item.name}</span>
+                      <item.icon className="h-5 w-5" />
+                      {isSidebarExpanded && (
+                        <span className="ml-3">{item.name}</span>
+                      )}
                     </Link>
                   </li>
                 );
               })}
             </ul>
           </nav>
-
-          {/* User Profile / Footer */}
-          <div className="p-4 border-t">
-            <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-700 font-medium">U</span>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-900">User Name</p>
-                <p className="text-xs text-gray-500">Recruiter</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="md:ml-64">
+      <div className={isSidebarExpanded ? "md:ml-64" : "md:ml-20"}>
         {/* Fixed Header */}
-        <header className="fixed top-0 right-0 left-0 md:left-64 backdrop-blur-sm bg-white/90 shadow-sm z-30">
+        <header className={`fixed top-0 right-0 left-0 backdrop-blur-sm bg-white/90 shadow-sm z-30 ${isSidebarExpanded ? 'md:left-64' : 'md:left-20'}`}>
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center">
               <h1 className="text-xl font-semibold text-gray-900">{derivedTitle}</h1>

@@ -10,16 +10,16 @@ from ..services.ranking_service import RankingService
 from ..services.job_service import JobService
 
 router = APIRouter(prefix="/api/ranking", tags=["ranking"])
-ranking_service = RankingService()
 # Use singleton instance of JobService
 job_service = JobService()
+ranking_service = RankingService(job_service_instance=job_service)
 
 @router.get("/create")
 async def get_create_ranking_page():
     """Endpoint to serve the ranking creation page"""
     return {"message": "Ranking creation page loaded successfully"}
 
-@router.post("/create", response_model=RankingResponse)
+@router.post("/", response_model=RankingResponse)
 async def create_ranking(request: RankingRequest):
     """Create a new candidate ranking for a job"""
     try:

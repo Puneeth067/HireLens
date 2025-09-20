@@ -522,7 +522,7 @@ export interface OverviewMetrics {
   total_candidates: number;
   total_active_jobs: number;
   total_comparisons: number;
-  recent_comparisons: number;
+  recent_activity_count: number; // Changed from recent_comparisons to recent_activity_count
   average_ats_score: number;
   processing_success_rate: number;
   top_performing_score: number;
@@ -673,6 +673,7 @@ export interface AnalyticsExport {
     start: string;
     end: string;
   };
+  filters?: Record<string, string | number | boolean | string[]>;
 }
 
 export interface AnalyticsRequest {
@@ -1066,4 +1067,23 @@ export interface JobPipeline {
   candidate_stages: Record<string, string>; // resume_id -> stage_name
   created_at: string;
   updated_at?: string;
+}
+
+// Comparison Stats and Filters interfaces
+export interface ComparisonStats {
+  total_comparisons: number;
+  avg_score: number;
+  top_score: number;
+  recent_comparisons: number;
+  status_breakdown: Record<string, number>;
+}
+
+export interface ComparisonFilters {
+  status: string;
+  job_id: string;
+  min_score: number;
+  max_score: number;
+  search: string;
+  sort_by: string;
+  sort_order: string;
 }

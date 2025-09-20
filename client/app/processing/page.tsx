@@ -8,9 +8,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiService } from '@/lib/api';
-import { ParsedResume, FileMetadata, ProcessingStats, Skill, } from '@/lib/types';
+import { ParsedResume, FileMetadata, ProcessingStats, Skill,} from '@/lib/types';
 import ErrorBoundary from '@/components/error-boundary';
 import { useLogger, logger } from '@/lib/logger';
 import { apiCache, systemCache, CacheKeys, CacheInvalidation } from '@/lib/cache';
@@ -31,7 +41,9 @@ function ProcessingPageContent() {
   const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState<string | null>(null);
-  const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set()); // New state for deletion loading
+  const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ id: string; name: string } | null>(null);
   const processingFilesRef = useRef<Set<string>>(new Set());
   const deletingFilesRef = useRef<Set<string>>(new Set());
   
@@ -228,10 +240,15 @@ function ProcessingPageContent() {
   }, []); // Remove componentLogger dependency to prevent infinite loop
 
   const deleteFile = useCallback(async (fileId: string, filename: string) => {
-    // Confirmation dialog
-    if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
-      return;
-    }
+    // Set the file to delete and open the confirmation dialog
+    setFileToDelete({ id: fileId, name: filename });
+    setDeleteConfirmationOpen(true);
+  }, []);
+
+  const confirmDeleteFile = useCallback(async () => {
+    if (!fileToDelete) return;
+    
+    const { id: fileId, name: filename } = fileToDelete;
     
     try {
       componentLogger.userAction('delete_file', { fileId });
@@ -268,14 +285,24 @@ function ProcessingPageContent() {
         newSet.delete(fileId);
         return newSet;
       });
+      
+      // Close the dialog and clear the file to delete
+      setDeleteConfirmationOpen(false);
+      setFileToDelete(null);
     }
-  }, [loadFiles, loadStats, componentLogger]);
+  }, [fileToDelete, loadFiles, loadStats, componentLogger]);
 
   // Add state for cleanup loading
   const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [showCleanupConfirmation, setShowCleanupConfirmation] = useState(false);
   
   // Add cleanup function
   const cleanupOrphanedFiles = useCallback(async () => {
+    // Open confirmation dialog instead of proceeding directly
+    setShowCleanupConfirmation(true);
+  }, []);
+
+  const confirmCleanupOrphanedFiles = useCallback(async () => {
     try {
       componentLogger.userAction('cleanup_orphaned_files');
       setIsCleaningUp(true);
@@ -295,6 +322,7 @@ function ProcessingPageContent() {
       setError('Failed to clean up files. Please try again.');
     } finally {
       setIsCleaningUp(false);
+      setShowCleanupConfirmation(false); // Close the dialog
     }
   }, []); // Remove dependencies to prevent infinite loop
 
@@ -586,6 +614,7 @@ function ProcessingPageContent() {
                               <Trash2 className="w-4 h-4" />
                             )}
                           </Button>
+
                         </div>
                       </div>
                     </div>
@@ -604,6 +633,56 @@ function ProcessingPageContent() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+            <AlertDialogContent className="bg-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {fileToDelete ? (
+                    <>
+                      Are you sure you want to delete &quot;<strong>{fileToDelete.name}</strong>&quot;? 
+                      This action cannot be undone.
+                    </>
+                  ) : (
+                    "Are you sure you want to delete this file? This action cannot be undone."
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setFileToDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={confirmDeleteFile}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Cleanup Confirmation Dialog */}
+          <AlertDialog open={showCleanupConfirmation} onOpenChange={setShowCleanupConfirmation}>
+            <AlertDialogContent className="bg-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clean Up Orphaned Files</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will remove all files that are no longer referenced in the system. 
+                  This action cannot be undone. Are you sure you want to proceed?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={confirmCleanupOrphanedFiles}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Clean Up
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <TabsContent value="activity" className="space-y-6">
             <Card>

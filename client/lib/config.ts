@@ -35,7 +35,7 @@ const getConfig = (): AppConfig => {
   
   const baseConfig: AppConfig = {
     env,
-    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || (env === 'production' ? 'https://hirelens-api.onrender.com' : 'http://localhost:8000'),
     logLevel: (process.env.NEXT_PUBLIC_LOG_LEVEL as AppConfig['logLevel']) || 'info',
     enableRemoteLogging: process.env.NEXT_PUBLIC_ENABLE_REMOTE_LOGGING === 'true',
     enableAnalytics: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',

@@ -118,26 +118,49 @@ export default function CreateRankingPage() {
     try {
       // Fetch all resumes associated with the job
       const jobDetails = await cachedApiService.getJob(jobId);
-      const resumeIds = jobDetails.resumes.map(resume => resume);
+      console.log('Job details:', jobDetails);
+      // The resumes property is already an array of resume IDs, no need to map
+      const resumeIds = jobDetails.resumes;
+      console.log('Resume IDs:', resumeIds);
+      console.log('Number of resumes:', resumeIds.length);
 
       if (resumeIds.length === 0) {
-        toast.info('No resumes found for this job. Please upload resumes first.')
-        setSubmitting(false)
-        return
+        toast.info('No existing comparisons found for this job. The system will automatically create comparisons for all parsed resumes.')
       }
 
+      // Log the criteria being sent
+      console.log('Ranking criteria:', criteria);
+      
       const response = await cachedApiService.createRanking(jobId, resumeIds, criteria)
       console.log('API Response for createRanking:', response)
-      if (response.ranking_id) {
+      if (response.ranking_id && response.ranking_id !== '') {
         toast.success('Ranking created successfully!')
         console.log('Redirecting to ranking page...')
         router.push(`/ranking?job=${jobId}`) // Redirect to the main ranking page for the job
       } else {
-        toast.error('Failed to create ranking.')
+        toast.error('Failed to create ranking. Please check that all required information is provided and try again.')
+        console.error('Ranking creation failed. Response:', response)
       }
     } catch (error) {
       console.error('Error creating ranking:', error)
-      toast.error('An error occurred while creating the ranking.')
+      // Add more specific error handling
+      if (error instanceof Error) {
+        console.error('Error details:', error.message)
+        // Show a more user-friendly error message
+        if (error.message.includes('404')) {
+          toast.error('Job not found. Please make sure the job still exists.')
+        } else if (error.message.includes('400')) {
+          toast.error('Invalid request. Please check your input and try again.')
+        } else if (error.message.includes('Network error') || error.message.includes('Failed to fetch')) {
+          toast.error('Unable to connect to the server. Please check your connection and try again.')
+        } else if (error.message.includes('No comparisons found') || error.message.includes('No resumes found')) {
+          toast.error('No resumes have been uploaded yet. Please upload and parse resumes first.')
+        } else {
+          toast.error(`Error: ${error.message}`)
+        }
+      } else {
+        toast.error('An unexpected error occurred while creating the ranking. Please try again.')
+      }
     } finally {
       setSubmitting(false)
     }

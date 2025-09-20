@@ -246,7 +246,7 @@ export default function RankingPage() {
       </div>
 
       {/* Job Selection */}
-      <Card className="mb-6">
+      <Card className="mb-6 bg-white">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -256,10 +256,10 @@ export default function RankingPage() {
         <CardContent>
           <div className="flex gap-4 items-center">
             <Select value={selectedJob} onValueChange={setSelectedJob}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger className="flex-1 bg-white">
                 <SelectValue placeholder="Choose a job position to rank candidates" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 {jobs.map(job => (
                   <SelectItem key={job.id} value={job.id}>
                     {job.title} at {job.company}
@@ -290,7 +290,7 @@ export default function RankingPage() {
         <>
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card>
+            <Card className="bg-white">
               <CardContent className="pt-6">
                 <div className="flex items-center">
                   <TrendingUp className="h-8 w-8 text-blue-600" />
@@ -302,7 +302,7 @@ export default function RankingPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white">
               <CardContent className="pt-6">
                 <div className="flex items-center">
                   <Users className="h-8 w-8 text-green-600" />
@@ -314,7 +314,7 @@ export default function RankingPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white">
               <CardContent className="pt-6">
                 <div className="flex items-center">
                   <Award className="h-8 w-8 text-yellow-600" />
@@ -328,7 +328,7 @@ export default function RankingPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white">
               <CardContent className="pt-6">
                 <div className="flex items-center">
                   <TrendingUp className="h-8 w-8 text-purple-600" />
@@ -345,7 +345,9 @@ export default function RankingPage() {
           <Tabs defaultValue="ranking" className="space-y-4">
             <TabsList>
               <TabsTrigger value="ranking">Current Ranking</TabsTrigger>
-              <TabsTrigger value="compare">Compare Candidates</TabsTrigger>
+              {selectedCandidates.size > 0 && (
+                <TabsTrigger value="compare">Compare Candidates</TabsTrigger>
+              )}
               <TabsTrigger value="history">Ranking History</TabsTrigger>
             </TabsList>
 
@@ -353,7 +355,7 @@ export default function RankingPage() {
               {currentRanking && (
                 <>
                   {/* Search and Filters */}
-                  <Card>
+                  <Card className="bg-white">
                     <CardContent className="pt-6">
                       <div className="flex flex-col md:flex-row gap-4">
                         <div className="flex-1">
@@ -363,16 +365,16 @@ export default function RankingPage() {
                               placeholder="Search candidates..."
                               value={searchTerm}
                               onChange={(e) => setSearchTerm(e.target.value)}
-                              className="pl-10"
+                              className="pl-10 bg-white"
                             />
                           </div>
                         </div>
                         
                         <Select value={filterRequirements} onValueChange={setFilterRequirements}>
-                          <SelectTrigger className="w-48">
+                          <SelectTrigger className="w-48 bg-white">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-white">
                             <SelectItem value="all">All Candidates</SelectItem>
                             <SelectItem value="meets">Meets Requirements</SelectItem>
                             <SelectItem value="doesnt_meet">Doesn&apos;t Meet Requirements</SelectItem>
@@ -380,10 +382,10 @@ export default function RankingPage() {
                         </Select>
 
                         <Select value={sortBy} onValueChange={setSortBy}>
-                          <SelectTrigger className="w-48">
+                          <SelectTrigger className="w-48 bg-white">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-white">
                             <SelectItem value="rank">Sort by Rank</SelectItem>
                             <SelectItem value="score_desc">Score (High to Low)</SelectItem>
                             <SelectItem value="score_asc">Score (Low to High)</SelectItem>
@@ -399,7 +401,7 @@ export default function RankingPage() {
                     {filteredAndSortedCandidates().map(candidate => (
                       <Card 
                         key={candidate.resume_id}
-                        className={`transition-all duration-200 hover:shadow-md cursor-pointer ${
+                        className={`transition-all duration-200 hover:shadow-md cursor-pointer bg-white ${
                           selectedCandidates.has(candidate.resume_id) ? 'ring-2 ring-blue-500' : ''
                         }`}
                         onClick={() => toggleCandidateSelection(candidate.resume_id)}
@@ -475,7 +477,7 @@ export default function RankingPage() {
                   </div>
 
                   {filteredAndSortedCandidates().length === 0 && (
-                    <Card>
+                    <Card className="bg-white">
                       <CardContent className="pt-6 text-center py-12">
                         <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">No candidates found</h3>
@@ -489,12 +491,13 @@ export default function RankingPage() {
               )}
 
               {!currentRanking && !loading && (
-                <Card>
+                <Card className="bg-white">
                   <CardContent className="pt-6 text-center py-12">
                     <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No ranking available</h3>
                     <p className="text-gray-500 mb-6">
-                      Create a new ranking or generate an AI shortlist to get started.
+                      Create a new ranking or generate an AI shortlist to get started. 
+                      Make sure you have uploaded resumes and associated them with this job.
                     </p>
                     <div className="flex justify-center gap-4">
                       <Link href={`/ranking/create?job=${selectedJob}`}>
@@ -513,46 +516,50 @@ export default function RankingPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="compare" className="space-y-4">
-              {selectedCandidates.size > 1 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      Compare Selected Candidates ({selectedCandidates.size})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-center">
-                      <p className="text-gray-600">
-                        Compare the selected candidates side by side to make informed decisions.
+            {selectedCandidates.size > 0 && (
+              <TabsContent value="compare" className="space-y-4">
+                {selectedCandidates.size > 1 ? (
+                  <Card className="bg-white">
+                    <CardHeader>
+                      <CardTitle>
+                        Compare Selected Candidates ({selectedCandidates.size})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <p className="text-gray-600">
+                          Compare the selected candidates side by side to make informed decisions.
+                        </p>
+                        <Link href={`/ranking/compare?job=${selectedJob}&candidates=${Array.from(selectedCandidates).join(',')}`}>
+                          <Button>
+                            Compare Now
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="bg-white">
+                    <CardContent className="pt-6 text-center py-12">
+                      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Select more candidates to compare</h3>
+                      <p className="text-gray-500 mb-4">
+                        You need at least 2 candidates to perform a comparison.
                       </p>
-                      <Link href={`/ranking/compare?job=${selectedJob}&candidates=${Array.from(selectedCandidates).join(',')}`}>
-                        <Button>
-                          Compare Now
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardContent className="pt-6 text-center py-12">
-                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Select candidates to compare</h3>
-                    <p className="text-gray-500">
-                      Click on candidate cards in the ranking tab to select them for comparison.
-                      You need at least 2 candidates to perform a comparison.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
+                      <p className="text-gray-500">
+                        Click on candidate cards in the ranking tab to select more candidates for comparison.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
 
             <TabsContent value="history" className="space-y-4">
               {rankings.length > 0 ? (
                 <div className="space-y-4">
                   {rankings.map(ranking => (
-                    <Card key={ranking.id}>
+                    <Card key={ranking.id} className="bg-white">
                       <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
                           <div>
@@ -577,7 +584,7 @@ export default function RankingPage() {
                   ))}
                 </div>
               ) : (
-                <Card>
+                <Card className="bg-white">
                   <CardContent className="pt-6 text-center py-12">
                     <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No ranking history</h3>
@@ -593,7 +600,7 @@ export default function RankingPage() {
       )}
 
       {!selectedJob && (
-        <Card>
+        <Card className="bg-white">
           <CardContent className="pt-6 text-center py-12">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Select a job position</h3>

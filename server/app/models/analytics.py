@@ -58,11 +58,33 @@ class SkillsSummary(BaseModel):
     skill_coverage_rate: float = Field(description="Percentage of demanded skills available in candidate pool")
     high_demand_low_supply: int = Field(description="Number of skills with high demand but low supply")
 
+class TopDemandedSkill(BaseModel):
+    """Top demanded skill with detailed metrics"""
+    skill: str = Field(description="Skill name")
+    demand: float = Field(description="Demand score")
+    jobs_count: int = Field(description="Number of jobs requiring this skill")
+    candidates_count: int = Field(description="Number of candidates with this skill")
+    gap_score: float = Field(description="Gap between demand and supply")
+
+class SkillGapDetail(BaseModel):
+    """Detailed skill gap information"""
+    skill: str = Field(description="Skill name")
+    demand: float = Field(description="Demand score")
+    supply: int = Field(description="Number of candidates with this skill")
+    gap_percentage: float = Field(description="Gap as percentage")
+    priority: str = Field(description="Priority level")
+
+class EmergingSkill(BaseModel):
+    """Emerging skill with growth metrics"""
+    skill: str = Field(description="Skill name")
+    growth_rate: float = Field(description="Growth rate")
+    recent_mentions: int = Field(description="Recent mentions count")
+
 class SkillsAnalytics(BaseModel):
     """Complete skills analytics"""
-    top_demanded_skills: List[Dict[str, Any]] = Field(description="Most demanded skills")
-    skill_gaps: List[Dict[str, Any]] = Field(description="Skills gaps in the market")
-    emerging_skills: List[Dict[str, Any]] = Field(description="Emerging skills")
+    top_demanded_skills: List[TopDemandedSkill] = Field(description="Most demanded skills")
+    skill_gaps: List[SkillGapDetail] = Field(description="Skills gaps in the market")
+    emerging_skills: List[EmergingSkill] = Field(description="Emerging skills")
     total_unique_skills: int = Field(description="Total unique skills")
     avg_skills_per_job: float = Field(description="Average skills per job")
     avg_skills_per_candidate: float = Field(description="Average skills per candidate")

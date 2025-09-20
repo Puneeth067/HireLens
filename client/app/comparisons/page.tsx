@@ -1,34 +1,35 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Filter, Download, BarChart3, Users, Trophy, Clock, XCircle, ArrowLeft } from 'lucide-react';
-import { ResumeJobComparison, JobDescriptionResponse } from '@/lib/types';
-import { apiService } from '@/lib/api';
+import { 
+  ComparisonsPageSkeleton, 
+  ComparisonCardSkeleton, 
+  DashboardSkeleton 
+} from '@/components/ui/skeleton';
 import ErrorBoundary from '@/components/error-boundary';
-import { useLogger, logger } from '@/lib/logger';
-import { comparisonsCache, jobsCache, CacheKeys } from '@/lib/cache';
-import { ComparisonsPageSkeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-
-interface ComparisonStats {
-  total_comparisons: number;
-  avg_score: number;
-  top_score: number;
-  recent_comparisons: number;
-  status_breakdown: Record<string, number>;
-}
-
-interface ComparisonFilters {
-  status: string;
-  job_id: string;
-  min_score: number;
-  max_score: number;
-  search: string;
-  sort_by: string;
-  sort_order: string;
-}
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { 
+  Users, BarChart3, Trophy, Clock, Search, Filter, 
+  Download, XCircle, Trash2, AlertTriangle, CheckCircle, ArrowLeft
+} from 'lucide-react';
+import apiService from '@/lib/api';
+import { logger, useLogger } from '@/lib/logger';
+import { jobsCache, comparisonsCache, CacheKeys } from '@/lib/cache';
+import { ComparisonStats, ComparisonFilters, ResumeJobComparison, JobDescriptionResponse } from '@/lib/types';
 
 function ComparisonsPageContent() {
   const router = useRouter();
@@ -51,7 +52,9 @@ function ComparisonsPageContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [comparisonToDelete, setComparisonToDelete] = useState<string | null>(null);
+
   // Refs to track if data has been loaded to prevent infinite loops
   const hasLoadedData = useRef(false);
   const filtersRef = useRef(filters);
@@ -206,6 +209,29 @@ function ComparisonsPageContent() {
       componentLogger.error('Error exporting comparisons', { error, filters });
     }
   }, [componentLogger, filters]);
+
+  const handleDeleteComparison = useCallback(async (comparisonId: string) => {
+    try {
+      componentLogger.userAction('delete_comparison_initiated', { comparisonId });
+      await apiService.deleteComparison(comparisonId);
+      
+      // Remove the deleted comparison from the state
+      setComparisons(prev => prev.filter(comp => comp.id !== comparisonId));
+      
+      // Update stats if they exist
+      if (stats) {
+        setStats({
+          ...stats,
+          total_comparisons: stats.total_comparisons - 1
+        });
+      }
+      
+      componentLogger.userAction('delete_comparison_completed', { comparisonId });
+    } catch (error) {
+      componentLogger.error('Error deleting comparison', { error, comparisonId });
+      alert('Failed to delete comparison. Please try again.');
+    }
+  }, [componentLogger, stats]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600 bg-green-50';
@@ -531,17 +557,58 @@ function ComparisonsPageContent() {
                 
                 <div className="flex justify-between items-center text-xs text-gray-500">
                   <span>{new Date(comparison.created_at).toLocaleDateString()}</span>
-                  <Link
-                    href={`/comparisons/${comparison.id}`}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    View Details →
-                  </Link>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/comparisons/${comparison.id}`}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      View Details →
+                    </Link>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setComparisonToDelete(comparison.id);
+                        setDeleteConfirmationOpen(true);
+                      }}
+                      className="text-red-600 hover:text-red-800"
+                      title="Delete comparison"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+
               </div>
             ))}
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+          <AlertDialogContent className="bg-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the comparison
+                and remove it from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setComparisonToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  if (comparisonToDelete) {
+                    handleDeleteComparison(comparisonToDelete);
+                    setComparisonToDelete(null);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Pagination */}
         {totalPages > 1 && (

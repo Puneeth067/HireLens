@@ -9,7 +9,7 @@ import calendar
 from app.models.comparison import ResumeJobComparison, ATSScore
 from app.models.resume import ParsedResume
 from app.models.job import JobDescription
-from app.models.analytics import ScoreStatistics
+from app.models.analytics import ScoreStatistics, TopDemandedSkill, SkillGapDetail, EmergingSkill
 from app.config import settings
 
 class AnalyticsService:
@@ -181,19 +181,42 @@ class AnalyticsService:
         avg_skills_per_job = round(total_unique_skills / max(total_jobs, 1), 2) if total_jobs > 0 else 0
         avg_skills_per_candidate = round(len(available_skills) / max(len(set(c['resume_id'] for c in comparisons)), 1), 2) if comparisons else 0
         
+        # Convert to proper data structures
+        top_demanded_skills = [
+            TopDemandedSkill(
+                skill=skill,
+                demand=round(count, 1),
+                jobs_count=int(count),
+                candidates_count=resume_skills.get(skill, 0),
+                gap_score=job_skills[skill] - resume_skills.get(skill, 0)
+            )
+            for skill, count in sorted(job_skills.items(), key=lambda x: x[1], reverse=True)[:10]
+        ]
+        
+        skill_gaps_details = [
+            SkillGapDetail(
+                skill=skill,
+                demand=job_skills[skill],
+                supply=resume_skills.get(skill, 0),
+                gap_percentage=round((job_skills[skill] - resume_skills.get(skill, 0)) / max(job_skills[skill], 1) * 100, 2),
+                priority="high" if job_skills[skill] > 3 else "medium" if job_skills[skill] > 1 else "low"
+            )
+            for skill in list(skill_gaps)[:10]
+        ]
+        
+        emerging_skills = [
+            EmergingSkill(
+                skill=skill,
+                growth_rate=round(job_skills[skill] * 10, 2),
+                recent_mentions=int(job_skills[skill] * 2)
+            )
+            for skill, count in sorted(job_skills.items(), key=lambda x: x[1], reverse=True)[:10]
+        ]
+        
         return {
-            "top_demanded_skills": [
-                {"skill": skill, "demand": round(count, 1), "jobs_count": int(count), "candidates_count": resume_skills.get(skill, 0), "gap_score": job_skills[skill] - resume_skills.get(skill, 0)}
-                for skill, count in sorted(job_skills.items(), key=lambda x: x[1], reverse=True)[:10]
-            ],
-            "skill_gaps": [
-                {"skill": skill, "demand": job_skills[skill], "supply": resume_skills.get(skill, 0), "gap_percentage": round((job_skills[skill] - resume_skills.get(skill, 0)) / max(job_skills[skill], 1) * 100, 2), "priority": "high" if job_skills[skill] > 3 else "medium" if job_skills[skill] > 1 else "low"}
-                for skill in list(skill_gaps)[:10]
-            ],
-            "emerging_skills": [
-                {"skill": skill, "growth_rate": round(job_skills[skill] * 10, 2), "recent_mentions": int(job_skills[skill] * 2)}
-                for skill, count in sorted(job_skills.items(), key=lambda x: x[1], reverse=True)[:10]
-            ],
+            "top_demanded_skills": [skill.dict() for skill in top_demanded_skills],
+            "skill_gaps": [gap.dict() for gap in skill_gaps_details],
+            "emerging_skills": [skill.dict() for skill in emerging_skills],
             "total_unique_skills": total_unique_skills,
             "avg_skills_per_job": avg_skills_per_job,
             "avg_skills_per_candidate": avg_skills_per_candidate
