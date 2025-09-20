@@ -17,8 +17,5 @@
       "src": "/(.*)",
       "dest": "client/$1"
     }
-  ],
-  "buildCommand": "node build-workspaces.js",
-  "installCommand": "npm install",
-  "outputDirectory": "client/.next"
+  ]
 }
