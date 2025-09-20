@@ -18,7 +18,7 @@
       "dest": "client/$1"
     }
   ],
-  "buildCommand": "npm install && npm run build --workspace=packages/shared-types && npm run build --workspace=packages/config && npm run build --workspace=client",
+  "buildCommand": "node build-workspaces.js",
   "installCommand": "npm install",
   "outputDirectory": "client/.next"
 }
