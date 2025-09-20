@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -34,12 +34,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import DashboardLayout from '@/components/ui/dashboard-layout';
+import PageWrapper from '@/components/ui/page-wrapper';
+
+export default function JobsPage() {
+  return (
+    <DashboardLayout>
+      <PageWrapper 
+        pageName="Jobs"
+        loadingType="jobs"
+      >
+        <Suspense fallback={<JobsPageSkeleton />}>
+          <JobsPageContent />
+        </Suspense>
+      </PageWrapper>
+    </DashboardLayout>
+  );
+}
 
 function JobsPageContent() {
   const router = useRouter();
   const logger = useLogger('JobsPage');
   const { loading, error, startLoading, stopLoading, setError, clearError } = useLoadingState('JobsPage');
   const pathname = usePathname();
+  // Only use useSearchParams inside a client component
   const searchParams = useSearchParams();
   
   const [jobs, setJobs] = useState<JobDescriptionList | null>(null);
@@ -370,331 +388,327 @@ function JobsPageContent() {
     return level.charAt(0).toUpperCase() + level.slice(1).replace('_', ' ');
   };
 
+  // Wrap the component that uses useSearchParams in Suspense
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      
-      {/* Header with Back Button */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Job Descriptions</h1>
-          <p className="text-gray-600 mt-1">Manage your job postings and requirements</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => {
-              LoggerUtils.logButtonClick('back_button_clicked');
-              router.back();
-            }}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <Link
-            href="/jobs/create"
-            onClick={() => LoggerUtils.logButtonClick('create_job')}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Create Job
-          </Link>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <BriefcaseIcon className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total_jobs}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <ClockIcon className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.active_jobs}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <DocumentDuplicateIcon className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Draft Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.draft_jobs}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <BuildingOfficeIcon className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Recent Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.recent_jobs}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg p-6 shadow-sm border mb-8">
-        <form onSubmit={handleSearch} className="flex gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search Jobs
-            </label>
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by title, company, skills..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-          
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
-          >
-            <FunnelIcon className="w-5 h-5 mr-2" />
-            Filters
-          </button>
-          
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Search
-          </button>
-        </form>
-
-        {/* Filters */}
-        {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
+    <DashboardLayout>
+      <PageWrapper 
+        pageName="Jobs"
+        loadingType="jobs"
+      >
+        <div className="space-y-6">
+          {/* Header with Back Button */}
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                title="Filter jobs by status"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="draft">Draft</option>
-                <option value="paused">Paused</option>
-                <option value="closed">Closed</option>
-              </select>
+              <h1 className="text-3xl font-bold text-gray-900">Job Descriptions</h1>
+              <p className="text-gray-600 mt-1">Manage your job postings and requirements</p>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Company
-              </label>
-              <select
-                value={companyFilter}
-                onChange={(e) => setCompanyFilter(e.target.value)}
-                title="Filter jobs by company"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => {
+                  LoggerUtils.logButtonClick('back_button_clicked');
+                  router.back();
+                }}
+                variant="outline"
+                className="flex items-center gap-2"
               >
-                <option value="">All Companies</option>
-                {companies.map(company => (
-                  <option key={company} value={company}>{company}</option>
-                ))}
-              </select>
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+              <Link
+                href="/jobs/create"
+                onClick={() => LoggerUtils.logButtonClick('create_job')}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <PlusIcon className="w-5 h-5 mr-2" />
+                Create Job
+              </Link>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
-          <p className="text-red-800">{error}</p>
-        </div>
-      )}
+          {/* Stats Cards */}
+          {stats && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-lg p-6 shadow-sm border">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <BriefcaseIcon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Jobs</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.total_jobs}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg p-6 shadow-sm border">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <ClockIcon className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Active Jobs</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.active_jobs}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg p-6 shadow-sm border">
+                <div className="flex items-center">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <DocumentDuplicateIcon className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Draft Jobs</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.draft_jobs}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg p-6 shadow-sm border">
+                <div className="flex items-center">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <BuildingOfficeIcon className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Recent Jobs</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.recent_jobs}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
-      {/* Jobs Grid */}
-      {jobs && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {jobs.jobs.map(job => (
-              <div key={job.id} className="bg-white rounded-lg p-6 shadow-sm border hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{getJobTypeIcon(job.job_type)}</span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(job.status)}`}>
-                        {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                      </span>
+          {/* Search and Filters */}
+          <div className="bg-white rounded-lg p-6 shadow-sm border mb-8">
+            <form onSubmit={handleSearch} className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Jobs
+                </label>
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by title, company, skills..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
+              >
+                <FunnelIcon className="w-5 h-5 mr-2" />
+                Filters
+              </button>
+              
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Search
+              </button>
+            </form>
+
+            {/* Filters */}
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    title="Filter jobs by status"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="draft">Draft</option>
+                    <option value="paused">Paused</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company
+                  </label>
+                  <select
+                    value={companyFilter}
+                    onChange={(e) => setCompanyFilter(e.target.value)}
+                    title="Filter jobs by company"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">All Companies</option>
+                    {companies.map(company => (
+                      <option key={company} value={company}>{company}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+              <p className="text-red-800">{error}</p>
+            </div>
+          )}
+
+          {/* Jobs Grid */}
+          {jobs && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {jobs.jobs.map(job => (
+                  <div key={job.id} className="bg-white rounded-lg p-6 shadow-sm border hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xl">{getJobTypeIcon(job.job_type)}</span>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(job.status)}`}>
+                            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{job.title}</h3>
+                        <p className="text-gray-600 text-sm">{job.company}</p>
+                        {job.department && (
+                          <p className="text-gray-500 text-sm">{job.department}</p>
+                        )}
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{job.title}</h3>
-                    <p className="text-gray-600 text-sm">{job.company}</p>
-                    {job.department && (
-                      <p className="text-gray-500 text-sm">{job.department}</p>
-                    )}
-                  </div>
-                </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <BuildingOfficeIcon className="w-4 h-4 mr-2" />
-                    {job.location}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <BriefcaseIcon className="w-4 h-4 mr-2" />
-                    {formatExperienceLevel(job.experience_level)} Level
-                  </div>
-                </div>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <BuildingOfficeIcon className="w-4 h-4 mr-2" />
+                        {job.location}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <BriefcaseIcon className="w-4 h-4 mr-2" />
+                        {formatExperienceLevel(job.experience_level)} Level
+                      </div>
+                    </div>
 
-                <div className="flex justify-between text-sm text-gray-500 mb-4">
-                  <span>{job.required_skills_count} Required Skills</span>
-                  <span>{job.total_requirements} Requirements</span>
-                </div>
+                    <div className="flex justify-between text-sm text-gray-500 mb-4">
+                      <span>{job.required_skills_count} Required Skills</span>
+                      <span>{job.total_requirements} Requirements</span>
+                    </div>
 
-                <div className="flex justify-between items-center">
-                  <p className="text-xs text-gray-500">
-                    Updated {new Date(job.updated_at).toLocaleDateString()}
-                  </p>
-                  
-                  <div className="flex gap-1">
-                    <Link
-                      href={`/jobs/${job.id}`}
-                      onClick={() => handleJobClick(job.id, 'view')}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="View job"
-                    >
-                      <EyeIcon className="w-4 h-4" />
-                    </Link>
-                    <Link
-                      href={`/jobs/${job.id}/edit`}
-                      onClick={() => handleJobClick(job.id, 'edit')}
-                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                      title="Edit job"
-                    >
-                      <PencilIcon className="w-4 h-4" />
-                    </Link>
-                    <button
-                      onClick={() => handleDuplicateJob(job.id)}
-                      className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                      title="Duplicate job"
-                    >
-                      <DocumentDuplicateIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteJob(job.id, job.title)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete job"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-gray-500">
+                        Updated {new Date(job.updated_at).toLocaleDateString()}
+                      </p>
+                      
+                      <div className="flex gap-1">
+                        <Link
+                          href={`/jobs/${job.id}`}
+                          onClick={() => handleJobClick(job.id, 'view')}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="View job"
+                        >
+                          <EyeIcon className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          href={`/jobs/${job.id}/edit`}
+                          onClick={() => handleJobClick(job.id, 'edit')}
+                          className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Edit job"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </Link>
+                        <button
+                          onClick={() => handleDuplicateJob(job.id)}
+                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Duplicate job"
+                        >
+                          <DocumentDuplicateIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteJob(job.id, job.title)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete job"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                    </div>
                   </div>
-
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-        {/* Pagination */}
-        {jobs && jobs.total_pages > 1 && (
-          <div className="flex justify-center mt-8">
-            <nav className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              {Array.from({ length: jobs.total_pages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-2 rounded-md border ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 hover:bg-gray-50'
-                  }`}
+            {/* Pagination */}
+            {jobs && jobs.total_pages > 1 && (
+              <div className="flex justify-center mt-8">
+                <nav className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: jobs.total_pages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-2 rounded-md border ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(jobs.total_pages, prev + 1))}
+                    disabled={currentPage === jobs.total_pages}
+                    className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            )}
+            </>
+          )}
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+            <AlertDialogContent className="bg-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {jobToDelete ? (
+                    <>
+                      Are you sure you want to delete &quot;<strong>{jobToDelete.title}</strong>&quot;? 
+                      This action cannot be undone.
+                    </>
+                  ) : (
+                    "Are you sure you want to delete this job? This action cannot be undone."
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setJobToDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={confirmDeleteJob}
+                  className="bg-red-600 hover:bg-red-700"
                 >
-                  {page}
-                </button>
-              ))}
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(jobs.total_pages, prev + 1))}
-                disabled={currentPage === jobs.total_pages}
-                className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </nav>
-          </div>
-        )}
-        </>
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
-        <AlertDialogContent className="bg-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {jobToDelete ? (
-                <>
-                  Are you sure you want to delete &quot;<strong>{jobToDelete.title}</strong>&quot;? 
-                  This action cannot be undone.
-                </>
-              ) : (
-                "Are you sure you want to delete this job? This action cannot be undone."
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setJobToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteJob}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-// Main component wrapped with error boundary and loading wrapper
-export default function JobsPage() {
-  return (
-    <ErrorBoundary errorBoundaryName="JobsPage">
-      <LoadingWrapper loading={false}>
-        <JobsPageContent />
-      </LoadingWrapper>
-    </ErrorBoundary>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </PageWrapper>
+    </DashboardLayout>
   );
 }
