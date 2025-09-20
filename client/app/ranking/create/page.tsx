@@ -1,7 +1,6 @@
-
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cachedApiService } from '@/lib/cached-api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,8 +13,9 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, X, Loader2, ArrowLeft, Award } from 'lucide-react'
 import { Job, JobDescriptionResponse, RankingCriteria } from '@/lib/types'
 import { toast } from 'sonner'
+import { FormSkeleton } from '@/components/ui/skeleton'
 
-export default function CreateRankingPage() {
+function CreateRankingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const jobId = searchParams.get('job')
@@ -199,8 +199,8 @@ export default function CreateRankingPage() {
             </p>
           </div>
           <Button
-            onClick={() => router.back()}
             variant="outline"
+            onClick={() => router.back()}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -209,148 +209,261 @@ export default function CreateRankingPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ranking Criteria</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Weight Sliders */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="skills-weight">Skills Weight: {(criteria.skills_weight * 100).toFixed(0)}%</Label>
-                <Slider
-                  id="skills-weight"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[criteria.skills_weight * 100]}
-                  onValueChange={(val) => handleWeightChange('skills_weight', val)}
-                  className="py-2"
-                />
+      <form onSubmit={handleSubmit}>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Job Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Position</Label>
+                <p className="font-medium">{job.title}</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="experience-weight">Experience Weight: {(criteria.experience_weight * 100).toFixed(0)}%</Label>
-                <Slider
-                  id="experience-weight"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[criteria.experience_weight * 100]}
-                  onValueChange={(val) => handleWeightChange('experience_weight', val)}
-                  className="py-2"
-                />
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Company</Label>
+                <p className="font-medium">{job.company}</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="education-weight">Education Weight: {(criteria.education_weight * 100).toFixed(0)}%</Label>
-                <Slider
-                  id="education-weight"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[criteria.education_weight * 100]}
-                  onValueChange={(val) => handleWeightChange('education_weight', val)}
-                  className="py-2"
-                />
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Location</Label>
+                <p className="font-medium">{job.location}</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="keyword-weight">Keyword Weight: {(criteria.keyword_weight * 100).toFixed(0)}%</Label>
-                <Slider
-                  id="keyword-weight"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[criteria.keyword_weight * 100]}
-                  onValueChange={(val) => handleWeightChange('keyword_weight', val)}
-                  className="py-2"
-                />
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Experience Level</Label>
+                <p className="font-medium capitalize">
+                  {job.experience_level?.split('_').join(' ') || 'Not specified'}
+                </p>
               </div>
             </div>
-            <div className="text-right text-sm text-gray-600">
-              Total Weight: {totalWeightPercentage.toFixed(0)}% (auto-normalized)
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Ranking Criteria</CardTitle>
+            <p className="text-sm text-gray-600">
+              Adjust the weights for different factors in the ranking algorithm. Total weight must equal 100%.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <div className="flex justify-between mb-2">
+                <Label className="text-sm font-medium text-gray-700">Skills Weight</Label>
+                <span className="text-sm font-medium text-gray-900">
+                  {Math.round((criteria.skills_weight || 0) * 100)}%
+                </span>
+              </div>
+              <Slider
+                value={[(criteria.skills_weight || 0) * 100]}
+                onValueChange={(value) => handleWeightChange('skills_weight', value)}
+                max={100}
+                step={1}
+                className="w-full"
+              />
             </div>
 
-            {/* Require Degree */}
+            <div>
+              <div className="flex justify-between mb-2">
+                <Label className="text-sm font-medium text-gray-700">Experience Weight</Label>
+                <span className="text-sm font-medium text-gray-900">
+                  {Math.round((criteria.experience_weight || 0) * 100)}%
+                </span>
+              </div>
+              <Slider
+                value={[(criteria.experience_weight || 0) * 100]}
+                onValueChange={(value) => handleWeightChange('experience_weight', value)}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-2">
+                <Label className="text-sm font-medium text-gray-700">Education Weight</Label>
+                <span className="text-sm font-medium text-gray-900">
+                  {Math.round((criteria.education_weight || 0) * 100)}%
+                </span>
+              </div>
+              <Slider
+                value={[(criteria.education_weight || 0) * 100]}
+                onValueChange={(value) => handleWeightChange('education_weight', value)}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-2">
+                <Label className="text-sm font-medium text-gray-700">Keyword Weight</Label>
+                <span className="text-sm font-medium text-gray-900">
+                  {Math.round((criteria.keyword_weight || 0) * 100)}%
+                </span>
+              </div>
+              <Slider
+                value={[(criteria.keyword_weight || 0) * 100]}
+                onValueChange={(value) => handleWeightChange('keyword_weight', value)}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+
+            <div className="pt-4 border-t">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-700">Total Weight</span>
+                <span className={`text-sm font-medium ${Math.abs(totalWeightPercentage - 100) < 0.1 ? 'text-green-600' : 'text-red-600'}`}>
+                  {totalWeightPercentage.toFixed(1)}%
+                </span>
+              </div>
+              {Math.abs(totalWeightPercentage - 100) >= 0.1 && (
+                <p className="text-sm text-red-600 mt-1">
+                  Total weight must equal 100%. Current weights will be automatically normalized.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Required Skills</CardTitle>
+            <p className="text-sm text-gray-600">
+              Candidates must have these skills to be considered for ranking.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2 mb-3">
+              <Input
+                value={newRequiredSkill}
+                onChange={(e) => setNewRequiredSkill(e.target.value)}
+                placeholder="Add required skill"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                onClick={() => addSkill('required', newRequiredSkill)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {criteria.required_skills.map((skill) => (
+                <Badge key={skill} variant="default" className="px-3 py-1.5 text-sm">
+                  {skill}
+                  <button
+                    type="button"
+                    onClick={() => removeSkill('required', skill)}
+                    className="ml-2 hover:bg-red-600 rounded-full p-0.5"
+                    aria-label={`Remove ${skill} skill`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {criteria.required_skills.length === 0 && (
+                <p className="text-sm text-gray-500 italic">No required skills added</p>
+              )}
+            </div>
+
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Preferred Skills</CardTitle>
+            <p className="text-sm text-gray-600">
+              Candidates with these skills will receive higher rankings.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2 mb-3">
+              <Input
+                value={newPreferredSkill}
+                onChange={(e) => setNewPreferredSkill(e.target.value)}
+                placeholder="Add preferred skill"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                onClick={() => addSkill('preferred', newPreferredSkill)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {criteria.preferred_skills.map((skill) => (
+                <Badge key={skill} variant="secondary" className="px-3 py-1.5 text-sm">
+                  {skill}
+                  <button
+                    type="button"
+                    onClick={() => removeSkill('preferred', skill)}
+                    className="ml-2 hover:bg-gray-600 rounded-full p-0.5"
+                    aria-label={`Remove ${skill} skill`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {criteria.preferred_skills.length === 0 && (
+                <p className="text-sm text-gray-500 italic">No preferred skills added</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Additional Requirements</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="require-degree"
+                id="require_degree"
                 checked={criteria.require_degree}
-                onCheckedChange={(checked) => setCriteria(prev => ({ ...prev, require_degree: !!checked }))}
+                onCheckedChange={(checked) => 
+                  setCriteria(prev => ({ ...prev, require_degree: !!checked }))
+                }
               />
-              <Label htmlFor="require-degree">Require a degree for all candidates</Label>
+              <Label htmlFor="require_degree" className="text-sm font-medium text-gray-700">
+                Require degree or equivalent qualification
+              </Label>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Required Skills */}
-            <div>
-              <Label htmlFor="required-skills">Required Skills</Label>
-              <div className="flex gap-2 mt-2">
-                <Input
-                  id="required-skills"
-                  placeholder="Add a required skill"
-                  value={newRequiredSkill}
-                  onChange={(e) => setNewRequiredSkill(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      addSkill('required', newRequiredSkill)
-                    }
-                  }}
-                />
-                <Button type="button" onClick={() => addSkill('required', newRequiredSkill)}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {criteria.required_skills.map((skill, index) => (
-                  <Badge key={index} variant="secondary" className="pr-1">
-                    {skill}
-                    <X className="ml-1 h-3 w-3 cursor-pointer" onClick={() => removeSkill('required', skill)} />
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Preferred Skills */}
-            <div>
-              <Label htmlFor="preferred-skills">Preferred Skills</Label>
-              <div className="flex gap-2 mt-2">
-                <Input
-                  id="preferred-skills"
-                  placeholder="Add a preferred skill"
-                  value={newPreferredSkill}
-                  onChange={(e) => setNewPreferredSkill(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      addSkill('preferred', newPreferredSkill)
-                    }
-                  }}
-                />
-                <Button type="button" onClick={() => addSkill('preferred', newPreferredSkill)}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {criteria.preferred_skills.map((skill, index) => (
-                  <Badge key={index} variant="secondary" className="pr-1">
-                    {skill}
-                    <X className="ml-1 h-3 w-3 cursor-pointer" onClick={() => removeSkill('preferred', skill)} />
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Award className="mr-2 h-4 w-4" />
-              )}
-              Create Ranking
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={submitting || Math.abs(totalWeightPercentage - 100) >= 0.1}
+            className="flex items-center gap-2"
+          >
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            Create Ranking
+          </Button>
+        </div>
+      </form>
     </div>
+  )
+}
+
+// Main component that wraps the content in Suspense
+export default function CreateRankingPage() {
+  return (
+    <Suspense fallback={<FormSkeleton fields={8} showActions={true} />}>
+      <CreateRankingPageContent />
+    </Suspense>
   )
 }
