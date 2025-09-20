@@ -20,7 +20,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
         "http://hirelens.vercel.app",
-        "https://your-hirelens-frontend.vercel.app"  # Add your actual Vercel URL here
+        "https://recruvizz.vercel.app"  # Add your actual Vercel URL here
     ]
     
     # For backward compatibility with new services
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
         "http://hirelens.vercel.app",
-        "https://your-hirelens-frontend.vercel.app"  # Add your actual Vercel URL here
+        "https://recruvizz.vercel.app"  # Add your actual Vercel URL here
     ]
     
     # File Upload Settings

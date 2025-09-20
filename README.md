@@ -1,12 +1,9 @@
-
 # HireLens
 
 > AI-powered resume parsing and ATS scoring platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org/)
 
 ## 🚀 Quick Start
@@ -213,6 +210,40 @@ cd server
 python -m pytest
 ```
 
+## 🧹 Data Management
+
+During normal operation, the application generates various data files:
+
+### Server Data Directories
+
+* `server/uploads/` - Uploaded resume files (excluded from version control)
+* `server/uploads/file_metadata.json` - Metadata about uploaded files (excluded from version control, created at runtime)
+* `server/data/` - Parsed resume data and job information (excluded from version control)
+* `server/data/rankings/` - Candidate ranking data (excluded from version control)
+* `server/data/comparisons/` - Resume-job comparison results (excluded from version control)
+
+### Template Files
+
+For files that need to exist but should be customized per installation:
+* `server/uploads/file_metadata.json.example` - Empty template for file metadata (included in version control)
+* `.env.example` - Template for environment variables
+
+To initialize these files:
+```bash
+# Copy the templates to actual files
+cp server/uploads/file_metadata.json.example server/uploads/file_metadata.json
+cp .env.example .env
+```
+
+The `file_metadata.json` file will be automatically created and populated when you upload files through the application. It tracks metadata about uploaded resumes and is specific to each installation.
+
+### Client Build Artifacts
+
+* `client/.next/` - Next.js build output
+* `client/out/` - Static export directory
+
+These directories are also excluded from version control.
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -230,13 +261,13 @@ python -m pytest
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://chatgpt.com/c/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
 For support, please:
 
-1. Check the [documentation](https://chatgpt.com/c/docs/)
+1. Check the [documentation](docs/)
 2. Search existing [issues](https://github.com/your-org/hirelens/issues)
 3. Create a new issue with detailed information
 

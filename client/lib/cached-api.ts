@@ -349,12 +349,22 @@ class CachedApiService {
     }
   }
 
-  getCacheStats() {
+  async getCacheStats() {
     return {
       analytics: apiCache.getStats(),
       jobs: jobsCache.getStats(),
       comparisons: comparisonsCache.getStats(),
       system: systemCache.getStats(),
+    };
+  }
+
+  // Add the missing getParsedResumes method
+  async getParsedResumes(): Promise<{ resumes: import('./types').ParsedResume[]; total: number }> {
+    // For now, we'll bypass caching for this method to ensure fresh data
+    const resumes = await this.originalApi.getParsedResumes();
+    return {
+      resumes: resumes,
+      total: resumes.length
     };
   }
 

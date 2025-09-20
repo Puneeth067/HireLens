@@ -77,3 +77,35 @@ temp/
 
 # coverage & reports
 *.lcov
+
+# Next.js build output
+.next/
+out/
+
+# Development server files
+.next/
+out/
+
+# Local environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+build/
+dist/
+
+# Cache files
+.cache/
+.parcel-cache/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Runtime data that gets generated during app usage
+uploads/
+data/
+parsed_resumes/
+comparisons/
+rankings/

@@ -434,7 +434,7 @@ export default function DashboardPage() {
             <div className="bg-white/10 backdrop-blur-sm rounded-full p-3">
               <Zap className="h-8 w-8" />
             </div>
-            <h1 className="text-3xl font-bold ml-4">HireLens Dashboard</h1>
+            <h1 className="text-3xl font-bold ml-4">RecruVizz Dashboard</h1>
           </div>
           
           <p className="text-lg text-blue-100 mb-6 max-w-2xl">

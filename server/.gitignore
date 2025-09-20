@@ -36,3 +36,37 @@ pip-wheel-metadata/
 .dmypy.json
 dmypy.json
 .pyright/
+
+# Editor & system files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+
+# Environment files (keep local only)
+.env
+.env.*
+
+# Runtime data that gets generated during app usage
+# Exclude actual uploaded files and metadata file
+uploads/*.pdf
+uploads/*.doc
+uploads/*.docx
+uploads/file_metadata.json
+uploads/data/
+uploads/resumes/
+uploads/files/
+uploads/parsed_resumes/
+uploads/comparisons/
+uploads/rankings/
+data/rankings/
+
+# Test files
+tests/__pycache__/
+tests/.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*

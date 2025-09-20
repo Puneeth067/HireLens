@@ -2,6 +2,7 @@
 
 import { useState, ReactNode, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
@@ -112,14 +113,23 @@ export default function DashboardLayout({
           {/* Logo */}
           <div className={`flex items-center px-4 py-4 border-b ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
             <div className="flex items-center">
-              <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">HL</span>
+              {/* Use favicon instead of RV text */}
+              <div className="w-9 h-9 flex items-center justify-center">
+                <Image
+                  src="/favicon-32x32.png" // or "/android-chrome-192x192.png" for higher res
+                  alt="Recruvizz Logo"
+                  width={36}
+                  height={36}
+                  className="rounded-lg"
+                />
               </div>
+
               {isSidebarExpanded && (
-                <h1 className="text-lg font-semibold text-gray-900 ml-3">HireLens</h1>
+                <h1 className="text-lg font-semibold text-gray-900 ml-3">RecruVizz</h1>
               )}
             </div>
           </div>
+
 
           {/* Navigation Menu */}
           <nav className="flex-1 px-4 py-6 overflow-y-auto">

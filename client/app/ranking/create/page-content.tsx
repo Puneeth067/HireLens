@@ -115,16 +115,34 @@ export default function CreateRankingPageContent() {
 
     setSubmitting(true)
     try {
-      // Fetch all resumes associated with the job
+      // Fetch job details to check if it has associated resumes
       const jobDetails = await cachedApiService.getJob(jobId);
       console.log('Job details:', jobDetails);
-      // The resumes property is already an array of resume IDs, no need to map
-      const resumeIds = jobDetails.resumes;
-      console.log('Resume IDs:', resumeIds);
-      console.log('Number of resumes:', resumeIds.length);
+      
+      let resumeIds: string[] = [];
+      
+      // Check if job has associated resumes
+      if (jobDetails.resumes && jobDetails.resumes.length > 0) {
+        console.log('Using resume IDs from job.resumes:', jobDetails.resumes);
+        resumeIds = jobDetails.resumes;
+      } else {
+        // Fallback: Fetch all parsed resumes and filter for completed ones
+        const parsedResumesResponse = await cachedApiService.getParsedResumes();
+        const parsedResumes = parsedResumesResponse.resumes;
+        console.log('All parsed resumes:', parsedResumes);
+        
+        // Filter resumes that are completed
+        const jobResumes = parsedResumes.filter(resume => 
+          resume.parsing_status === 'completed'
+        );
+        
+        resumeIds = jobResumes.map(resume => resume.id);
+        console.log('Filtered resume IDs for job:', resumeIds);
+        console.log('Number of resumes for job:', resumeIds.length);
+      }
 
       if (resumeIds.length === 0) {
-        toast.info('No existing comparisons found for this job. The system will automatically create comparisons for all parsed resumes.')
+        toast.info('No parsed resumes found for this job. Please upload and parse resumes first.')
       }
 
       // Log the criteria being sent
@@ -133,11 +151,11 @@ export default function CreateRankingPageContent() {
       const response = await cachedApiService.createRanking(jobId, resumeIds, criteria)
       console.log('API Response for createRanking:', response)
       if (response.ranking_id && response.ranking_id !== '') {
-        toast.success('Ranking created successfully!')
+        toast.success('Custom ranking created successfully!')
         console.log('Redirecting to ranking page...')
         router.push(`/ranking?job=${jobId}`) // Redirect to the main ranking page for the job
       } else {
-        toast.error('Failed to create ranking. Please check that all required information is provided and try again.')
+        toast.error('Failed to create custom ranking. Please check that all required information is provided and try again.')
         console.error('Ranking creation failed. Response:', response)
       }
     } catch (error) {
@@ -192,9 +210,13 @@ export default function CreateRankingPageContent() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Ranking</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Customize Ranking</h1>
             <p className="text-gray-600">
-              Define criteria to rank candidates for <span className="font-semibold">{job.title}</span>
+              Define custom criteria to rank candidates for <span className="font-semibold">{job.title}</span>
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Note: Rankings are automatically created when you select a job on the main ranking page. 
+              Use this page only if you need to customize the ranking criteria.
             </p>
           </div>
           <Button
@@ -212,6 +234,9 @@ export default function CreateRankingPageContent() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Job Information</CardTitle>
+            <p className="text-sm text-gray-600">
+              Job details for <span className="font-semibold">{job.title}</span> at {job.company}
+            </p>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -476,7 +501,7 @@ export default function CreateRankingPageContent() {
             className="flex items-center gap-2"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Create Ranking
+            Create Custom Ranking
           </Button>
         </div>
       </form>

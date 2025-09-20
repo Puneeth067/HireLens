@@ -37,9 +37,6 @@ pip-wheel-metadata/
 dmypy.json
 .pyright/
 
-
-
-
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -119,3 +116,22 @@ temp/
 
 # coverage & reports
 *.lcov
+
+# Server data and uploads (generated during runtime)
+/server/data/
+/server/uploads/
+/server/app/data/
+/server/app/uploads/
+/server/app/parsed_resumes/
+/server/app/comparisons/
+/server/app/rankings/
+
+# Client build artifacts
+/client/.next/
+/client/out/
+/client/build/
+/client/dist/
+/client/coverage/
+/client/jest-cache/
+/client/.vercel/
+/client/.netlify/

@@ -7,8 +7,8 @@ import DashboardLayout from '@/components/ui/dashboard-layout';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'HireLens - AI Resume Parser & Insight Generator',
-  description: 'AI-powered resume parsing and job matching system for recruiters',
+  title: 'RecruVizz - Resume Parser & Insight Generator',
+  description: 'NLP-based resume parsing and job matching system for recruiters',
 };
 
 export default function RootLayout({
