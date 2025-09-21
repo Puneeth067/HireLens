@@ -311,9 +311,8 @@ export default function DashboardPage() {
   useEffect(() => {
     refreshAllData()
 
-    // Set up periodic refresh
-    const interval = setInterval(refreshAllData, 30000) // Refresh every 30 seconds
-    return () => clearInterval(interval)
+    // Removed automatic refresh to prevent video interruption
+    // Users can manually refresh with the refresh button
   }, [])
 
   const getStatusColor = (status: string) => {

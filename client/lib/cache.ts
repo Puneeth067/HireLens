@@ -237,7 +237,7 @@ class CacheManager {
 export const CACHE_CONFIGS = {
   // API responses with frequent updates
   ANALYTICS: { ttl: 2 * 60 * 1000, maxSize: 50 }, // 2 minutes
-  JOBS: { ttl: 1 * 1000, maxSize: 100 }, // 1 second (reduced from 5 seconds for immediate updates)
+  JOBS: { ttl: 30 * 1000, maxSize: 100 }, // 30 seconds to reduce UI disruption
   COMPARISONS: { ttl: 3 * 60 * 1000, maxSize: 200 }, // 3 minutes
   
   // Relatively static data
@@ -385,10 +385,18 @@ export function useCacheStats() {
       });
     };
     
-    updateStats();
-    const interval = setInterval(updateStats, 5000); // Update every 5 seconds
-    
-    return () => clearInterval(interval);
+    // Only enable frequent updates in development mode
+    if (process.env.NODE_ENV === 'development') {
+      updateStats();
+      const interval = setInterval(updateStats, 10000); // Update every 10 seconds in dev
+      
+      return () => clearInterval(interval);
+    } else {
+      // In production, update less frequently
+      updateStats();
+      // Remove automatic updates in production to prevent UI disruption
+      // Stats will be updated only when the hook is re-mounted
+    }
   }, []);
   
   return stats;

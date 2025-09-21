@@ -157,7 +157,7 @@ class CachedApiService {
     }
     
     const data = await this.originalApi.getJobs(params);
-    jobsCache.set(cacheKey, data, 1 * 1000); // 1 second TTL for immediate updates
+    jobsCache.set(cacheKey, data, 30 * 1000); // 30 seconds TTL to reduce UI disruption
     return data;
   }
 
@@ -170,7 +170,7 @@ class CachedApiService {
     }
     
     const data = await this.originalApi.getJob(jobId);
-    jobsCache.set(cacheKey, data, 1 * 1000); // 1 second TTL for immediate updates
+    jobsCache.set(cacheKey, data, 30 * 1000); // 30 seconds TTL to reduce UI disruption
     return data;
   }
 
@@ -216,7 +216,7 @@ class CachedApiService {
     }
     
     const data = await this.originalApi.getJobStats();
-    jobsCache.set(cacheKey, data, 1 * 1000); // 1 second TTL for immediate updates
+    jobsCache.set(cacheKey, data, 30 * 1000); // 30 seconds TTL to reduce UI disruption
     return data;
   }
 

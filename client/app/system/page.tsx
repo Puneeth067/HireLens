@@ -52,7 +52,7 @@ function SystemPageContent() {
     
     const interval = setInterval(() => {
       fetchSystemData();
-    }, 30000); // Update every 30 seconds
+    }, 60000); // Update every 60 seconds to reduce UI disruption
     
     return () => {
       clearInterval(interval);

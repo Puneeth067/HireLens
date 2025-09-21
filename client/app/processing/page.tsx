@@ -71,13 +71,13 @@ function ProcessingPageContent() {
     loadFiles();
     loadStats();
     
-    // Set up polling for processing files
+    // Set up polling for processing files - reduced frequency to prevent UI disruption
     const interval = setInterval(() => {
       if (processingFilesRef.current.size > 0) {
         componentLogger.debug('Polling for processing files update', { processingCount: processingFilesRef.current.size });
         loadFiles();
       }
-    }, 3000);
+    }, 10000); // Increased from 3s to 10s to reduce UI disruption
 
     return () => {
       clearInterval(interval);
