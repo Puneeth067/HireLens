@@ -3,15 +3,15 @@
 > AI-powered resume parsing and ATS scoring platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-19+-green.svg)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org/)
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-* Node.js 18+ and npm
-* Python 3.8+ and pip
+* Node.js 19+ and npm
+* Python 3.11.0+ and pip
 * Git
 
 ### Development Setup
@@ -86,7 +86,7 @@ hirelens/
 ### Backend (FastAPI)
 
 * **Framework** : FastAPI with async/await
-* **Language** : Python 3.8+
+* **Language** : Python 3.11.0+
 * **Data Validation** : Pydantic v2
 * **File Processing** : PyPDF2, python-docx, mammoth
 * **NLP** : spaCy, NLTK for resume parsing
@@ -225,10 +225,12 @@ During normal operation, the application generates various data files:
 ### Template Files
 
 For files that need to exist but should be customized per installation:
+
 * `server/uploads/file_metadata.json.example` - Empty template for file metadata (included in version control)
 * `.env.example` - Template for environment variables
 
 To initialize these files:
+
 ```bash
 # Copy the templates to actual files
 cp server/uploads/file_metadata.json.example server/uploads/file_metadata.json
@@ -267,10 +269,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For support, please:
 
-1. Check the [documentation](docs/)
-2. Search existing [issues](https://github.com/your-org/hirelens/issues)
+1. Check the [documentation](https://hirelens-api.onrender.app/)
+2. Pull request [issues](https://github.com/puneeth067/hirelens/)
 3. Create a new issue with detailed information
-
----
-
-**Built with ❤️ using Next.js, FastAPI, and modern development practices**
