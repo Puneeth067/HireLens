@@ -24,7 +24,9 @@ import {
   Search,
   Settings,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Play,
+  ExternalLink
 } from 'lucide-react'
 import apiService from '@/lib/api'
 import { cachedApiService } from '@/lib/cached-api'
@@ -404,6 +406,10 @@ export default function DashboardPage() {
     }
   ]
 
+  // YouTube video section
+  const youtubeVideoId = 'TRHvnnKGFY' // Placeholder - replace with actual video ID
+  const youtubeUrl = `https://www.youtube.com/embed/${youtubeVideoId}`
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 flex justify-center items-center h-screen">
@@ -690,6 +696,46 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* YouTube Demo Section */}
+      <div className="mt-8">
+        <Card className="bg-white border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Play className="h-5 w-5 mr-2" />
+              Product Demo Video
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600 mb-4 text-sm sm:text-base">
+              Watch a quick walkthrough of RecruVizz in action.
+            </p>
+            
+            {/* Responsive YouTube Embed */}
+            <div className="relative pb-[56.25%] h-0 rounded-lg overflow-hidden mb-4"> {/* 16:9 Aspect Ratio */}
+              <iframe
+                src={youtubeUrl}
+                title="RecruVizz Product Demo"
+                className="absolute top-0 left-0 w-full h-full rounded-lg"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+            
+            {/* Fallback Button */}
+            <a 
+              href={`https://www.youtube.com/watch?v=${youtubeVideoId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Watch on YouTube
+            </a>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Navigation Cards */}

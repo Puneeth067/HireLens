@@ -62,12 +62,6 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
       newErrors.salary_max = 'Maximum salary must be greater than or equal to minimum salary';
     }
 
-    // Weight validation
-    const totalWeight = formData.weight_skills + formData.weight_experience + formData.weight_education + formData.weight_keywords;
-    if (Math.abs(totalWeight - 100) > 0.01) { // Allow for floating point precision
-      newErrors.weights = `ATS weights must sum to 100% (currently ${totalWeight.toFixed(1)}%)`;
-    }
-
     // Skills validation
     if (requiredSkills.length === 0) {
       newErrors.required_skills = 'At least one required skill is needed';
@@ -214,10 +208,27 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
   };
 
   const handleWeightChange = (weight: 'weight_skills' | 'weight_experience' | 'weight_education' | 'weight_keywords', value: number) => {
-    setFormData(prev => ({
-      ...prev,
-      [weight]: value
-    }));
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        [weight]: value
+      };
+      
+      // Calculate current total
+      const currentTotal = newFormData.weight_skills + newFormData.weight_experience + newFormData.weight_education + newFormData.weight_keywords;
+      
+      // If total is not 100%, normalize the weights
+      if (Math.abs(currentTotal - 100) > 0.01) {
+        const factor = 100 / currentTotal;
+        newFormData.weight_skills = parseFloat((newFormData.weight_skills * factor).toFixed(2));
+        newFormData.weight_experience = parseFloat((newFormData.weight_experience * factor).toFixed(2));
+        newFormData.weight_education = parseFloat((newFormData.weight_education * factor).toFixed(2));
+        newFormData.weight_keywords = parseFloat((newFormData.weight_keywords * factor).toFixed(2));
+      }
+      
+      return newFormData;
+    });
+    
     if (errors.weights) {
       setErrors(prev => ({ ...prev, weights: '' }));
     }
@@ -510,10 +521,18 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-900">ATS Scoring Weights</h3>
-              <span className={`text-sm font-medium ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                Total: {totalWeight}%
+              <span className={`text-sm font-medium ${Math.abs(totalWeight - 100) < 0.1 ? 'text-green-600' : 'text-red-600'}`}>
+                Total: {totalWeight.toFixed(1)}%
               </span>
             </div>
+            <p className="text-sm text-gray-600">
+              Adjust the weights for different factors in the ATS scoring algorithm. 
+              {Math.abs(totalWeight - 100) >= 0.1 ? (
+                <span className="text-red-600"> Weights will be automatically normalized to total 100%.</span>
+              ) : (
+                <span> Total weight must equal 100%.</span>
+              )}
+            </p>
 
             <div className="grid md:grid-cols-2 gap-4">
               {[
@@ -545,7 +564,11 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
                 );
               })}
             </div>
-            {errors.weights && <p className="mt-1 text-sm text-red-600">{errors.weights}</p>}
+            {Math.abs(totalWeight - 100) >= 0.1 && (
+              <p className="text-sm text-red-600">
+                Total weight must equal 100%. Current weights will be automatically normalized.
+              </p>
+            )}
           </div>
 
           {/* Job Requirements - Add missing required fields */}
