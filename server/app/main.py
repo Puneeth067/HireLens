@@ -74,7 +74,9 @@ async def lifespan(app: FastAPI):
             logger.info("spaCy model loaded successfully")
         except OSError:
             logger.info("Downloading spaCy English model...")
-            spacy.cli.download("en_core_web_sm")
+            # Use subprocess to call spacy download command
+            import subprocess
+            subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
             logger.info("spaCy English model downloaded successfully")
     except Exception as e:
         logger.error(f"spaCy model handling failed: {e}")
