@@ -169,6 +169,7 @@ async def get_upload_status(file_id: str):
 async def delete_uploaded_file(file_id: str):
     """Delete an uploaded file."""
     try:
+        print(f"Delete request received for file_id: {file_id}")  # Debug log
         metadata = file_service.get_file_metadata(file_id)
         if not metadata:
             raise HTTPException(status_code=404, detail="File not found")
@@ -178,6 +179,7 @@ async def delete_uploaded_file(file_id: str):
         if not success:
             raise HTTPException(status_code=404, detail="File not found")
         
+        print(f"File deleted successfully: {file_id}")  # Debug log
         return {"message": "File deleted successfully"}
         
     except HTTPException:
@@ -221,3 +223,14 @@ async def scan_and_register_existing_files():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scan and register failed: {str(e)}")
+
+@router.post("/bulk-delete")
+async def bulk_delete_files(file_ids: List[str]):
+    """Delete multiple files"""
+    try:
+        print(f"Bulk delete request received for file_ids: {file_ids}")  # Debug log
+        result = file_service.bulk_delete_files(file_ids)
+        print(f"Bulk delete completed. Result: {result}")  # Debug log
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk delete failed: {str(e)}")

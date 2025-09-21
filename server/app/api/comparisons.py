@@ -291,6 +291,28 @@ async def export_comparisons(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
+@router.delete("/all", response_model=ComparisonResponse)
+async def delete_all_comparisons():
+    """Delete all comparisons"""
+    try:
+        # Get all comparison IDs
+        all_comparison_ids = list(comparison_service._comparison_cache.keys())
+        deleted_count = 0
+        
+        # Delete each comparison
+        for comparison_id in all_comparison_ids:
+            if comparison_service.delete_comparison(comparison_id):
+                deleted_count += 1
+        
+        return ComparisonResponse(
+            success=True,
+            message=f"Successfully deleted all {deleted_count} comparisons",
+            data={"deleted_count": deleted_count},
+            error=None
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete all comparisons: {str(e)}")
+
 # Parameterized routes (must come AFTER list routes)
 @router.get("/{comparison_id}", response_model=ComparisonResponse)
 async def get_comparison(comparison_id: str):

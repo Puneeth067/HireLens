@@ -300,6 +300,25 @@ class CachedApiService {
     CacheInvalidation.onUserAction();
   }
 
+  async getComparisonStats(): Promise<{
+    total_comparisons: number;
+    avg_score: number;
+    top_score: number;
+    recent_comparisons: number;
+    status_breakdown: Record<string, number>;
+  }> {
+    // Always fetch fresh data for comparison stats to avoid cache inconsistencies
+    // Clear any cached stats first
+    const cacheKey = 'comparison_stats';
+    comparisonsCache.delete(cacheKey);
+    
+    const data = await this.originalApi.getComparisonStats();
+    
+    // Cache the fresh data for a short period to avoid excessive API calls
+    comparisonsCache.set(cacheKey, data, 30 * 1000); // 30 seconds TTL
+    return data;
+  }
+
   // Override system methods with caching
   async healthCheck(): Promise<SystemHealth> {
     const cacheKey = CacheKeys.SYSTEM_HEALTH();

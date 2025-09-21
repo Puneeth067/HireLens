@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { 
   Users, BarChart3, Trophy, Clock, Search, Filter, 
-  Download, XCircle, Trash2, AlertTriangle, CheckCircle, ArrowLeft
+  Download, XCircle, Trash2, AlertTriangle, CheckCircle, ArrowLeft, RefreshCw
 } from 'lucide-react';
 import apiService from '@/lib/api';
 import { logger, useLogger } from '@/lib/logger';
@@ -53,12 +53,14 @@ function ComparisonsPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [deleteAllConfirmationOpen, setDeleteAllConfirmationOpen] = useState(false);
   const [comparisonToDelete, setComparisonToDelete] = useState<string | null>(null);
 
   // Refs to track if data has been loaded to prevent infinite loops
   const hasLoadedData = useRef(false);
   const filtersRef = useRef(filters);
   const currentPageRef = useRef(currentPage);
+  const forceRefreshRef = useRef(false);
 
   // Performance tracking
   useEffect(() => {
@@ -76,7 +78,8 @@ function ComparisonsPageContent() {
     const filtersChanged = JSON.stringify(filtersRef.current) !== JSON.stringify(filters);
     const pageChanged = currentPageRef.current !== currentPage;
     
-    if (!filtersChanged && !pageChanged && hasLoadedData.current) {
+    // Always load fresh data when resetAllData is called, regardless of filters/page changes
+    if (!filtersChanged && !pageChanged && hasLoadedData.current && !forceRefreshRef.current) {
       return;
     }
     
@@ -84,6 +87,7 @@ function ComparisonsPageContent() {
     filtersRef.current = filters;
     currentPageRef.current = currentPage;
     hasLoadedData.current = true;
+    forceRefreshRef.current = false;
 
     try {
       setLoading(true);
@@ -95,14 +99,13 @@ function ComparisonsPageContent() {
         filters: filters
       });
       
-      // Try cache for jobs and stats first
+      // Try cache for jobs first, but always fetch fresh comparison data
       const jobsCacheKey = CacheKeys.JOBS_LIST(1, 'all');
       const statsCacheKey = CacheKeys.ANALYTICS_OVERVIEW();
       
       const cachedJobs = jobsCache.get<{ jobs: JobDescriptionResponse[] }>(jobsCacheKey);
-      const cachedStats = comparisonsCache.get<ComparisonStats>(statsCacheKey);
       
-      // Load comparisons data (always fresh)
+      // ALWAYS fetch fresh comparison data to avoid cache inconsistencies
       const comparisonsRes = await apiService.getComparisons({
         page: currentPage,
         limit: 12,
@@ -123,31 +126,28 @@ function ComparisonsPageContent() {
         setNoComparisons(true);
       }
       
-      // Load stats if not cached
-      if (!cachedStats) {
-        try {
-          componentLogger.debug('Fetching comparison stats from API');
-          const statsRes = await apiService.getComparisonStats();
-          componentLogger.debug('Received comparison stats', statsRes);
-          setStats(statsRes);
-          comparisonsCache.set(statsCacheKey, statsRes, 120000); // 2 minutes cache
-        } catch (statsError) {
-          // Handle case when there are no comparisons yet
-          componentLogger.warn('Failed to load stats, using default values', { error: statsError });
-          setStats({
-            total_comparisons: 0,
-            avg_score: 0,
-            top_score: 0,
-            recent_comparisons: 0,
-            status_breakdown: {}
-          });
-        }
-      } else {
-        setStats(cachedStats);
+      // ALWAYS fetch fresh stats to avoid cache inconsistencies
+      try {
+        componentLogger.debug('Fetching fresh comparison stats from API');
+        const statsRes = await apiService.getComparisonStats();
+        componentLogger.debug('Received fresh comparison stats', statsRes);
+        setStats(statsRes);
+        // Cache the fresh stats for a short period
+        comparisonsCache.set(statsCacheKey, statsRes, 30000); // 30 seconds cache
+      } catch (statsError) {
+        // Handle case when there are no comparisons yet
+        componentLogger.warn('Failed to load stats, using default values', { error: statsError });
+        setStats({
+          total_comparisons: 0,
+          avg_score: 0,
+          top_score: 0,
+          recent_comparisons: 0,
+          status_breakdown: {}
+        });
       }
       
-      // Load jobs if not cached
-      if (!cachedJobs) {
+      // Load jobs if not cached or if reset was requested
+      if (!cachedJobs || forceRefreshRef.current) {
         const jobsRes = await apiService.getJobs({ limit: 1000 });
         setJobs(jobsRes.jobs);
         jobsCache.set(jobsCacheKey, jobsRes, 300000); // 5 minutes cache
@@ -159,7 +159,7 @@ function ComparisonsPageContent() {
         comparisonsCount: comparisonsRes.comparisons.length,
         totalComparisons: comparisonsRes.total,
         page: currentPage,
-        fromCache: { jobs: !!cachedJobs, stats: !!cachedStats }
+        fromCache: { jobs: !!cachedJobs }
       });
     } catch (error) {
       componentLogger.error('Error loading comparisons', { error, filters, page: currentPage });
@@ -226,12 +226,102 @@ function ComparisonsPageContent() {
         });
       }
       
+      // Also update the total pages if needed
+      const newTotal = (stats?.total_comparisons || 1) - 1;
+      const newTotalPages = Math.ceil(newTotal / 12);
+      setTotalPages(newTotalPages);
+      
+      // If we're on a page that no longer exists, go to the previous page
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      }
+      
+      // Clear cached stats to ensure fresh data on next load
+      const statsCacheKey = CacheKeys.ANALYTICS_OVERVIEW();
+      comparisonsCache.delete(statsCacheKey);
+      
       componentLogger.userAction('delete_comparison_completed', { comparisonId });
     } catch (error) {
       componentLogger.error('Error deleting comparison', { error, comparisonId });
       alert('Failed to delete comparison. Please try again.');
     }
-  }, [componentLogger, stats]);
+  }, [componentLogger, stats, currentPage]);
+
+  const resetAllData = useCallback(async () => {
+    try {
+      componentLogger.userAction('reset_all_data_initiated');
+      
+      // Clear all caches to ensure fresh data
+      comparisonsCache.clear();
+      jobsCache.clear();
+      
+      // Also clear any cached stats
+      const statsCacheKey = CacheKeys.ANALYTICS_OVERVIEW();
+      comparisonsCache.delete(statsCacheKey);
+      
+      // Reset filters
+      resetFilters();
+      
+      // Set force refresh flag
+      forceRefreshRef.current = true;
+      
+      // Reload data
+      hasLoadedData.current = false;
+      await loadData();
+      
+      componentLogger.userAction('reset_all_data_completed');
+    } catch (error) {
+      componentLogger.error('Error resetting all data', { error });
+      alert('Failed to reset data. Please try again.');
+    }
+  }, [componentLogger, loadData, resetFilters]);
+
+  const deleteAllComparisons = useCallback(async () => {
+    try {
+      componentLogger.userAction('delete_all_comparisons_initiated');
+      
+      // Set state to open the delete all confirmation dialog
+      setDeleteAllConfirmationOpen(true);
+    } catch (error) {
+      componentLogger.error('Error deleting all comparisons', { error });
+      alert('Failed to delete all comparisons. Please try again.');
+    }
+  }, [componentLogger]);
+
+  const confirmDeleteAllComparisons = useCallback(async () => {
+    try {
+      // Close the dialog
+      setDeleteAllConfirmationOpen(false);
+      
+      // Delete all comparisons
+      const result = await apiService.deleteAllComparisons();
+      
+      // Clear all caches to ensure fresh data
+      comparisonsCache.clear();
+      jobsCache.clear();
+      
+      // Also clear any cached stats
+      const statsCacheKey = CacheKeys.ANALYTICS_OVERVIEW();
+      comparisonsCache.delete(statsCacheKey);
+      
+      // Reset filters
+      resetFilters();
+      
+      // Set force refresh flag
+      forceRefreshRef.current = true;
+      
+      // Reload data
+      hasLoadedData.current = false;
+      await loadData();
+      
+      componentLogger.userAction('delete_all_comparisons_completed', { deletedCount: result.deleted_count });
+      alert(`Successfully deleted ${result.deleted_count} comparisons.`);
+    } catch (error) {
+      componentLogger.error('Error deleting all comparisons', { error });
+      alert('Failed to delete all comparisons. Please try again.');
+    }
+  }, [componentLogger, loadData, resetFilters]);
+
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600 bg-green-50';
@@ -278,6 +368,9 @@ function ComparisonsPageContent() {
             >
               Try Again
             </Button>
+            <Button onClick={resetAllData} variant="outline">
+              Refresh Data
+            </Button>
             <Button onClick={() => window.location.href = '/'}>
               Go Home
             </Button>
@@ -308,6 +401,22 @@ function ComparisonsPageContent() {
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
+            <Button
+              onClick={deleteAllComparisons}
+              variant="outline"
+              className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
+            </Button>
+            <Button
+              onClick={resetAllData}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh All
+            </Button>
             <Link
               href="/comparisons/create"
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -327,6 +436,7 @@ function ComparisonsPageContent() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Comparisons</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.total_comparisons}</p>
+                  <p className="text-xs text-gray-500">Active: {(stats.status_breakdown?.completed || 0) + (stats.status_breakdown?.pending || 0)}</p>
                 </div>
               </div>
             </div>
@@ -336,6 +446,7 @@ function ComparisonsPageContent() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Average Score</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.avg_score.toFixed(1)}%</p>
+                  <p className="text-xs text-gray-500">Completed: {stats.status_breakdown?.completed || 0}</p>
                 </div>
               </div>
             </div>
@@ -345,6 +456,7 @@ function ComparisonsPageContent() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Top Score</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.top_score.toFixed(1)}%</p>
+                  <p className="text-xs text-gray-500">Pending: {stats.status_breakdown?.pending || 0}</p>
                 </div>
               </div>
             </div>
@@ -354,6 +466,7 @@ function ComparisonsPageContent() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Recent (7 days)</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.recent_comparisons}</p>
+                  <p className="text-xs text-gray-500">Failed: {stats.status_breakdown?.failed || 0}</p>
                 </div>
               </div>
             </div>
@@ -605,6 +718,28 @@ function ComparisonsPageContent() {
                 className="bg-red-600 hover:bg-red-700"
               >
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete All Confirmation Dialog */}
+        <AlertDialog open={deleteAllConfirmationOpen} onOpenChange={setDeleteAllConfirmationOpen}>
+          <AlertDialogContent className="bg-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete ALL comparisons
+                and remove them from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDeleteAllConfirmationOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDeleteAllComparisons}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete All
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

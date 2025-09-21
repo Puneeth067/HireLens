@@ -240,15 +240,22 @@ function ProcessingPageContent() {
   }, []); // Remove componentLogger dependency to prevent infinite loop
 
   const deleteFile = useCallback(async (fileId: string, filename: string) => {
+    // Debug log to see which file is being deleted
+    console.log('Delete file called for:', { fileId, filename });
+    
     // Set the file to delete and open the confirmation dialog
     setFileToDelete({ id: fileId, name: filename });
     setDeleteConfirmationOpen(true);
   }, []);
 
   const confirmDeleteFile = useCallback(async () => {
-    if (!fileToDelete) return;
+    if (!fileToDelete) {
+      console.warn('No file selected for deletion');
+      return;
+    }
     
     const { id: fileId, name: filename } = fileToDelete;
+    console.log('Confirming delete for:', { fileId, filename });
     
     try {
       componentLogger.userAction('delete_file', { fileId });
@@ -256,7 +263,10 @@ function ProcessingPageContent() {
       // Set loading state for this file
       setDeletingFiles(prev => new Set(prev).add(fileId));
       
+      // Debug log before calling API
+      console.log('Calling delete API for file:', fileId);
       await apiService.deleteFile(fileId);
+      console.log('Delete API call completed for file:', fileId);
       
       await loadFiles();
       await loadStats();
@@ -635,7 +645,10 @@ function ProcessingPageContent() {
           </TabsContent>
 
           {/* Delete Confirmation Dialog */}
-          <AlertDialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+          <AlertDialog open={deleteConfirmationOpen} onOpenChange={(open) => {
+            setDeleteConfirmationOpen(open);
+            if (!open) setFileToDelete(null); // Clear file to delete when dialog is closed
+          }}>
             <AlertDialogContent className="bg-white">
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>

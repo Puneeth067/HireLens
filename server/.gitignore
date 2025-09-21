@@ -53,14 +53,14 @@ dmypy.json
 uploads/*.pdf
 uploads/*.doc
 uploads/*.docx
-uploads/file_metadata.json
-uploads/data/
-uploads/resumes/
-uploads/files/
-uploads/parsed_resumes/
-uploads/comparisons/
-uploads/rankings/
-data/rankings/
+# uploads/file_metadata.json
+# uploads/data/
+# uploads/resumes/
+# uploads/files/
+# uploads/parsed_resumes/
+# uploads/comparisons/
+# uploads/rankings/
+# data/rankings/
 
 # Test files
 tests/__pycache__/

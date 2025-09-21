@@ -129,25 +129,31 @@ class FileService:
     def delete_file(self, file_id: str) -> bool:
         """Delete file and its metadata"""
         try:
+            print(f"File service delete_file called for file_id: {file_id}")  # Debug log
             metadata = self._load_metadata()
             if file_id not in metadata:
+                print(f"File ID {file_id} not found in metadata")  # Debug log
                 return False
             
             file_info = metadata[file_id]
+            print(f"Deleting file: {file_info['filename']}")  # Debug log
             
             # Delete physical file
             file_path = self.upload_dir / file_info['filename']
             if file_path.exists():
                 file_path.unlink()
+                print(f"Physical file deleted: {file_path}")  # Debug log
             
             # Delete parsed data if exists
             parsed_data_file = self.parsed_data_dir / f"{file_id}.json"
             if parsed_data_file.exists():
                 parsed_data_file.unlink()
+                print(f"Parsed data file deleted: {parsed_data_file}")  # Debug log
             
             # Remove from metadata
             del metadata[file_id]
             self._save_metadata(metadata)
+            print(f"Metadata entry removed for file_id: {file_id}")  # Debug log
             
             logger.info(f"File deleted successfully: {file_id}")
             return True
@@ -242,20 +248,26 @@ class FileService:
     
     def bulk_delete_files(self, file_ids: List[str]) -> Dict[str, List[str]]:
         """Delete multiple files"""
+        print(f"Bulk delete files called with file_ids: {file_ids}")  # Debug log
         deleted = []
         failed = []
         
         for file_id in file_ids:
             try:
+                print(f"Bulk deleting file_id: {file_id}")  # Debug log
                 if self.delete_file(file_id):
                     deleted.append(file_id)
+                    print(f"File {file_id} deleted successfully")  # Debug log
                 else:
                     failed.append(file_id)
+                    print(f"Failed to delete file {file_id}")  # Debug log
             except Exception as e:
                 logger.error(f"Error deleting file {file_id}: {e}")
                 failed.append(file_id)
         
-        return {'deleted': deleted, 'failed': failed}
+        result = {'deleted': deleted, 'failed': failed}
+        print(f"Bulk delete result: {result}")  # Debug log
+        return result
     
     def bulk_update_status(self, updates: List[Dict[str, str]]) -> Dict[str, List[str]]:
         """Update status for multiple files"""
@@ -347,12 +359,14 @@ class FileService:
     
     def cleanup_orphaned_files(self) -> Dict[str, int]:
         """Clean up orphaned files and data"""
+        print("Cleanup orphaned files called")  # Debug log
         metadata = self._load_metadata()
         cleaned = {'files': 0, 'parsed_data': 0, 'metadata_entries': 0}
         
         # If metadata is empty, don't delete all files (this would be catastrophic)
         if not metadata:
             logger.warning("Metadata is empty. Skipping cleanup to prevent data loss.")
+            print("Metadata is empty. Skipping cleanup to prevent data loss.")  # Debug log
             return cleaned
         
         # Clean up physical files without metadata
@@ -364,6 +378,7 @@ class FileService:
                         file_path.unlink()
                         cleaned['files'] += 1
                         logger.info(f"Cleaned up orphaned file: {file_path.name}")
+                        print(f"Cleaned up orphaned file: {file_path.name}")  # Debug log
                     except Exception as e:
                         logger.error(f"Error cleaning up file {file_path.name}: {e}")
         
@@ -376,6 +391,7 @@ class FileService:
                         parsed_file.unlink()
                         cleaned['parsed_data'] += 1
                         logger.info(f"Cleaned up orphaned parsed data: {parsed_file.name}")
+                        print(f"Cleaned up orphaned parsed data: {parsed_file.name}")  # Debug log
                     except Exception as e:
                         logger.error(f"Error cleaning up parsed data {parsed_file.name}: {e}")
         
@@ -388,10 +404,12 @@ class FileService:
             else:
                 cleaned['metadata_entries'] += 1
                 logger.info(f"Cleaned up orphaned metadata entry: {file_id}")
+                print(f"Cleaned up orphaned metadata entry: {file_id}")  # Debug log
         
         if cleaned['metadata_entries'] > 0:
             self._save_metadata(updated_metadata)
         
+        print(f"Cleanup result: {cleaned}")  # Debug log
         return cleaned
     
     def export_metadata(self, file_ids: Optional[List[str]] = None) -> Dict[str, Any]:

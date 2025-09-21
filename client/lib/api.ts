@@ -182,6 +182,7 @@ class ApiService {
   }
 
   async deleteFile(fileId: string): Promise<{ message: string }> {
+    console.log('API Service deleteFile called with fileId:', fileId); // Debug log
     const response = await this.fetchWithAuth(`/api/upload/file/${fileId}`, {
       method: 'DELETE',
     });
@@ -718,6 +719,19 @@ class ApiService {
     const response = await this.fetchWithAuth('/api/comparisons/bulk-delete', {
       method: 'DELETE',
       body: JSON.stringify({ comparison_ids: ids })
+    });
+    const data = await response.json();
+    
+    // Handle wrapped response
+    if (data.data && data.data.deleted_count !== undefined) {
+      return data.data;
+    }
+    return { deleted_count: data.deleted_count || 0 };
+  }
+
+  async deleteAllComparisons(): Promise<{ deleted_count: number }> {
+    const response = await this.fetchWithAuth('/api/comparisons/all', {
+      method: 'DELETE'
     });
     const data = await response.json();
     
@@ -1354,6 +1368,7 @@ async getJobSummary(jobId: string): Promise<{
     deleted: string[];
     failed: Array<{ file_id: string; error: string }>;
   }> {
+    console.log('API Service bulkDeleteFiles called with fileIds:', fileIds); // Debug log
     const response = await this.fetchWithAuth('/api/upload/bulk-delete', {
       method: 'POST',
       body: JSON.stringify({ file_ids: fileIds }),

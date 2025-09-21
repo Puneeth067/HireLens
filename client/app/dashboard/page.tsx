@@ -22,7 +22,8 @@ import {
   Brain,
   Search,
   Settings,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react'
 import apiService from '@/lib/api'
 import { cachedApiService } from '@/lib/cached-api'
@@ -124,188 +125,191 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        // Fetch all required data in parallel with error handling
-        const results = await Promise.allSettled([
-          apiService.getParsingStats().catch(err => {
-            console.warn('Failed to fetch parsing stats:', err)
-            return {
-              total_files: 0,
-              completed: 0,
-              processing: 0,
-              pending: 0,
-              error: 0,
-              recent_activity: []
-            }
-          }),
-          cachedApiService.getJobStats().catch(err => {
-            console.warn('Failed to fetch job stats:', err)
-            return {
-              total_jobs: 0,
-              active_jobs: 0,
-              draft_jobs: 0,
-              closed_jobs: 0,
-              recent_jobs: 0
-            }
-          }),
-          apiService.getComparisonStats().catch(err => {
-            console.warn('Failed to fetch comparison stats:', err)
-            return {
-              total_comparisons: 0,
-              avg_score: 0,
-              top_score: 0,
-              recent_comparisons: 0,
-              status_breakdown: {
-                completed: 0,
-                pending: 0,
-                failed: 0
-              }
-            }
-          }),
-          apiService.getAnalyticsSummary().catch(err => {
-            console.warn('Failed to fetch analytics summary:', err)
-            return {
-              total_candidates: 0,
-              total_jobs: 0,
-              total_comparisons: 0,
-              avg_score: 0,
-              recent_activity: 0,
-              trending_skills: [],
-              top_performing_jobs: []
-            }
-          }),
-          cachedApiService.healthCheck().catch(err => {
-            console.warn('Failed to fetch health check:', err)
-            return {
-              status: 'degraded',
-              timestamp: new Date().toISOString(),
-              version: 'unknown'
-            }
-          })
-        ])
-
-        const [parsingStatsResult, jobStatsResult, comparisonStatsResult, analyticsSummaryResult, healthCheckResult] = results
-
-        // Extract data or use defaults
-        const parsingStats: ParsingStats = parsingStatsResult.status === 'fulfilled' ? parsingStatsResult.value : {
-          total_files: 0,
-          completed: 0,
-          processing: 0,
-          pending: 0,
-          error: 0,
-          recent_activity: []
-        }
-        
-        const jobStats: JobStats = jobStatsResult.status === 'fulfilled' ? jobStatsResult.value : {
-          total_jobs: 0,
-          active_jobs: 0,
-          draft_jobs: 0,
-          closed_jobs: 0,
-          recent_jobs: 0
-        }
-        
-        const comparisonStats: ComparisonStats = comparisonStatsResult.status === 'fulfilled' ? comparisonStatsResult.value : {
-          total_comparisons: 0,
-          avg_score: 0,
-          top_score: 0,
-          recent_comparisons: 0,
-          status_breakdown: {
+  const refreshAllData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // Clear all caches to ensure fresh data
+      cachedApiService.refreshCache('all')
+      
+      // Fetch all required data in parallel with error handling
+      const results = await Promise.allSettled([
+        apiService.getParsingStats().catch(err => {
+          console.warn('Failed to fetch parsing stats:', err)
+          return {
+            total_files: 0,
             completed: 0,
+            processing: 0,
             pending: 0,
-            failed: 0
+            error: 0,
+            recent_activity: []
           }
-        }
-        
-        const analyticsSummary: AnalyticsSummary = analyticsSummaryResult.status === 'fulfilled' ? analyticsSummaryResult.value : {
-          total_candidates: 0,
-          total_jobs: 0,
-          total_comparisons: 0,
-          avg_score: 0,
-          recent_activity: 0,
-          trending_skills: [],
-          top_performing_jobs: []
-        }
-        
-        const healthCheck: HealthCheck = healthCheckResult.status === 'fulfilled' ? healthCheckResult.value : {
-          status: 'degraded',
-          timestamp: new Date().toISOString(),
-          version: 'unknown'
-        }
-
-        // Find the top score from top performing jobs
-        let topScore = 0
-        if (analyticsSummary.top_performing_jobs && analyticsSummary.top_performing_jobs.length > 0) {
-          const scores = analyticsSummary.top_performing_jobs.map(job => 'score' in job ? job.score : 0)
-          topScore = Math.max(...scores)
-        }
-
-        // Update stats with real data
-        setStats({
-          files: {
-            total_files: parsingStats.total_files,
-            parsed_files: parsingStats.completed,
-            processing_files: parsingStats.processing,
-            failed_files: parsingStats.error
-          },
-          jobs: {
-            total_jobs: jobStats.total_jobs,
-            active_jobs: jobStats.active_jobs,
-            draft_jobs: jobStats.draft_jobs
-          },
-          comparisons: {
-            total_comparisons: comparisonStats.total_comparisons,
-            completed: comparisonStats.status_breakdown.completed || 0,
-            pending: comparisonStats.status_breakdown.pending || 0,
-            failed: comparisonStats.status_breakdown.failed || 0
-          },
-          analytics: {
-            total_candidates: analyticsSummary.total_candidates || 0,
-            average_score: analyticsSummary.avg_score || 0,
-            top_score: topScore
+        }),
+        cachedApiService.getJobStats().catch((err: Error) => {
+          console.warn('Failed to fetch job stats:', err)
+          return {
+            total_jobs: 0,
+            active_jobs: 0,
+            draft_jobs: 0,
+            closed_jobs: 0,
+            recent_jobs: 0
+          }
+        }),
+        cachedApiService.getComparisonStats().catch((err: Error) => {
+          console.warn('Failed to fetch comparison stats:', err)
+          return {
+            total_comparisons: 0,
+            avg_score: 0,
+            top_score: 0,
+            recent_comparisons: 0,
+            status_breakdown: {
+              completed: 0,
+              pending: 0,
+              failed: 0
+            }
+          }
+        }),
+        apiService.getAnalyticsSummary().catch((err: Error) => {
+          console.warn('Failed to fetch analytics summary:', err)
+          return {
+            total_candidates: 0,
+            total_jobs: 0,
+            total_comparisons: 0,
+            avg_score: 0,
+            recent_activity: 0,
+            trending_skills: [],
+            top_performing_jobs: []
+          }
+        }),
+        cachedApiService.healthCheck().catch((err: Error) => {
+          console.warn('Failed to fetch health check:', err)
+          return {
+            status: 'degraded',
+            timestamp: new Date().toISOString(),
+            version: 'unknown'
           }
         })
+      ])
 
-        // Update recent activity
-        const activities: RecentActivity[] = []
-        
-        // Add recent parsing activities
-        if (parsingStats.recent_activity) {
-          parsingStats.recent_activity.slice(0, 3).forEach(activity => {
-            activities.push({
-              type: 'upload',
-              title: 'Resume Parsed',
-              description: activity.filename,
-              timestamp: activity.parsed_at || new Date().toISOString(),
-              status: activity.status === 'completed' ? 'completed' : activity.status === 'error' ? 'failed' : 'processing'
-            })
-          })
-        }
+      const [parsingStatsResult, jobStatsResult, comparisonStatsResult, analyticsSummaryResult, healthCheckResult] = results
 
-        // Add recent job activities (mock for now as we don't have a direct API)
-        // In a real implementation, we would fetch recent jobs and add them here
-
-        setRecentActivity(activities)
-
-        // Update system health
-        setSystemHealth(healthCheck.status as 'healthy' | 'degraded' | 'error')
-
-        setLoading(false)
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err)
-        setError('Failed to load dashboard data. Please try again later.')
-        setLoading(false)
+      // Extract data or use defaults
+      const parsingStats: ParsingStats = parsingStatsResult.status === 'fulfilled' ? parsingStatsResult.value : {
+        total_files: 0,
+        completed: 0,
+        processing: 0,
+        pending: 0,
+        error: 0,
+        recent_activity: []
       }
-    }
+      
+      const jobStats: JobStats = jobStatsResult.status === 'fulfilled' ? jobStatsResult.value : {
+        total_jobs: 0,
+        active_jobs: 0,
+        draft_jobs: 0,
+        closed_jobs: 0,
+        recent_jobs: 0
+      }
+      
+      const comparisonStats: ComparisonStats = comparisonStatsResult.status === 'fulfilled' ? comparisonStatsResult.value : {
+        total_comparisons: 0,
+        avg_score: 0,
+        top_score: 0,
+        recent_comparisons: 0,
+        status_breakdown: {
+          completed: 0,
+          pending: 0,
+          failed: 0
+        }
+      }
+      
+      const analyticsSummary: AnalyticsSummary = analyticsSummaryResult.status === 'fulfilled' ? analyticsSummaryResult.value : {
+        total_candidates: 0,
+        total_jobs: 0,
+        total_comparisons: 0,
+        avg_score: 0,
+        recent_activity: 0,
+        trending_skills: [],
+        top_performing_jobs: []
+      }
+      
+      const healthCheck: HealthCheck = healthCheckResult.status === 'fulfilled' ? healthCheckResult.value : {
+        status: 'degraded',
+        timestamp: new Date().toISOString(),
+        version: 'unknown'
+      }
 
-    fetchData()
+      // Find the top score from top performing jobs
+      let topScore = 0
+      if (analyticsSummary.top_performing_jobs && analyticsSummary.top_performing_jobs.length > 0) {
+        const scores = analyticsSummary.top_performing_jobs.map(job => 'score' in job ? job.score : 0)
+        topScore = Math.max(...scores)
+      }
+
+      // Update stats with real data
+      setStats({
+        files: {
+          total_files: parsingStats.total_files,
+          parsed_files: parsingStats.completed,
+          processing_files: parsingStats.processing,
+          failed_files: parsingStats.error
+        },
+        jobs: {
+          total_jobs: jobStats.total_jobs,
+          active_jobs: jobStats.active_jobs,
+          draft_jobs: jobStats.draft_jobs
+        },
+        comparisons: {
+          total_comparisons: comparisonStats.total_comparisons,
+          completed: comparisonStats.status_breakdown.completed || 0,
+          pending: comparisonStats.status_breakdown.pending || 0,
+          failed: comparisonStats.status_breakdown.failed || 0
+        },
+        analytics: {
+          total_candidates: analyticsSummary.total_candidates || 0,
+          average_score: analyticsSummary.avg_score || 0,
+          top_score: topScore
+        }
+      })
+
+      // Update recent activity
+      const activities: RecentActivity[] = []
+      
+      // Add recent parsing activities
+      if (parsingStats.recent_activity) {
+        parsingStats.recent_activity.slice(0, 3).forEach(activity => {
+          activities.push({
+            type: 'upload',
+            title: 'Resume Parsed',
+            description: activity.filename,
+            timestamp: activity.parsed_at || new Date().toISOString(),
+            status: activity.status === 'completed' ? 'completed' : activity.status === 'error' ? 'failed' : 'processing'
+          })
+        })
+      }
+
+      // Add recent job activities (mock for now as we don't have a direct API)
+      // In a real implementation, we would fetch recent jobs and add them here
+
+      setRecentActivity(activities)
+
+      // Update system health
+      setSystemHealth(healthCheck.status as 'healthy' | 'degraded' | 'error')
+
+      setLoading(false)
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+      setError('Failed to load dashboard data. Please try again later.')
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshAllData()
 
     // Set up periodic refresh
-    const interval = setInterval(fetchData, 30000) // Refresh every 30 seconds
+    const interval = setInterval(refreshAllData, 30000) // Refresh every 30 seconds
     return () => clearInterval(interval)
   }, [])
 
@@ -374,7 +378,7 @@ export default function DashboardPage() {
 
   const features = [
     {
-      title: 'AI-Powered Parsing',
+      title: 'NLP-Driven Parsing',
       description: 'Extract skills, experience, and education from resumes using advanced NLP',
       icon: Brain,
       stats: `${stats.files.parsed_files} resumes parsed`
@@ -393,7 +397,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Candidate Ranking',
-      description: 'Rank candidates with multi-criteria analysis and AI recommendations',
+      description: 'Rank candidates with multi-criteria analysis and NLP recommendations',
       icon: Award,
       stats: 'Multi-factor scoring system'
     }
@@ -418,7 +422,10 @@ export default function DashboardPage() {
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Error Loading Dashboard</h2>
             <p className="text-gray-600 mb-6">{error}</p>
-            <Button onClick={() => window.location.reload()}>Try Again</Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => window.location.reload()}>Try Again</Button>
+              <Button onClick={refreshAllData} variant="outline">Refresh Data</Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -435,17 +442,25 @@ export default function DashboardPage() {
               <Zap className="h-8 w-8" />
             </div>
             <h1 className="text-3xl font-bold ml-4">RecruVizz Dashboard</h1>
+            <Button 
+              onClick={refreshAllData}
+              variant="outline" 
+              className="ml-auto bg-white/20 text-white border-white/30 hover:bg-white/30"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh Data
+            </Button>
           </div>
           
           <p className="text-lg text-blue-100 mb-6 max-w-2xl">
-            Streamline your hiring process with AI-powered resume analysis, 
+            Streamline your hiring process with NLP-Driven resume analysis, 
             intelligent candidate matching, and data-driven insights
           </p>
           
           <div className="flex flex-wrap gap-3">
             <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
               <CheckCircle className="h-4 w-4 mr-2" />
-              AI-Powered Analysis
+              NLP-Driven Analysis
             </Badge>
             <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
               <Target className="h-4 w-4 mr-2" />
@@ -541,16 +556,20 @@ export default function DashboardPage() {
                       <span className="text-sm text-gray-600">Draft</span>
                       <span className="font-semibold text-orange-600">{stats.jobs.draft_jobs}</span>
                     </div>
-                    {stats.comparisons.total_comparisons > 0 && (
+                    {stats.comparisons.completed + stats.comparisons.pending > 0 && (
                       <div className="pt-2">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-xs text-gray-500">Completion Rate</span>
                           <span className="text-xs font-medium">
-                            {((stats.comparisons.completed / stats.comparisons.total_comparisons) * 100).toFixed(1)}%
+                            {stats.comparisons.completed + stats.comparisons.pending > 0 
+                              ? ((stats.comparisons.completed / (stats.comparisons.completed + stats.comparisons.pending)) * 100).toFixed(1) + '%' 
+                              : '0.0%'}
                           </span>
                         </div>
                         <Progress 
-                          value={(stats.comparisons.completed / stats.comparisons.total_comparisons) * 100} 
+                          value={stats.comparisons.completed + stats.comparisons.pending > 0 
+                            ? (stats.comparisons.completed / (stats.comparisons.completed + stats.comparisons.pending)) * 100 
+                            : 0} 
                           className="h-2"
                         />
                       </div>
@@ -673,7 +692,7 @@ export default function DashboardPage() {
           {[
             {
               title: 'Resume Management',
-              description: 'Upload, parse, and manage candidate resumes with AI-powered extraction',
+              description: 'Upload, parse, and manage candidate resumes with NLP-Driven extraction',
               href: '/processing',
               icon: FileText,
               color: 'from-blue-500 to-blue-600'
