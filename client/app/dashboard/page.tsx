@@ -407,7 +407,7 @@ export default function DashboardPage() {
   ]
 
   // YouTube video section
-  const youtubeVideoId = 'TRHvnnKGFY' // Placeholder - replace with actual video ID
+  const youtubeVideoId = '-TRHvnnKGFY' // Placeholder - replace with actual video ID
   const youtubeUrl = `https://www.youtube.com/embed/${youtubeVideoId}`
 
   if (loading) {
