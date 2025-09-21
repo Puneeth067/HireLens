@@ -407,10 +407,10 @@ function ProcessingPageContent() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Resume Processing</h1>
-            <p className="text-gray-600 mt-1">Manage uploaded resumes and parsed data</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Resume Processing</h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage uploaded resumes and parsed data</p>
           </div>
           <Button
             onClick={() => {
@@ -418,67 +418,84 @@ function ProcessingPageContent() {
               router.back();
             }}
             variant="outline"
+            size="responsiveSm"
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back
+            <span className="hidden xs:inline">Back</span>
           </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
+          <TabsList className="grid w-full grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+          <TabsTrigger
+            value="overview"
+            className="text-xs sm:text-sm data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-lg px-2 py-1 transition-colors"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="files"
+            className="text-xs sm:text-sm data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-lg px-2 py-1 transition-colors"
+          >
+            Files
+          </TabsTrigger>
+          <TabsTrigger
+            value="activity"
+            className="text-xs sm:text-sm data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-lg px-2 py-1 transition-colors"
+          >
+            Activity
+          </TabsTrigger>
+        </TabsList>
+
 
           <TabsContent value="overview" className="space-y-6">
             {/* Stats Cards */}
             {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center space-x-2">
-                      <FileText className="w-5 h-5 text-blue-600" />
+                      <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                       <div>
-                        <p className="text-2xl font-bold">{stats.total_files}</p>
-                        <p className="text-sm text-gray-600">Total Files</p>
+                        <p className="text-lg sm:text-2xl font-bold">{stats.total_files}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">Total Files</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center space-x-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                       <div>
-                        <p className="text-2xl font-bold">{stats.completed}</p>
-                        <p className="text-sm text-gray-600">Completed</p>
+                        <p className="text-lg sm:text-2xl font-bold">{stats.completed}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">Completed</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center space-x-2">
-                      <Clock className="w-5 h-5 text-blue-600" />
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                       <div>
-                        <p className="text-2xl font-bold">{stats.processing}</p>
-                        <p className="text-sm text-gray-600">Processing</p>
+                        <p className="text-lg sm:text-2xl font-bold">{stats.processing}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">Processing</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center space-x-2">
-                      <XCircle className="w-5 h-5 text-red-600" />
+                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
                       <div>
-                        <p className="text-2xl font-bold">{stats.error}</p>
-                        <p className="text-sm text-gray-600">Errors</p>
+                        <p className="text-lg sm:text-2xl font-bold">{stats.error}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">Errors</p>
                       </div>
                     </div>
                   </CardContent>
@@ -491,17 +508,18 @@ function ProcessingPageContent() {
               <Button 
                 onClick={cleanupOrphanedFiles} 
                 variant="outline"
+                size="responsiveSm"
                 disabled={isCleaningUp}
               >
                 {isCleaningUp ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                    Cleaning Up...
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600 mr-1.5"></div>
+                    <span className="text-xs">Cleaning Up...</span>
                   </>
                 ) : (
                   <>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Clean Up Orphaned Files
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    <span className="text-xs sm:text-sm">Clean Up Orphaned Files</span>
                   </>
                 )}
               </Button>
@@ -509,25 +527,25 @@ function ProcessingPageContent() {
 
             {/* Recent Files */}
             <Card>
-              <CardHeader>
-                <CardTitle>Recent Files</CardTitle>
-                <CardDescription>Latest uploaded and processed files</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Recent Files</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Latest uploaded and processed files</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-3">
                   {files.slice(0, 5).map((file) => (
                     <div key={file.file_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <FileText className="w-5 h-5 text-gray-500" />
+                        <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
                         <div>
-                          <p className="font-medium">{file.original_filename}</p>
-                          <p className="text-sm text-gray-600">{formatFileSize(file.file_size)}</p>
+                          <p className="font-medium text-sm">{file.original_filename}</p>
+                          <p className="text-xs text-gray-600">{formatFileSize(file.file_size)}</p>
                         </div>
                       </div>
                       <Badge className={getStatusColor(file.status)}>
                         <div className="flex items-center space-x-1">
                           {getStatusIcon(file.status)}
-                          <span className="capitalize">{file.status}</span>
+                          <span className="capitalize text-xs">{file.status}</span>
                         </div>
                       </Badge>
                     </div>
@@ -539,32 +557,32 @@ function ProcessingPageContent() {
 
           <TabsContent value="files" className="space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>All Files</CardTitle>
-                <CardDescription>Manage all uploaded resume files</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">All Files</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Manage all uploaded resume files</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
                   {files.map((file) => (
-                    <div key={file.file_id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <FileText className="w-6 h-6 text-gray-500" />
+                    <div key={file.file_id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-3">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="w-5 h-5 text-gray-500" />
                         <div>
-                          <h3 className="font-medium">{file.original_filename}</h3>
-                          <p className="text-sm text-gray-600">
+                          <h3 className="font-medium text-sm">{file.original_filename}</h3>
+                          <p className="text-xs text-gray-600">
                             {formatFileSize(file.file_size)} • Uploaded {formatDate(file.uploaded_at)}
                           </p>
                           {file.error_message && (
-                            <p className="text-sm text-red-600 mt-1">{file.error_message}</p>
+                            <p className="text-xs text-red-600 mt-1">{file.error_message}</p>
                           )}
                         </div>
                       </div>
                     
-                      <div className="flex items-center space-x-3">
-                        <Badge className={getStatusColor(file.status)}>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <Badge className={`${getStatusColor(file.status)} self-start sm:self-center`}>
                           <div className="flex items-center space-x-1">
                             {getStatusIcon(file.status)}
-                            <span className="capitalize">{file.status}</span>
+                            <span className="capitalize text-xs">{file.status}</span>
                           </div>
                         </Badge>
                       
@@ -574,9 +592,10 @@ function ProcessingPageContent() {
                               size="sm"
                               onClick={() => parseFile(file.file_id)}
                               disabled={processingFiles.has(file.file_id)}
+                              className="text-xs px-2 py-1.5"
                             >
-                              <Brain className="w-4 h-4 mr-2" />
-                              Parse
+                              <Brain className="w-3 h-3 mr-1" />
+                              <span className="hidden xs:inline">Parse</span>
                             </Button>
                           )}
                         
@@ -587,15 +606,16 @@ function ProcessingPageContent() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => viewParsedResume(file.file_id)}
+                                  className="text-xs px-2 py-1.5"
                                 >
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  <span className="hidden xs:inline">View</span>
                                 </Button>
                               </DialogTrigger>
                               <DialogContent className="max-w-4xl max-h-[80vh]">
                                 <DialogHeader>
-                                  <DialogTitle>Parsed Resume: {file.original_filename}</DialogTitle>
-                                  <DialogDescription>
+                                  <DialogTitle className="text-base sm:text-lg">Parsed Resume: {file.original_filename}</DialogTitle>
+                                  <DialogDescription className="text-xs sm:text-sm">
                                     Extracted information from the resume
                                   </DialogDescription>
                                 </DialogHeader>
@@ -612,16 +632,16 @@ function ProcessingPageContent() {
                             size="sm"
                             variant="outline"
                             onClick={() => deleteFile(file.file_id, file.original_filename)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 text-xs px-2 py-1.5"
                             disabled={deletingFiles.has(file.file_id)}
                           >
                             {deletingFiles.has(file.file_id) ? (
                               <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
-                                Deleting...
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600 mr-1"></div>
+                                <span className="hidden xs:inline">Deleting...</span>
                               </>
                             ) : (
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3" />
                             )}
                           </Button>
 
@@ -633,8 +653,8 @@ function ProcessingPageContent() {
                   {files.length === 0 && (
                     <div className="text-center py-8">
                       <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">No files uploaded yet</p>
-                      <Button className="mt-4" onClick={() => window.location.href = '/upload'}>
+                      <p className="text-gray-600 text-sm">No files uploaded yet</p>
+                      <Button className="mt-4 text-sm" onClick={() => window.location.href = '/upload'}>
                         Upload Resume
                       </Button>
                     </div>
@@ -699,25 +719,25 @@ function ProcessingPageContent() {
 
           <TabsContent value="activity" className="space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest processing activity and system events</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Recent Activity</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Latest processing activity and system events</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
                   {stats?.recent_activity && Array.isArray(stats.recent_activity) && stats.recent_activity.map((activity, index) => (
                     <div key={`${activity.file_id}-${index}`} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                       {getStatusIcon(activity.status)}
                       <div className="flex-1">
-                        <p className="font-medium">{activity.filename}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="font-medium text-sm">{activity.filename}</p>
+                        <p className="text-xs text-gray-600">
                           {activity.status === 'completed' ? 'Successfully parsed' : 
                            activity.status === 'error' ? 'Failed to parse' : 
                            'Processing...'}
                         </p>
                       </div>
                       {activity.parsed_at && (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs text-gray-500">
                           {new Date(activity.parsed_at).toLocaleString()}
                         </p>
                       )}
@@ -727,7 +747,7 @@ function ProcessingPageContent() {
                   {(!stats || !stats.recent_activity || !Array.isArray(stats.recent_activity) || stats.recent_activity.length === 0) && (
                     <div className="text-center py-8">
                       <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">No recent activity</p>
+                      <p className="text-gray-600 text-sm">No recent activity</p>
                     </div>
                   )}
                 </div>

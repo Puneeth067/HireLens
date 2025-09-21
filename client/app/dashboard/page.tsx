@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -423,8 +424,8 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold mb-2">Error Loading Dashboard</h2>
             <p className="text-gray-600 mb-6">{error}</p>
             <div className="flex gap-2 justify-center">
-              <Button onClick={() => window.location.reload()}>Try Again</Button>
-              <Button onClick={refreshAllData} variant="outline">Refresh Data</Button>
+              <Button onClick={() => window.location.reload()} size="responsiveSm">Try Again</Button>
+              <Button onClick={refreshAllData} variant="outline" size="responsiveSm">Refresh Data</Button>
             </div>
           </CardContent>
         </Card>
@@ -435,59 +436,65 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 text-white rounded-xl p-8 mb-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center mb-6">
+      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 text-white rounded-xl p-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center">
             <div className="bg-white/10 backdrop-blur-sm rounded-full p-3">
-              <Zap className="h-8 w-8" />
+              <Image
+                src="/favicon-32x32.png" // or "/android-chrome-192x192.png" for higher res
+                alt="Recruvizz Logo"
+                width={36}
+                height={36}
+                className="rounded-lg"
+              />
             </div>
-            <h1 className="text-3xl font-bold ml-4">RecruVizz Dashboard</h1>
-            <Button 
-              onClick={refreshAllData}
-              variant="outline" 
-              className="ml-auto bg-white/20 text-white border-white/30 hover:bg-white/30"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh Data
-            </Button>
+            <h1 className="text-2xl sm:text-3xl font-bold ml-4">RecruVizz Dashboard</h1>
           </div>
-          
-          <p className="text-lg text-blue-100 mb-6 max-w-2xl">
-            Streamline your hiring process with NLP-Driven resume analysis, 
-            intelligent candidate matching, and data-driven insights
-          </p>
-          
-          <div className="flex flex-wrap gap-3">
-            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              NLP-Driven Analysis
-            </Badge>
-            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-              <Target className="h-4 w-4 mr-2" />
-              ATS Scoring
-            </Badge>
-            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Advanced Analytics
-            </Badge>
-          </div>
+          <Button 
+            onClick={refreshAllData}
+            variant="outline" 
+            className="ml-0 sm:ml-auto bg-white/20 text-white border-white/30 hover:bg-white/30 whitespace-nowrap"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            <span className="hidden xs:inline">Refresh Data</span>
+          </Button>
+        </div>
+        
+        <p className="text-base sm:text-lg text-blue-100 mb-6">
+          Streamline your hiring process with NLP-Driven resume analysis, 
+          intelligent candidate matching, and data-driven insights
+        </p>
+        
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+            <CheckCircle className="h-4 w-4 mr-2" />
+            NLP-Driven Analysis
+          </Badge>
+          <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+            <Target className="h-4 w-4 mr-2" />
+            ATS Scoring
+          </Badge>
+          <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Advanced Analytics
+          </Badge>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {quickActions.map((action, index) => (
           <Link key={index} href={action.href}>
-            <Card className="group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white border-0 shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className={`w-14 h-14 mx-auto mb-4 rounded-xl ${action.color} flex items-center justify-center text-white group-hover:scale-110 transition-transform duration-300`}>
-                  <action.icon className="h-6 w-6" />
+            <Card className="group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white border-0 shadow-lg h-full">
+              <CardContent className="p-5 text-center">
+                <div className={`w-12 h-12 mx-auto mb-3 rounded-lg ${action.color} flex items-center justify-center text-white group-hover:scale-110 transition-transform duration-300`}>
+                  <action.icon className="h-5 w-5" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors text-sm sm:text-base">
                   {action.title}
                 </h3>
-                <p className="text-sm text-gray-600">{action.description}</p>
-                <ArrowRight className="h-4 w-4 mx-auto mt-3 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                <p className="text-xs sm:text-sm text-gray-600">{action.description}</p>
+                <ArrowRight className="h-4 w-4 mx-auto mt-2 text-gray-400 group-hover:text-blue-600 transition-colors" />
               </CardContent>
             </Card>
           </Link>
@@ -506,22 +513,22 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* File Statistics */}
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-900">File Processing</h4>
+                  <h4 className="font-semibold text-gray-900 text-sm sm:text-base">File Processing</h4>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Total Files</span>
-                      <span className="font-semibold">{stats.files.total_files}</span>
+                      <span className="text-xs sm:text-sm text-gray-600">Total Files</span>
+                      <span className="font-semibold text-xs sm:text-sm">{stats.files.total_files}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Parsed</span>
-                      <span className="font-semibold text-green-600">{stats.files.parsed_files}</span>
+                      <span className="text-xs sm:text-sm text-gray-600">Parsed</span>
+                      <span className="font-semibold text-green-600 text-xs sm:text-sm">{stats.files.parsed_files}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Processing</span>
-                      <span className="font-semibold text-blue-600">{stats.files.processing_files}</span>
+                      <span className="text-xs sm:text-sm text-gray-600">Processing</span>
+                      <span className="font-semibold text-blue-600 text-xs sm:text-sm">{stats.files.processing_files}</span>
                     </div>
                     {stats.files.total_files > 0 && (
                       <div className="pt-2">
@@ -542,19 +549,19 @@ export default function DashboardPage() {
 
                 {/* Job Statistics */}
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-900">Job Management</h4>
+                  <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Job Management</h4>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Total Jobs</span>
-                      <span className="font-semibold">{stats.jobs.total_jobs}</span>
+                      <span className="text-xs sm:text-sm text-gray-600">Total Jobs</span>
+                      <span className="font-semibold text-xs sm:text-sm">{stats.jobs.total_jobs}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Active</span>
-                      <span className="font-semibold text-green-600">{stats.jobs.active_jobs}</span>
+                      <span className="text-xs sm:text-sm text-gray-600">Active</span>
+                      <span className="font-semibold text-green-600 text-xs sm:text-sm">{stats.jobs.active_jobs}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Draft</span>
-                      <span className="font-semibold text-orange-600">{stats.jobs.draft_jobs}</span>
+                      <span className="text-xs sm:text-sm text-gray-600">Draft</span>
+                      <span className="font-semibold text-orange-600 text-xs sm:text-sm">{stats.jobs.draft_jobs}</span>
                     </div>
                     {stats.comparisons.completed + stats.comparisons.pending > 0 && (
                       <div className="pt-2">
@@ -589,15 +596,15 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {features.map((feature, index) => (
-                  <div key={index} className="flex items-start space-x-4">
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg">
-                      <feature.icon className="h-5 w-5 text-white" />
+                  <div key={index} className="flex items-start space-x-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg flex-shrink-0">
+                      <feature.icon className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 mb-1">{feature.title}</h4>
-                      <p className="text-sm text-gray-600 mb-2">{feature.description}</p>
+                      <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{feature.title}</h4>
+                      <p className="text-xs sm:text-sm text-gray-600 mb-2">{feature.description}</p>
                       <p className="text-xs text-blue-600 font-medium">{feature.stats}</p>
                     </div>
                   </div>
@@ -617,17 +624,17 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {recentActivity.slice(0, 5).map((activity, index) => (
                   <div key={index} className="flex items-start space-x-3">
-                    <div className={`p-2 rounded-full ${getStatusColor(activity.status)}`}>
+                    <div className={`p-2 rounded-full ${getStatusColor(activity.status)} flex-shrink-0`}>
                       {getActivityIcon(activity.type)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                      <p className="text-xs text-gray-500">{activity.description}</p>
+                      <p className="text-xs text-gray-500 truncate">{activity.description}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {new Date(activity.timestamp).toLocaleTimeString()}
+                        {new Date(activity.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </p>
                     </div>
                   </div>
@@ -650,21 +657,21 @@ export default function DashboardPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                  <div className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
                     {stats.analytics.average_score?.toFixed(1) || 0}%
                   </div>
-                  <div className="text-xs text-gray-600">Average ATS Score</div>
+                  <div className="text-xs sm:text-xs text-gray-600">Average ATS Score</div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="grid grid-cols-2 gap-3 text-center">
                   <div>
-                    <div className="text-lg font-semibold text-green-600">
+                    <div className="text-base sm:text-lg font-semibold text-green-600">
                       {stats.analytics.top_score?.toFixed(1) || 0}%
                     </div>
                     <div className="text-xs text-gray-600">Highest Score</div>
                   </div>
                   <div>
-                    <div className="text-lg font-semibold text-blue-600">
+                    <div className="text-base sm:text-lg font-semibold text-blue-600">
                       {stats.analytics.total_candidates || 0}
                     </div>
                     <div className="text-xs text-gray-600">Total Candidates</div>
@@ -673,8 +680,8 @@ export default function DashboardPage() {
                 
                 <div className="pt-2">
                   <Link href="/analytics">
-                    <Button variant="outline" size="sm" className="w-full">
-                      View Detailed Analytics
+                    <Button variant="outline" size="responsiveSm" className="w-full">
+                      <span className="text-xs sm:text-sm">View Detailed Analytics</span>
                       <ArrowRight className="h-3 w-3 ml-2" />
                     </Button>
                   </Link>
@@ -686,9 +693,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Navigation Cards */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Explore All Features</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="mt-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 text-center">Explore All Features</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             {
               title: 'Resume Management',
@@ -734,18 +741,18 @@ export default function DashboardPage() {
             }
           ].map((item, index) => (
             <Link key={index} href={item.href}>
-              <Card className="group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white border-0 shadow-lg">
-                <CardContent className="p-6">
-                  <div className={`w-12 h-12 mb-4 rounded-xl bg-gradient-to-r ${item.color} flex items-center justify-center text-white group-hover:scale-110 transition-transform duration-300`}>
-                    <item.icon className="h-6 w-6" />
+              <Card className="group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white border-0 shadow-lg h-full">
+                <CardContent className="p-5">
+                  <div className={`w-10 h-10 mb-3 rounded-lg bg-gradient-to-r ${item.color} flex items-center justify-center text-white group-hover:scale-110 transition-transform duration-300`}>
+                    <item.icon className="h-5 w-5" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors text-sm sm:text-base">
                     {item.title}
                   </h3>
-                  <p className="text-sm text-gray-600 mb-4">{item.description}</p>
-                  <div className="flex items-center text-sm text-blue-600 group-hover:text-blue-700 transition-colors">
+                  <p className="text-xs sm:text-sm text-gray-600 mb-3">{item.description}</p>
+                  <div className="flex items-center text-xs sm:text-sm text-blue-600 group-hover:text-blue-700 transition-colors">
                     <span>Learn more</span>
-                    <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </CardContent>
               </Card>

@@ -89,8 +89,8 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Mobile menu button */}
-      <div className="md:hidden fixed top-4 right-4 z-50">
+      {/* Mobile menu button - moved to the left */}
+      <div className="md:hidden fixed top-4 left-4 z-50">
         <Button
           variant="outline"
           size="icon"
@@ -113,7 +113,7 @@ export default function DashboardLayout({
           {/* Logo */}
           <div className={`flex items-center px-4 py-4 border-b ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
             <div className="flex items-center">
-              {/* Use favicon instead of RV text */}
+              {/* Use favicon*/}
               <div className="w-9 h-9 flex items-center justify-center">
                 <Image
                   src="/favicon-32x32.png" // or "/android-chrome-192x192.png" for higher res
@@ -162,10 +162,12 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <div className={isSidebarExpanded ? "md:ml-64" : "md:ml-20"}>
-        {/* Fixed Header */}
+        {/* Fixed Header - Added padding for mobile menu button */}
         <header className={`fixed top-0 right-0 left-0 backdrop-blur-sm bg-white/90 shadow-sm z-30 ${isSidebarExpanded ? 'md:left-64' : 'md:left-20'}`}>
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center">
+              {/* Added spacing for mobile menu button */}
+              <div className="md:hidden w-10"></div>
               <h1 className="text-xl font-semibold text-gray-900">{derivedTitle}</h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -175,11 +177,9 @@ export default function DashboardLayout({
                 ) : (
                   <AlertCircle className="h-4 w-4" />
                 )}
-                <span className="font-medium capitalize">System {systemHealth}</span>
+                <span className="font-medium capitalize hidden xs:inline">System {systemHealth}</span>
+                <span className="font-medium capitalize xs:hidden">Sys {systemHealth}</span>
               </div>
-              <Button variant="outline" size="sm">
-                Refresh
-              </Button>
             </div>
           </div>
         </header>

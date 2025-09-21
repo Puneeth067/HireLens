@@ -415,21 +415,22 @@ export default function RankingPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Candidate Ranking</h1>
-            <p className="text-gray-600">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Candidate Ranking</h1>
+            <p className="text-gray-600 text-sm sm:text-base">
               Rank and compare candidates using advanced scoring algorithms
             </p>
           </div>
           <Button
             onClick={() => router.back()}
             variant="outline"
+            size="responsiveSm"
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            <span className="hidden xs:inline">Back</span>
           </Button>
         </div>
       </div>
@@ -447,7 +448,7 @@ export default function RankingPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 items-center">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <Select value={selectedJob} onValueChange={handleJobSelection}>
               <SelectTrigger className="flex-1 bg-white">
                 <SelectValue placeholder="Choose a job position to rank candidates" />
@@ -466,27 +467,29 @@ export default function RankingPage() {
             </Select>
             
             {selectedJob && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <Link href={`/ranking/create?job=${selectedJob}`}>
                   <Button 
                     variant="outline" 
-                    className="hover:bg-gray-100 transition-colors"
+                    size="responsiveSm"
+                    className="hover:bg-gray-100 transition-colors w-full sm:w-auto"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Customize Ranking
+                    <span className="hidden xs:inline">Customize Ranking</span>
                   </Button>
                 </Link>
                 <Button 
                   onClick={() => autoCreateRanking(selectedJob)} 
                   disabled={loading}
-                  className="hover:bg-blue-600 transition-colors"
+                  size="responsiveSm"
+                  className="hover:bg-blue-600 transition-colors w-full sm:w-auto"
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
                     <Award className="h-4 w-4 mr-2" />
                   )}
-                  {loading ? 'Creating...' : 'Refresh Ranking'}
+                  {loading ? 'Creating...' : <span className="hidden xs:inline">Refresh Ranking</span>}
                 </Button>
               </div>
             )}
@@ -497,38 +500,38 @@ export default function RankingPage() {
       {selectedJob && (
         <>
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             <Card className="bg-white hover:shadow-md transition-shadow duration-200">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4">
                 <div className="flex items-center">
-                  <TrendingUp className="h-8 w-8 text-blue-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Rankings</p>
-                    <p className="text-2xl font-bold text-gray-900">{statistics.total_rankings}</p>
+                  <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                  <div className="ml-3">
+                    <p className="text-xs font-medium text-gray-500">Total Rankings</p>
+                    <p className="text-lg sm:text-2xl font-bold text-gray-900">{statistics.total_rankings}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-white hover:shadow-md transition-shadow duration-200">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4">
                 <div className="flex items-center">
-                  <Users className="h-8 w-8 text-green-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Candidates</p>
-                    <p className="text-2xl font-bold text-gray-900">{statistics.total_candidates}</p>
+                  <Users className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                  <div className="ml-3">
+                    <p className="text-xs font-medium text-gray-500">Total Candidates</p>
+                    <p className="text-lg sm:text-2xl font-bold text-gray-900">{statistics.total_candidates}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-white hover:shadow-md transition-shadow duration-200">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4">
                 <div className="flex items-center">
-                  <Award className="h-8 w-8 text-yellow-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Average Score</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                  <Award className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
+                  <div className="ml-3">
+                    <p className="text-xs font-medium text-gray-500">Average Score</p>
+                    <p className="text-lg sm:text-2xl font-bold text-gray-900">
                       {statistics.average_score?.toFixed(1) || '0.0'}%
                     </p>
                   </div>
@@ -537,12 +540,12 @@ export default function RankingPage() {
             </Card>
 
             <Card className="bg-white hover:shadow-md transition-shadow duration-200">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4">
                 <div className="flex items-center">
-                  <TrendingUp className="h-8 w-8 text-purple-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Meeting Requirements</p>
-                    <p className="text-2xl font-bold text-gray-900">{statistics.candidates_meeting_requirements}</p>
+                  <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+                  <div className="ml-3">
+                    <p className="text-xs font-medium text-gray-500">Meeting Requirements</p>
+                    <p className="text-lg sm:text-2xl font-bold text-gray-900">{statistics.candidates_meeting_requirements}</p>
                   </div>
                 </div>
               </CardContent>
@@ -551,28 +554,43 @@ export default function RankingPage() {
 
           {/* Main Content */}
           <Tabs defaultValue="ranking" className="space-y-4">
-            <TabsList className="bg-white p-1 rounded-lg">
-              <TabsTrigger 
-                value="ranking" 
-                className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 hover:bg-gray-100 data-[state=active]:hover:bg-blue-600"
+            <TabsList className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+              <TabsTrigger
+                value="ranking"
+                className="flex-1 text-sm font-medium px-4 py-2 rounded-md transition-all duration-200
+                          hover:bg-gray-200
+                          data-[state=active]:bg-blue-500 
+                          data-[state=active]:text-white 
+                          data-[state=active]:hover:bg-blue-600"
               >
                 Current Ranking
               </TabsTrigger>
+
               {selectedCandidates.size > 0 && (
-                <TabsTrigger 
-                  value="compare" 
-                  className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 hover:bg-gray-100 data-[state=active]:hover:bg-blue-600"
+                <TabsTrigger
+                  value="compare"
+                  className="flex-1 text-sm font-medium px-4 py-2 rounded-md transition-all duration-200
+                            hover:bg-gray-200
+                            data-[state=active]:bg-blue-500 
+                            data-[state=active]:text-white 
+                            data-[state=active]:hover:bg-blue-600"
                 >
                   Compare Candidates
                 </TabsTrigger>
               )}
-              <TabsTrigger 
-                value="history" 
-                className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 hover:bg-gray-100 data-[state=active]:hover:bg-blue-600"
+
+              <TabsTrigger
+                value="history"
+                className="flex-1 text-sm font-medium px-4 py-2 rounded-md transition-all duration-200
+                          hover:bg-gray-200
+                          data-[state=active]:bg-blue-500 
+                          data-[state=active]:text-white 
+                          data-[state=active]:hover:bg-blue-600"
               >
                 Ranking History
               </TabsTrigger>
             </TabsList>
+
 
             <TabsContent value="ranking" className="space-y-4">
               {currentRanking && (
@@ -580,7 +598,7 @@ export default function RankingPage() {
                   {/* Search and Filters */}
                   <Card className="bg-white">
                     <CardContent className="pt-6">
-                      <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex flex-col sm:flex-row gap-4">
                         <div className="flex-1">
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -594,7 +612,7 @@ export default function RankingPage() {
                         </div>
                         
                         <Select value={filterRequirements} onValueChange={handleFilterChange}>
-                          <SelectTrigger className="w-48 bg-white hover:bg-gray-50 transition-colors">
+                          <SelectTrigger className="w-full sm:w-40 bg-white hover:bg-gray-50 transition-colors">
                             <SelectValue>
                               {filterRequirements === 'all' && 'All Candidates'}
                               {filterRequirements === 'meets' && 'Meets Requirements'}
@@ -624,7 +642,7 @@ export default function RankingPage() {
                         </Select>
 
                         <Select value={sortBy} onValueChange={handleSortChange}>
-                          <SelectTrigger className="w-48 bg-white hover:bg-gray-50 transition-colors">
+                          <SelectTrigger className="w-full sm:w-40 bg-white hover:bg-gray-50 transition-colors">
                             <SelectValue>
                               {sortBy === 'rank' && 'Sort by Rank'}
                               {sortBy === 'score_desc' && 'Score (High to Low)'}
@@ -686,51 +704,51 @@ export default function RankingPage() {
                               
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-2">
-                                  <h3 className="text-lg font-semibold text-gray-900 truncate">
+                                  <h3 className="text-base font-semibold text-gray-900 truncate">
                                     {candidate.candidate_name || 'Unknown Candidate'}
                                   </h3>
                                   <div className="flex items-center space-x-2">
                                     <Badge 
-                                      className={`${getScoreBadgeColor(candidate.composite_score)} text-white`}
+                                      className={`${getScoreBadgeColor(candidate.composite_score)} text-white text-xs px-2 py-1`}
                                     >
                                       {candidate.composite_score.toFixed(1)}%
                                     </Badge>
                                     {candidate.meets_requirements ? (
-                                      <Badge variant="outline" className="text-green-600 border-green-600">
+                                      <Badge variant="outline" className="text-green-600 border-green-600 text-xs px-2 py-1">
                                         ✓ Qualified
                                       </Badge>
                                     ) : (
-                                      <Badge variant="outline" className="text-gray-500 border-gray-500">
+                                      <Badge variant="outline" className="text-gray-500 border-gray-500 text-xs px-2 py-1">
                                         Needs Review
                                       </Badge>
                                     )}
                                   </div>
                                 </div>
                                 
-                                <p className="text-sm text-gray-500 mb-3">{candidate.resume_filename}</p>
+                                <p className="text-xs text-gray-500 mb-2 truncate">{candidate.resume_filename}</p>
                                 
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 gap-2">
                                   <div>
                                     <p className="text-xs text-gray-500">Skills</p>
-                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.skills_score)}`}>
+                                    <p className={`text-xs font-medium px-2 py-1 rounded ${getScoreColor(candidate.skills_score)}`}>
                                       {candidate.skills_score.toFixed(1)}%
                                     </p>
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-500">Experience</p>
-                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.experience_score)}`}>
+                                    <p className={`text-xs font-medium px-2 py-1 rounded ${getScoreColor(candidate.experience_score)}`}>
                                       {candidate.experience_score.toFixed(1)}%
                                     </p>
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-500">Education</p>
-                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.education_score)}`}>
+                                    <p className={`text-xs font-medium px-2 py-1 rounded ${getScoreColor(candidate.education_score)}`}>
                                       {candidate.education_score.toFixed(1)}%
                                     </p>
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-500">Keywords</p>
-                                    <p className={`text-sm font-medium px-2 py-1 rounded ${getScoreColor(candidate.keyword_score)}`}>
+                                    <p className={`text-xs font-medium px-2 py-1 rounded ${getScoreColor(candidate.keyword_score)}`}>
                                       {candidate.keyword_score.toFixed(1)}%
                                     </p>
                                   </div>

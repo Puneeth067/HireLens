@@ -375,81 +375,82 @@ export default function JobsPageContent() {
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
       {/* Header with Back Button */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Job Descriptions</h1>
-          <p className="text-gray-600 mt-1">Manage your job postings and requirements</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Job Descriptions</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage your job postings and requirements</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => {
               LoggerUtils.logButtonClick('back_button_clicked');
               router.back();
             }}
             variant="outline"
+            size="responsiveSm"
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back
+            <span className="hidden xs:inline">Back</span>
           </Button>
           <Link
             href="/jobs/create"
             onClick={() => LoggerUtils.logButtonClick('create_job')}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Create Job
+            <PlusIcon className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Create Job</span>
           </Link>
         </div>
       </div>
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg">
-                <BriefcaseIcon className="w-6 h-6 text-blue-600" />
+                <BriefcaseIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total_jobs}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Jobs</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.total_jobs}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
-                <ClockIcon className="w-6 h-6 text-green-600" />
+                <ClockIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.active_jobs}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Active Jobs</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.active_jobs}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
             <div className="flex items-center">
               <div className="p-2 bg-yellow-100 rounded-lg">
-                <DocumentDuplicateIcon className="w-6 h-6 text-yellow-600" />
+                <DocumentDuplicateIcon className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Draft Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.draft_jobs}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Draft Jobs</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.draft_jobs}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
             <div className="flex items-center">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <BuildingOfficeIcon className="w-6 h-6 text-purple-600" />
+                <BuildingOfficeIcon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Recent Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.recent_jobs}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Recent Jobs</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.recent_jobs}</p>
               </div>
             </div>
           </div>
@@ -457,53 +458,55 @@ export default function JobsPageContent() {
       )}
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg p-6 shadow-sm border mb-8">
-        <form onSubmit={handleSearch} className="flex gap-4 items-end">
+      <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border mb-6">
+        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Search Jobs
             </label>
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by title, company, skills..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               />
             </div>
           </div>
           
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
-          >
-            <FunnelIcon className="w-5 h-5 mr-2" />
-            Filters
-          </button>
-          
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Search
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-3 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center text-sm"
+            >
+              <FunnelIcon className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Filters</span>
+            </button>
+            
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            >
+              Search
+            </button>
+          </div>
         </form>
 
         {/* Filters */}
         {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 title="Filter jobs by status"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">All Statuses</option>
                 <option value="active">Active</option>
@@ -514,14 +517,14 @@ export default function JobsPageContent() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Company
               </label>
               <select
                 value={companyFilter}
                 onChange={(e) => setCompanyFilter(e.target.value)}
                 title="Filter jobs by company"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">All Companies</option>
                 {companies.map(company => (
@@ -543,37 +546,37 @@ export default function JobsPageContent() {
       {/* Jobs Grid */}
       {jobs && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {jobs.jobs.map(job => (
-              <div key={job.id} className="bg-white rounded-lg p-6 shadow-sm border hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-4">
+              <div key={job.id} className="bg-white rounded-lg p-4 shadow-sm border hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{getJobTypeIcon(job.job_type)}</span>
+                      <span className="text-xl">{getJobTypeIcon(job.job_type)}</span>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(job.status)}`}>
                         {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                       </span>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{job.title}</h3>
+                    <h3 className="text-base font-semibold text-gray-900 mb-1">{job.title}</h3>
                     <p className="text-gray-600 text-sm">{job.company}</p>
                     {job.department && (
-                      <p className="text-gray-500 text-sm">{job.department}</p>
+                      <p className="text-gray-500 text-xs">{job.department}</p>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <BuildingOfficeIcon className="w-4 h-4 mr-2" />
+                <div className="space-y-1 mb-3">
+                  <div className="flex items-center text-xs text-gray-600">
+                    <BuildingOfficeIcon className="w-3 h-3 mr-1.5" />
                     {job.location}
                   </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <BriefcaseIcon className="w-4 h-4 mr-2" />
+                  <div className="flex items-center text-xs text-gray-600">
+                    <BriefcaseIcon className="w-3 h-3 mr-1.5" />
                     {formatExperienceLevel(job.experience_level)} Level
                   </div>
                 </div>
 
-                <div className="flex justify-between text-sm text-gray-500 mb-4">
+                <div className="flex justify-between text-xs text-gray-500 mb-3">
                   <span>{job.required_skills_count} Required Skills</span>
                   <span>{job.total_requirements} Requirements</span>
                 </div>
@@ -587,32 +590,32 @@ export default function JobsPageContent() {
                     <Link
                       href={`/jobs/${job.id}`}
                       onClick={() => handleJobClick(job.id, 'view')}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="View job"
                     >
-                      <EyeIcon className="w-4 h-4" />
+                      <EyeIcon className="w-3.5 h-3.5" />
                     </Link>
                     <Link
                       href={`/jobs/${job.id}/edit`}
                       onClick={() => handleJobClick(job.id, 'edit')}
-                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                       title="Edit job"
                     >
-                      <PencilIcon className="w-4 h-4" />
+                      <PencilIcon className="w-3.5 h-3.5" />
                     </Link>
                     <button
                       onClick={() => handleDuplicateJob(job.id)}
-                      className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                       title="Duplicate job"
                     >
-                      <DocumentDuplicateIcon className="w-4 h-4" />
+                      <DocumentDuplicateIcon className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleDeleteJob(job.id, job.title)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Delete job"
                     >
-                      <TrashIcon className="w-4 h-4" />
+                      <TrashIcon className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
@@ -623,12 +626,12 @@ export default function JobsPageContent() {
 
         {/* Pagination */}
         {jobs && jobs.total_pages > 1 && (
-          <div className="flex justify-center mt-8">
-            <nav className="flex items-center space-x-2">
+          <div className="flex justify-center mt-6">
+            <nav className="flex items-center space-x-1">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-2 py-1.5 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-xs"
               >
                 Previous
               </button>
@@ -636,7 +639,7 @@ export default function JobsPageContent() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-2 rounded-md border ${
+                  className={`px-2.5 py-1.5 rounded-md border text-xs ${
                     currentPage === page
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'border-gray-300 hover:bg-gray-50'
@@ -648,7 +651,7 @@ export default function JobsPageContent() {
               <button
                 onClick={() => setCurrentPage(prev => Math.min(jobs.total_pages, prev + 1))}
                 disabled={currentPage === jobs.total_pages}
-                className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-2 py-1.5 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-xs"
               >
                 Next
               </button>

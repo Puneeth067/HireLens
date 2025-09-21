@@ -185,53 +185,57 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header with Back Button */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics Dashboard</h1>
-              <p className="text-gray-600">Comprehensive insights into your recruitment pipeline</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Analytics Dashboard</h1>
+              <p className="text-gray-600 text-sm sm:text-base">Comprehensive insights into your recruitment pipeline</p>
             </div>
-            <div className="flex gap-3 mt-4 sm:mt-0">
+            <div className="flex flex-wrap gap-2">
               <Button
                 onClick={() => {
                   router.back();
                 }}
                 variant="outline"
+                size="responsiveSm"
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back
+                <span className="hidden xs:inline">Back</span>
               </Button>
               <Button
                 onClick={() => fetchAnalyticsData()}
                 disabled={refreshing}
+                size="responsiveSm"
                 className="flex items-center gap-2"
               >
                 <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
+                <span className="hidden xs:inline">Refresh</span>
               </Button>
               <Button
                 variant="outline"
                 onClick={() => exportData('csv')}
+                size="responsiveSm"
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                Export CSV
+                <span className="hidden xs:inline">Export CSV</span>
               </Button>
               <Button
                 variant="outline"
                 onClick={() => exportData('json')}
+                size="responsiveSm"
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                Export JSON
+                <span className="hidden xs:inline">Export JSON</span>
               </Button>
             </div>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex space-x-1 mb-8 bg-white rounded-lg p-1 shadow-sm">
+        <div className="flex flex-wrap space-x-1 mb-6 bg-white rounded-lg p-1 shadow-sm">
           {[
             { id: 'overview', label: 'Overview', icon: BarChart3 },
             { id: 'scores', label: 'Scores', icon: Award },
@@ -245,14 +249,14 @@ export default function AnalyticsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 rounded-md transition-colors text-xs sm:text-sm ${
                   activeTab === tab.id
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                {tab.label}
+                <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">{tab.label}</span>
               </button>
             );
           })}
@@ -261,125 +265,125 @@ export default function AnalyticsPage() {
         {/* Overview Tab */}
         {activeTab === 'overview' && overview && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 p-4">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                       Total Candidates
                     </CardTitle>
-                    <Users className="h-5 w-5 text-blue-600" />
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-900">
+                <CardContent className="p-4">
+                  <div className="text-xl sm:text-3xl font-bold text-gray-900">
                     {overview.total_candidates?.toLocaleString() || '0'}
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">Unique candidates processed</p>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1">Unique candidates processed</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 p-4">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                       Active Jobs
                     </CardTitle>
-                    <Briefcase className="h-5 w-5 text-green-600" />
+                    <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-900">
+                <CardContent className="p-4">
+                  <div className="text-xl sm:text-3xl font-bold text-gray-900">
                     {overview.total_active_jobs || 0}
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">Currently hiring positions</p>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1">Currently hiring positions</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 p-4">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                       Average ATS Score
                     </CardTitle>
-                    <Award className="h-5 w-5 text-yellow-600" />
+                    <Award className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-900">
+                <CardContent className="p-4">
+                  <div className="text-xl sm:text-3xl font-bold text-gray-900">
                     {overview.average_ats_score || 0}%
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">Across all comparisons</p>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1">Across all comparisons</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 p-4">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-600">
+                    <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                       Success Rate
                     </CardTitle>
-                    <Activity className="h-5 w-5 text-purple-600" />
+                    <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-900">
+                <CardContent className="p-4">
+                  <div className="text-xl sm:text-3xl font-bold text-gray-900">
                     {overview.processing_success_rate || 0}%
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">Processing success rate</p>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1">Processing success rate</p>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Last 30 days summary</CardDescription>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-base">Recent Activity</CardTitle>
+                  <CardDescription className="text-xs">Last 30 days summary</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Comparisons</span>
-                    <span className="font-semibold">{overview.total_comparisons || 0}</span>
+                    <span className="text-xs text-gray-600">Total Comparisons</span>
+                    <span className="font-semibold text-sm">{overview.total_comparisons || 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Recent Comparisons</span>
-                    <Badge className={getScoreColor(80)}>
+                    <span className="text-xs text-gray-600">Recent Comparisons</span>
+                    <Badge className={`text-xs ${getScoreColor(80)}`}>
                       {overview.recent_activity_count || 0}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Top Performing Score</span>
-                    <span className="font-semibold">{(overview.top_performing_score || 0)}%</span>
+                    <span className="text-xs text-gray-600">Top Performing Score</span>
+                    <span className="font-semibold text-sm">{(overview.top_performing_score || 0)}%</span>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>System Health</CardTitle>
-                  <CardDescription>Current system status</CardDescription>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-base">System Health</CardTitle>
+                  <CardDescription className="text-xs">Current system status</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                     <div>
-                      <div className="font-medium">Processing Engine</div>
-                      <div className="text-sm text-gray-500">Operational</div>
+                      <div className="font-medium text-sm">Processing Engine</div>
+                      <div className="text-xs text-gray-500">Operational</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                     <div>
-                      <div className="font-medium">Analytics Service</div>
-                      <div className="text-sm text-gray-500">Healthy</div>
+                      <div className="font-medium text-sm">Analytics Service</div>
+                      <div className="text-xs text-gray-500">Healthy</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                     <div>
-                      <div className="font-medium">Data Storage</div>
-                      <div className="text-sm text-gray-500">Available</div>
+                      <div className="font-medium text-sm">Data Storage</div>
+                      <div className="text-xs text-gray-500">Available</div>
                     </div>
                   </div>
                 </CardContent>
@@ -391,30 +395,30 @@ export default function AnalyticsPage() {
         {/* Score Distribution Tab */}
         {activeTab === 'scores' && scoreDistribution && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>Score Distribution</CardTitle>
-                  <CardDescription>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-base">Score Distribution</CardTitle>
+                  <CardDescription className="text-xs">
                     Distribution of candidates across ATS score ranges
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-4">
+                  <div className="space-y-3">
                     {scoreDistribution.distribution.map((range) => (
-                      <div key={range.range} className="flex items-center gap-4">
-                        <div className="w-16 text-sm font-medium text-gray-600">
+                      <div key={range.range} className="flex items-center gap-3">
+                        <div className="w-12 text-xs font-medium text-gray-600">
                           {range.range}%
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 bg-gray-200 rounded-full h-3 relative overflow-hidden">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-gray-200 rounded-full h-2.5 relative overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
                                 style={{ width: `${range.percentage}%` }}
                               />
                             </div>
-                            <div className="w-24 text-sm text-gray-600">
+                            <div className="w-20 text-xs text-gray-600">
                               {range.count} ({range.percentage}%)
                             </div>
                           </div>
@@ -426,44 +430,44 @@ export default function AnalyticsPage() {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Score Statistics</CardTitle>
-                  <CardDescription>Statistical summary</CardDescription>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-base">Score Statistics</CardTitle>
+                  <CardDescription className="text-xs">Statistical summary</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Average</span>
-                    <span className="font-semibold">{scoreDistribution.average_score}%</span>
+                    <span className="text-xs text-gray-600">Average</span>
+                    <span className="font-semibold text-sm">{scoreDistribution.average_score}%</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Median</span>
-                    <span className="font-semibold">{scoreDistribution.median_score}%</span>
+                    <span className="text-xs text-gray-600">Median</span>
+                    <span className="font-semibold text-sm">{scoreDistribution.median_score}%</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Candidates</span>
-                    <span className="font-bold text-blue-600">
+                    <span className="text-xs text-gray-600">Total Candidates</span>
+                    <span className="font-bold text-blue-600 text-sm">
                       {scoreDistribution.total_candidates}
                     </span>
                   </div>
-                  <hr className="my-3" />
+                  <hr className="my-2" />
                   {scoreDistribution.score_trends && (
                     <>
-                      <div className="text-sm font-medium text-gray-700 mb-2">Score Trends</div>
+                      <div className="text-xs font-medium text-gray-700 mb-1">Score Trends</div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Improving</span>
-                        <Badge className="bg-green-100 text-green-700">
+                        <span className="text-xs text-gray-600">Improving</span>
+                        <Badge className="bg-green-100 text-green-700 text-xs px-2 py-0.5">
                           {scoreDistribution.score_trends.improving}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Declining</span>
-                        <Badge className="bg-red-100 text-red-700">
+                        <span className="text-xs text-gray-600">Declining</span>
+                        <Badge className="bg-red-100 text-red-700 text-xs px-2 py-0.5">
                           {scoreDistribution.score_trends.declining}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Stable</span>
-                        <Badge className="bg-gray-100 text-gray-700">
+                        <span className="text-xs text-gray-600">Stable</span>
+                        <Badge className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5">
                           {scoreDistribution.score_trends.stable}
                         </Badge>
                       </div>

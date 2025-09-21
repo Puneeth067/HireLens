@@ -384,88 +384,91 @@ function ComparisonsPageContent() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Resume Comparisons</h1>
-            <p className="text-gray-600 mt-1">Compare candidates against job requirements</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Resume Comparisons</h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">Compare candidates against job requirements</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => {
                 componentLogger.userAction('back_button_clicked');
                 router.back();
               }}
               variant="outline"
+              size="responsiveSm"
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back
+              <span className="hidden xs:inline">Back</span>
             </Button>
             <Button
               onClick={deleteAllComparisons}
               variant="outline"
+              size="responsiveSm"
               className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
             >
               <Trash2 className="w-4 h-4" />
-              Delete All
+              <span className="hidden xs:inline">Delete All</span>
             </Button>
             <Button
               onClick={resetAllData}
               variant="outline"
+              size="responsiveSm"
               className="flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
-              Refresh All
+              <span className="hidden xs:inline">Refresh All</span>
             </Button>
             <Link
               href="/comparisons/create"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
             >
-              <BarChart3 className="w-5 h-5 mr-2" />
-              New Comparison
+              <BarChart3 className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">New Comparison</span>
             </Link>
           </div>
         </div>
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center">
-                <Users className="h-8 w-8 text-blue-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Comparisons</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total_comparisons}</p>
+                <Users className="h-6 w-6 text-blue-600" />
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-600">Total Comparisons</p>
+                  <p className="text-lg font-bold text-gray-900">{stats.total_comparisons}</p>
                   <p className="text-xs text-gray-500">Active: {(stats.status_breakdown?.completed || 0) + (stats.status_breakdown?.pending || 0)}</p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center">
-                <BarChart3 className="h-8 w-8 text-green-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Average Score</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.avg_score.toFixed(1)}%</p>
+                <BarChart3 className="h-6 w-6 text-green-600" />
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-600">Average Score</p>
+                  <p className="text-lg font-bold text-gray-900">{stats.avg_score.toFixed(1)}%</p>
                   <p className="text-xs text-gray-500">Completed: {stats.status_breakdown?.completed || 0}</p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center">
-                <Trophy className="h-8 w-8 text-yellow-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Top Score</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.top_score.toFixed(1)}%</p>
+                <Trophy className="h-6 w-6 text-yellow-600" />
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-600">Top Score</p>
+                  <p className="text-lg font-bold text-gray-900">{stats.top_score.toFixed(1)}%</p>
                   <p className="text-xs text-gray-500">Pending: {stats.status_breakdown?.pending || 0}</p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center">
-                <Clock className="h-8 w-8 text-purple-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Recent (7 days)</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.recent_comparisons}</p>
+                <Clock className="h-6 w-6 text-purple-600" />
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-600">Recent (7 days)</p>
+                  <p className="text-lg font-bold text-gray-900">{stats.recent_comparisons}</p>
                   <p className="text-xs text-gray-500">Failed: {stats.status_breakdown?.failed || 0}</p>
                 </div>
               </div>
@@ -474,8 +477,8 @@ function ComparisonsPageContent() {
         )}
 
         {/* Controls */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div className="flex-1 max-w-lg">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -484,27 +487,27 @@ function ComparisonsPageContent() {
                   placeholder="Search by resume name or job title..."
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => {
                   componentLogger.userAction('filters_toggled', { showFilters: !showFilters });
                   setShowFilters(!showFilters);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
+                className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2 text-sm"
               >
                 <Filter className="h-4 w-4" />
-                Filters
+                <span className="hidden xs:inline">Filters</span>
               </button>
               <button
                 onClick={exportComparisons}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm"
               >
                 <Download className="h-4 w-4" />
-                Export
+                <span className="hidden xs:inline">Export</span>
               </button>
             </div>
           </div>
@@ -512,13 +515,13 @@ function ComparisonsPageContent() {
           {/* Filters Panel */}
           {showFilters && (
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                   <select
                     value={filters.status}
                     onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     aria-label='Select status filter'
                   >
                     <option value="all">All Status</option>
@@ -528,11 +531,11 @@ function ComparisonsPageContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Job</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Job</label>
                   <select
                     value={filters.job_id}
                     onChange={(e) => handleFilterChange('job_id', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     aria-label='Select job filter'
                   >
                     <option value="all">All Jobs</option>
@@ -542,36 +545,36 @@ function ComparisonsPageContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Score</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Min Score</label>
                   <input
                     type="number"
                     min="0"
                     max="100"
                     value={filters.min_score}
                     onChange={(e) => handleFilterChange('min_score', parseInt(e.target.value) || 0)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     aria-label='Minimum score filter'
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Score</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Max Score</label>
                   <input
                     type="number"
                     min="0"
                     max="100"
                     value={filters.max_score}
                     onChange={(e) => handleFilterChange('max_score', parseInt(e.target.value) || 100)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     aria-label='Select maximum score filter'
                   />
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-4">
-                <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 gap-3">
+                <div className="flex flex-wrap gap-2">
                   <select
                     value={filters.sort_by}
                     onChange={(e) => handleFilterChange('sort_by', e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     aria-label='Select sort by filter'
                   >
                     <option value="created_at">Sort by Date</option>
@@ -581,7 +584,7 @@ function ComparisonsPageContent() {
                   <select
                     value={filters.sort_order}
                     onChange={(e) => handleFilterChange('sort_order', e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     aria-label='Select sort order filter'
                   >
                     <option value="desc">Descending</option>
@@ -590,7 +593,7 @@ function ComparisonsPageContent() {
                 </div>
                 <button
                   onClick={resetFilters}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  className="px-3 py-1.5 text-gray-600 hover:text-gray-800 text-sm"
                 >
                   Reset Filters
                 </button>
@@ -601,37 +604,37 @@ function ComparisonsPageContent() {
 
         {/* Comparisons Grid */}
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           </div>
         ) : noComparisons ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No comparisons found</h3>
-            <p className="text-gray-600 mb-4">Create comparisons by matching resumes with job descriptions.</p>
-            <div className="flex justify-center gap-3">
+          <div className="bg-white rounded-lg shadow-sm p-6 sm:p-12 text-center">
+            <BarChart3 className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No comparisons found</h3>
+            <p className="text-gray-600 mb-4 text-sm sm:text-base">Create comparisons by matching resumes with job descriptions.</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
               <Link
                 href="/jobs"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm sm:text-base text-center"
               >
                 View Jobs
               </Link>
               <Link
                 href="/upload"
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm sm:text-base text-center"
               >
                 Upload Resumes
               </Link>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {comparisons.map((comparison) => (
-              <div key={comparison.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-4">
+              <div key={comparison.id} className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 truncate">{comparison.candidate_name || comparison.resume_filename}</h3>
-                    <p className="text-sm text-gray-600 truncate">{comparison.job_title}</p>
+                    <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base">{comparison.candidate_name || comparison.resume_filename}</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">{comparison.job_title}</p>
                     <p className="text-xs text-gray-500">{comparison.company}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(comparison.status)}`}>
@@ -640,10 +643,10 @@ function ComparisonsPageContent() {
                 </div>
                 
                 {comparison.status === 'completed' && comparison.ats_score && (
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-700">ATS Score</span>
-                      <span className={`text-lg font-bold px-2 py-1 rounded ${getScoreColor(comparison.ats_score.overall_score)}`}>
+                      <span className="text-xs font-medium text-gray-700">ATS Score</span>
+                      <span className={`text-base font-bold px-2 py-1 rounded ${getScoreColor(comparison.ats_score.overall_score)}`}>
                         {comparison.ats_score.overall_score.toFixed(1)}%
                       </span>
                     </div>
@@ -748,7 +751,7 @@ function ComparisonsPageContent() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex justify-center">
-            <nav className="flex items-center space-x-2">
+            <nav className="flex items-center space-x-1 sm:space-x-2">
               <button
                 onClick={() => {
                   const newPage = Math.max(1, currentPage - 1);
@@ -756,7 +759,7 @@ function ComparisonsPageContent() {
                   setCurrentPage(newPage);
                 }}
                 disabled={currentPage === 1}
-                className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-2 py-1 sm:px-3 sm:py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-xs sm:text-sm"
               >
                 Previous
               </button>
@@ -767,7 +770,7 @@ function ComparisonsPageContent() {
                     componentLogger.userAction('pagination_page_clicked', { currentPage, newPage: page });
                     setCurrentPage(page);
                   }}
-                  className={`px-3 py-2 rounded-md border ${
+                  className={`px-2 py-1 sm:px-3 sm:py-2 rounded-md border text-xs sm:text-sm ${
                     currentPage === page
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'border-gray-300 hover:bg-gray-50'
@@ -783,7 +786,7 @@ function ComparisonsPageContent() {
                   setCurrentPage(newPage);
                 }}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-2 py-1 sm:px-3 sm:py-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-xs sm:text-sm"
               >
                 Next
               </button>
