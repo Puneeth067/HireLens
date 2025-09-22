@@ -24,8 +24,9 @@ COPY server/ .
 # Create necessary directories
 RUN mkdir -p uploads/resumes uploads/temp uploads/parsed uploads/jobs uploads/comparisons data/rankings
 
-# Expose port
-EXPOSE $PORT
+# Expose port (Render will dynamically assign via PORT environment variable)
+EXPOSE 8000
 
-# Run the application
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
+# Run the application using PORT environment variable provided by Render
+# If PORT is not set, default to 8000 for local development
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
