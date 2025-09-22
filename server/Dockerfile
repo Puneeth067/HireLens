@@ -22,6 +22,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Download NLTK data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger')"
 
+# Download spaCy model
+RUN python -c "import spacy; spacy.cli.download('en_core_web_sm')"
+
 # Copy server code
 COPY server/ .
 
@@ -32,9 +35,9 @@ RUN mkdir -p uploads/resumes uploads/temp uploads/parsed uploads/jobs uploads/co
 RUN chown -R nobody:nogroup /app
 USER nobody
 
-# Expose port 8000 (default port for local development)
-EXPOSE 8000
+# Expose port (Render will dynamically assign)
+EXPOSE $PORT
 
 # Run the application using the PORT environment variable provided by Render
 # For local development, you can set PORT environment variable or it will default to 8000 in the application code
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
