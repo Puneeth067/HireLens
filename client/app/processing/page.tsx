@@ -612,7 +612,7 @@ function ProcessingPageContent() {
                                   <span className="hidden xs:inline">View</span>
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent className="max-w-4xl max-h-[80vh]">
+                              <DialogContent className="max-w-4xl max-h-[80vh] bg-white">
                                 <DialogHeader>
                                   <DialogTitle className="text-base sm:text-lg">Parsed Resume: {file.original_filename}</DialogTitle>
                                   <DialogDescription className="text-xs sm:text-sm">
