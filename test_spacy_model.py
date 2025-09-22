@@ -78,14 +78,10 @@ def ensure_spacy_model_runtime():
             print(" spaCy English model not found, installing at runtime...")
             if install_spacy_model():
                 # Try to load again after installation
-                try:
-                    importlib.reload(spacy)  # Reload spacy module
-                    nlp = spacy.load("en_core_web_sm")
-                    print("✓ spaCy English model loaded successfully after installation")
-                    return nlp
-                except Exception as e:
-                    print(f"✗ Failed to load spaCy model after installation: {e}")
-                    return None
+                _ = importlib.reload(spacy)  # Reload spacy module
+                nlp = spacy.load("en_core_web_sm")
+                print("✓ spaCy English model loaded successfully after installation")
+                return nlp
             else:
                 print("✗ Failed to install spaCy English model")
                 return None

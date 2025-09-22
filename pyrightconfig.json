@@ -6,5 +6,6 @@
   "extraPaths": [
     "server"
   ],
-  "reportMissingImports": false
+  "reportMissingImports": false,
+  "reportMissingTypeStubs": false
 }

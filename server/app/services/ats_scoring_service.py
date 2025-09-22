@@ -3,14 +3,15 @@ ATS Scoring Service - Core algorithm for matching resumes to job descriptions
 """
 
 import re
-from typing import Dict, List, Tuple, Any, Optional
+from typing import List, Tuple, Optional, Set, Dict, Union, Any, cast, TYPE_CHECKING
 from datetime import datetime
 import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
+# pyright: ignore[reportMissingTypeStubs]
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+from numpy import ndarray
 import json
-from pathlib import Path
 import sys
 import subprocess
 import importlib
@@ -18,6 +19,10 @@ import importlib
 from app.models.resume import ParsedResume
 from app.models.job import JobDescription
 from app.config import settings
+
+if TYPE_CHECKING:
+    from scipy.sparse import csr_matrix
+    from numpy import ndarray
 
 def ensure_spacy_model():
     """Ensure spaCy English model is available, installing if necessary"""
@@ -30,23 +35,23 @@ def ensure_spacy_model():
             print("spaCy English model not found, attempting to install...")
             try:
                 # Use direct pip installation as the primary method to avoid URL issues
-                subprocess.run([
+                _ = subprocess.run([
                     sys.executable, "-m", "pip", "install", 
                     "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"
                 ], check=True, capture_output=True, text=True, timeout=300)
                 
                 # Reload spacy and try to load the model
-                importlib.reload(spacy)
+                _ = importlib.reload(spacy)
                 return spacy.load("en_core_web_sm")
             except Exception as e:
                 # Fallback to spacy download
                 try:
-                    subprocess.run([
+                    _ = subprocess.run([
                         sys.executable, "-m", "spacy", "download", "en_core_web_sm"
                     ], check=True, capture_output=True, text=True, timeout=300)
                     
                     # Reload spacy and try to load the model
-                    importlib.reload(spacy)
+                    _ = importlib.reload(spacy)
                     return spacy.load("en_core_web_sm")
                 except Exception as e2:
                     print(f"Failed to install/load spaCy model: {e2}")
@@ -89,7 +94,7 @@ class ATSScorer:
             Dict containing detailed scoring information
         """
         # Initialize scoring components
-        scores = {
+        scores: Dict[str, Any] = {
             'skills_score': 0.0,
             'experience_score': 0.0,
             'education_score': 0.0,
@@ -108,6 +113,12 @@ class ATSScorer:
         education_result = self._calculate_education_match(resume, job)
         keywords_result = self._calculate_keywords_match(resume, job)
         
+        # Extract scores as floats to avoid type issues
+        skills_score: float = float(cast(float, skills_result['score']))
+        experience_score: float = float(cast(float, experience_result['score']))
+        education_score: float = float(cast(float, education_result['score']))
+        keywords_score: float = float(cast(float, keywords_result['score']))
+        
         # Apply job-specific weights - create weights object from individual weight fields
         class ATSWeights:
             def __init__(self, skills_weight, experience_weight, education_weight, keywords_weight):
@@ -117,48 +128,48 @@ class ATSScorer:
                 self.keywords_weight = keywords_weight
         
         weights = ATSWeights(
-            skills_weight=job.weight_skills * 100,
-            experience_weight=job.weight_experience * 100,
-            education_weight=job.weight_education * 100,
-            keywords_weight=job.weight_keywords * 100
+            skills_weight=float(job.weight_skills * 100),
+            experience_weight=float(job.weight_experience * 100),
+            education_weight=float(job.weight_education * 100),
+            keywords_weight=float(job.weight_keywords * 100)
         )
-        scores['skills_score'] = skills_result['score']
-        scores['experience_score'] = experience_result['score']
-        scores['education_score'] = education_result['score']
-        scores['keywords_score'] = keywords_result['score']
+        scores['skills_score'] = skills_score
+        scores['experience_score'] = experience_score
+        scores['education_score'] = education_score
+        scores['keywords_score'] = keywords_score
         
         # Calculate weighted overall score
         scores['overall_score'] = (
-            (skills_result['score'] * weights.skills_weight / 100) +
-            (experience_result['score'] * weights.experience_weight / 100) +
-            (education_result['score'] * weights.education_weight / 100) +
-            (keywords_result['score'] * weights.keywords_weight / 100)
+            (skills_score * weights.skills_weight / 100) +
+            (experience_score * weights.experience_weight / 100) +
+            (education_score * weights.education_weight / 100) +
+            (keywords_score * weights.keywords_weight / 100)
         )
         
         # Add detailed breakdown
         scores['breakdown'] = {
             'skills': {
-                'score': skills_result['score'],
+                'score': skills_score,
                 'weight': weights.skills_weight,
-                'weighted_score': skills_result['score'] * weights.skills_weight / 100,
+                'weighted_score': skills_score * weights.skills_weight / 100,
                 'details': skills_result['details']
             },
             'experience': {
-                'score': experience_result['score'],
+                'score': experience_score,
                 'weight': weights.experience_weight,
-                'weighted_score': experience_result['score'] * weights.experience_weight / 100,
+                'weighted_score': experience_score * weights.experience_weight / 100,
                 'details': experience_result['details']
             },
             'education': {
-                'score': education_result['score'],
+                'score': education_score,
                 'weight': weights.education_weight,
-                'weighted_score': education_result['score'] * weights.education_weight / 100,
+                'weighted_score': education_score * weights.education_weight / 100,
                 'details': education_result['details']
             },
             'keywords': {
-                'score': keywords_result['score'],
+                'score': keywords_score,
                 'weight': weights.keywords_weight,
-                'weighted_score': keywords_result['score'] * weights.keywords_weight / 100,
+                'weighted_score': keywords_score * weights.keywords_weight / 100,
                 'details': keywords_result['details']
             }
         }
@@ -244,8 +255,8 @@ class ATSScorer:
     
     def _find_partial_skill_matches(
         self, 
-        resume_skills: set, 
-        job_skills: set
+        resume_skills: Set[str], 
+        job_skills: Set[str]
     ) -> List[str]:
         """Find partial skill matches using substring matching"""
         partial_matches = []
@@ -393,7 +404,9 @@ class ATSScorer:
         try:
             # Calculate TF-IDF similarity
             tfidf_matrix = self.tfidf_vectorizer.fit_transform([job_text, resume_text])
-            similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+            # Explicitly type the cosine_similarity result to resolve Pyright warning
+            similarity_result: ndarray[Any, Any] = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])
+            similarity: float = float(similarity_result[0][0])
             
             score = similarity * 100
             
@@ -521,13 +534,13 @@ class ATSScorer:
         self, 
         resume: ParsedResume, 
         job: JobDescription, 
-        breakdown: Dict
+        breakdown: Dict[str, Any]
     ) -> List[str]:
         """Generate improvement recommendations based on scoring"""
         recommendations = []
         
         # Skills recommendations
-        skills_score = breakdown['skills']['score']
+        skills_score = float(cast(float, breakdown['skills']['score']))
         if skills_score < 70:
             missing_skills = breakdown['skills']['details'].get('missing', [])
             if missing_skills:
@@ -536,21 +549,21 @@ class ATSScorer:
                 )
         
         # Experience recommendations
-        experience_score = breakdown['experience']['score']
+        experience_score = float(cast(float, breakdown['experience']['score']))
         if experience_score < 60:
             recommendations.append(
                 "Highlight more relevant work experience or include additional details about your accomplishments"
             )
         
         # Keywords recommendations
-        keywords_score = breakdown['keywords']['score']
+        keywords_score = float(cast(float, breakdown['keywords']['score']))
         if keywords_score < 50:
             recommendations.append(
                 "Include more job-specific keywords from the job description in your resume"
             )
         
         # Education recommendations
-        education_score = breakdown['education']['score']
+        education_score = float(cast(float, breakdown['education']['score']))
         if education_score < 80:
             recommendations.append(
                 "Consider adding or highlighting relevant education, certifications, or training"

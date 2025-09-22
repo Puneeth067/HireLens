@@ -33,7 +33,7 @@ def ensure_spacy_model():
                 ], check=True, capture_output=True, text=True, timeout=300)
                 
                 # Reload spacy and try to load the model
-                importlib.reload(spacy)
+                _ = importlib.reload(spacy)
                 return spacy.load("en_core_web_sm")
             except Exception as e:
                 # Fallback to spacy download
@@ -43,7 +43,7 @@ def ensure_spacy_model():
                     ], check=True, capture_output=True, text=True, timeout=300)
                     
                     # Reload spacy and try to load the model
-                    importlib.reload(spacy)
+                    _ = importlib.reload(spacy)
                     return spacy.load("en_core_web_sm")
                 except Exception as e2:
                     logger.warning(f"Failed to install/load spaCy model: {e2}")

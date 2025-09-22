@@ -32,39 +32,22 @@ def install_spacy_model():
     try:
         logger.info("Attempting to install spaCy English model via pip...")
         
-        # Use direct pip installation as the primary method to avoid URL issues
+        # Use the safer spacy download command instead of direct URL
         result = subprocess.run([
-            sys.executable, "-m", "pip", "install", 
-            "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"
+            sys.executable, "-m", "spacy", "download", "en_core_web_sm"
         ], check=True, capture_output=True, text=True, timeout=300)  # 5 minute timeout
         
-        logger.info("spaCy English model installed via pip successfully")
-        logger.debug(f"Pip install output: {result.stdout}")
+        logger.info("spaCy English model installed successfully")
+        logger.debug(f"Spacy download output: {result.stdout}")
         return True
         
     except subprocess.TimeoutExpired:
         logger.error("spaCy model installation timed out")
         return False
     except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to install spaCy model via pip: {e}")
+        logger.error(f"Failed to install spaCy model: {e}")
         logger.error(f"Error output: {e.stderr}")
-        
-        # Fallback method: Try spacy download command
-        try:
-            logger.info("Trying alternative installation method (spacy download)...")
-            result = subprocess.run([
-                sys.executable, "-m", "spacy", "download", "en_core_web_sm"
-            ], check=True, capture_output=True, text=True, timeout=300)
-            
-            logger.info("spaCy English model installed successfully via spacy download")
-            logger.debug(f"Spacy download output: {result.stdout}")
-            return True
-            
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e2:
-            logger.error(f"Alternative installation method also failed: {e2}")
-            if isinstance(e2, subprocess.CalledProcessError):
-                logger.error(f"Error output: {e2.stderr}")
-            return False
+        return False
     except Exception as e:
         logger.error(f"Unexpected error during spaCy model installation: {e}")
         return False
@@ -83,14 +66,10 @@ def verify_and_install_spacy_model():
             logger.warning("spaCy English model not found, attempting installation...")
             if install_spacy_model():
                 # Try to load again after installation
-                try:
-                    importlib.reload(spacy)  # Reload spacy module
-                    spacy.load("en_core_web_sm")
-                    logger.info("spaCy English model loaded successfully after installation")
-                    return True
-                except Exception as e:
-                    logger.error(f"Failed to load spaCy model after installation: {e}")
-                    return False
+                _ = importlib.reload(spacy)  # Reload spacy module
+                spacy.load("en_core_web_sm")
+                logger.info("spaCy English model loaded successfully after installation")
+                return True
             else:
                 logger.error("Failed to install spaCy English model")
                 return False

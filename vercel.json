@@ -3,19 +3,7 @@
   "builds": [
     {
       "src": "client/package.json",
-      "use": "@vercel/next",
-      "config": {
-        "includeFiles": [
-          "client/next.config.js",
-          "client/next.config.ts"
-        ]
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "client/$1"
+      "use": "@vercel/next"
     }
   ]
 }

@@ -35,7 +35,7 @@ def test_improved_spacy_installation():
                 print("  ✓ spaCy English model installed via pip successfully")
                 
                 # Try to load again after installation
-                importlib.reload(spacy)
+                _ = importlib.reload(spacy)
                 nlp = spacy.load("en_core_web_sm")
                 print("  ✓ spaCy English model loaded successfully after installation")
                 
@@ -58,7 +58,7 @@ def test_improved_spacy_installation():
                     print("  ✓ spaCy English model installed via spacy download successfully")
                     
                     # Try to load again after installation
-                    importlib.reload(spacy)
+                    _ = importlib.reload(spacy)
                     nlp = spacy.load("en_core_web_sm")
                     print("  ✓ spaCy English model loaded successfully after installation")
                     
