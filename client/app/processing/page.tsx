@@ -20,15 +20,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiService } from '@/lib/api';
-import { ParsedResume, FileMetadata, ProcessingStats, Skill,} from '@/lib/types';
+import { ParsedResume, FileMetadata, ProcessingStats, Skill } from '@/lib/types';
 import ErrorBoundary from '@/components/error-boundary';
 import { useLogger, logger } from '@/lib/logger';
 import { apiCache, systemCache, CacheKeys, CacheInvalidation } from '@/lib/cache';
 import { 
-  DashboardSkeleton, 
-  ListSkeleton, 
-  TableSkeleton,
-  CardSkeleton 
+  DashboardSkeleton
 } from '@/components/ui/skeleton';
 
 function ProcessingPageContent() {
@@ -83,7 +80,7 @@ function ProcessingPageContent() {
       clearInterval(interval);
       logger.endPerformanceTimer('processing_page_load');
     };
-  }, []); // Empty dependency array to prevent infinite loop
+  }, []); // Dependencies are handled in the useCallback hooks
 
   const loadFiles = useCallback(async () => {
     try {
@@ -137,7 +134,7 @@ function ProcessingPageContent() {
     } finally {
       setLoading(false);
     }
-  }, []); // Remove componentLogger dependency to prevent infinite loop
+  }, [componentLogger]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -185,7 +182,7 @@ function ProcessingPageContent() {
       };
       setStats(fallbackStats);
     }
-  }, []); // Remove componentLogger dependency to prevent infinite loop
+  }, [componentLogger]);
 
   const parseFile = useCallback(async (fileId: string) => {
     try {
@@ -210,7 +207,7 @@ function ProcessingPageContent() {
       });
       setError('Failed to parse file. Please try again.');
     }
-  }, []); // Remove dependencies to prevent infinite loop
+  }, [loadFiles, loadStats, componentLogger]);
 
   const viewParsedResume = useCallback(async (fileId: string) => {
     try {
@@ -237,7 +234,7 @@ function ProcessingPageContent() {
       componentLogger.error('Error loading parsed resume', { error, fileId });
       setError('Failed to load resume. Please try again.');
     }
-  }, []); // Remove componentLogger dependency to prevent infinite loop
+  }, [componentLogger]);
 
   const deleteFile = useCallback(async (fileId: string, filename: string) => {
     // Debug log to see which file is being deleted
@@ -334,7 +331,7 @@ function ProcessingPageContent() {
       setIsCleaningUp(false);
       setShowCleanupConfirmation(false); // Close the dialog
     }
-  }, []); // Remove dependencies to prevent infinite loop
+  }, [loadFiles, loadStats, componentLogger]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

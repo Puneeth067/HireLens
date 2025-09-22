@@ -20,9 +20,7 @@ import {
 import { JobDescriptionList, JobStats } from '@/lib/types';
 import { cachedApiService } from '@/lib/cached-api';
 import { useLogger, LoggerUtils } from '@/lib/logger';
-import { LoadingWrapper, useLoadingState } from '@/components/ui/page-wrapper';
-import { JobsPageSkeleton, AnalyticsCardSkeleton } from '@/components/ui/skeleton';
-import ErrorBoundary from '@/components/error-boundary';
+import { useLoadingState } from '@/components/ui/page-wrapper';
 import { Button } from '@/components/ui/button';
 import { 
   AlertDialog,
@@ -70,21 +68,6 @@ export default function JobsPageContent() {
   // UI states
   const [showFilters, setShowFilters] = useState(false);
   const [companies, setCompanies] = useState<string[]>([]);
-  const apiCall = async (endpoint: string, options?: RequestInit) => {
-    const response = await fetch(`http://localhost:8000${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`);
-    }
-    
-    return response.json();
-  };
 
   const loadJobs = useCallback(async () => {
     try {
@@ -132,7 +115,7 @@ export default function JobsPageContent() {
     } catch (err) {
       logger.error('Error loading job stats', { error: err });
     }
-  }, []);
+  }, [logger]);
 
   // Use ref to ensure stable reference for one-time load
   const hasLoadedCompaniesRef = useRef(false);
@@ -151,7 +134,7 @@ export default function JobsPageContent() {
     } catch (err) {
       logger.error('Error loading companies', { error: err });
     }
-  }, []);
+  }, [logger]);
 
   // Separate effect for initial load (run once)
   useEffect(() => {
@@ -306,7 +289,7 @@ export default function JobsPageContent() {
       setShowDeleteConfirmation(false);
       setJobToDelete(null);
     }
-  }, [jobToDelete, loadJobs, loadStats]);
+  }, [jobToDelete, loadJobs, loadStats, logger]);
 
   const handleDuplicateJob = useCallback(async (jobId: string) => {
     try {
@@ -339,7 +322,7 @@ export default function JobsPageContent() {
       logger.error('Failed to duplicate job', { jobId, error: err });
       alert('Failed to duplicate job');
     }
-  }, [loadJobs, loadStats]);
+  }, [loadJobs, loadStats, logger]);
 
   // Enhanced click handlers with logging
   const handleJobClick = useCallback((jobId: string, action: string) => {
