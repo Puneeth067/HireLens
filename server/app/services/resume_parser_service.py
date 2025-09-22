@@ -4,6 +4,9 @@ from typing import List, Optional, Dict, Tuple
 import spacy
 from datetime import datetime
 from dateutil import parser as date_parser
+import sys
+import subprocess
+import importlib
 
 from app.models.resume import (
     ParsedResume, PersonalInfo, Experience, Education, Skills, ParsedData, 
@@ -13,16 +16,43 @@ from app.services.text_extraction_service import TextExtractionService
 
 logger = logging.getLogger(__name__)
 
+def ensure_spacy_model():
+    """Ensure spaCy English model is available, installing if necessary"""
+    try:
+        import spacy
+        try:
+            spacy.load("en_core_web_sm")
+            return spacy.load("en_core_web_sm")
+        except OSError:
+            logger.info("spaCy English model not found, attempting to install...")
+            try:
+                # Try to install the model
+                subprocess.run([
+                    sys.executable, "-m", "spacy", "download", "en_core_web_sm"
+                ], check=True, capture_output=True, text=True, timeout=300)
+                
+                # Reload spacy and try to load the model
+                importlib.reload(spacy)
+                return spacy.load("en_core_web_sm")
+            except Exception as e:
+                logger.warning(f"Failed to install/load spaCy model: {e}")
+                return None
+    except Exception as e:
+        logger.error(f"Error with spaCy: {e}")
+        return None
+
 class ResumeParserService:
     """Service for parsing resume text and extracting structured information"""
     
     def __init__(self):
         self.text_extractor = TextExtractionService()
-        try:
-            self.nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            logger.warning("spaCy English model not found. Installing with: python -m spacy download en_core_web_sm")
-            self.nlp = None
+        self.nlp = ensure_spacy_model()
+        
+        if self.nlp is not None:
+            logger.info("spaCy English model loaded successfully")
+        else:
+            logger.warning("spaCy English model not available. Running with limited NLP features.")
+            logger.info("To install the model, run: python -m spacy download en_core_web_sm")
         
         # Enhanced skills database for categorization with more comprehensive lists
         self.skills_database = {

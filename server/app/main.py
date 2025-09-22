@@ -11,6 +11,8 @@ import time
 from pathlib import Path
 import psutil
 import sys
+import subprocess
+import importlib
 
 # Import route modules - using your config structure
 from app.config import settings
@@ -24,6 +26,84 @@ from app.api.ranking import router as ranking
 # Configure logging
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
 logger = logging.getLogger(__name__)
+
+def install_spacy_model():
+    """Install spaCy English model at runtime with robust error handling"""
+    try:
+        logger.info("Attempting to install spaCy English model...")
+        
+        # Method 1: Direct spacy download command
+        result = subprocess.run([
+            sys.executable, "-m", "spacy", "download", "en_core_web_sm"
+        ], check=True, capture_output=True, text=True, timeout=300)  # 5 minute timeout
+        
+        logger.info("spaCy English model installed successfully")
+        logger.debug(f"spaCy download output: {result.stdout}")
+        return True
+        
+    except subprocess.TimeoutExpired:
+        logger.error("spaCy model installation timed out")
+        return False
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to install spaCy model via spacy download: {e}")
+        logger.error(f"Error output: {e.stderr}")
+        
+        # Method 2: Try pip install directly from GitHub (fallback)
+        try:
+            logger.info("Trying alternative installation method...")
+            result = subprocess.run([
+                sys.executable, "-m", "pip", "install", 
+                "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"
+            ], check=True, capture_output=True, text=True, timeout=300)
+            
+            logger.info("spaCy English model installed via pip successfully")
+            logger.debug(f"Pip install output: {result.stdout}")
+            return True
+            
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e2:
+            logger.error(f"Alternative installation method also failed: {e2}")
+            if isinstance(e2, subprocess.CalledProcessError):
+                logger.error(f"Error output: {e2.stderr}")
+            return False
+    except Exception as e:
+        logger.error(f"Unexpected error during spaCy model installation: {e}")
+        return False
+
+def verify_and_install_spacy_model():
+    """Verify spaCy model installation and install if missing"""
+    try:
+        import spacy
+        
+        # Try to load the model
+        try:
+            spacy.load("en_core_web_sm")
+            logger.info("spaCy English model loaded successfully")
+            return True
+        except OSError:
+            logger.warning("spaCy English model not found, attempting installation...")
+            if install_spacy_model():
+                # Try to load again after installation
+                try:
+                    importlib.reload(spacy)  # Reload spacy module
+                    spacy.load("en_core_web_sm")
+                    logger.info("spaCy English model loaded successfully after installation")
+                    return True
+                except Exception as e:
+                    logger.error(f"Failed to load spaCy model after installation: {e}")
+                    return False
+            else:
+                logger.error("Failed to install spaCy English model")
+                return False
+        except Exception as e:
+            logger.error(f"Error loading spaCy model: {e}")
+            return False
+            
+    except ImportError as e:
+        logger.error(f"spaCy not installed: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error checking spaCy model: {e}")
+        return False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,20 +147,10 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Failed to download NLTK data: {e}")
     
     # Handle spaCy model download/installation at runtime
-    try:
-        import spacy
-        try:
-            spacy.load("en_core_web_sm")
-            logger.info("spaCy model loaded successfully")
-        except OSError:
-            logger.info("Downloading spaCy English model...")
-            # Use subprocess to call spacy download command
-            import subprocess
-            subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
-            logger.info("spaCy English model downloaded successfully")
-    except Exception as e:
-        logger.error(f"spaCy model handling failed: {e}")
-        logger.info("Install spaCy English model with: python -m spacy download en_core_web_sm")
+    if verify_and_install_spacy_model():
+        logger.info("spaCy model handling completed successfully")
+    else:
+        logger.warning("spaCy model handling failed. Application will run with limited NLP features.")
     
     # Check scikit-learn availability for ATS scoring
     try:

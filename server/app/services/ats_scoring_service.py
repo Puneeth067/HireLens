@@ -11,19 +11,49 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import json
 from pathlib import Path
+import sys
+import subprocess
+import importlib
 
 from app.models.resume import ParsedResume
 from app.models.job import JobDescription
 from app.config import settings
 
+def ensure_spacy_model():
+    """Ensure spaCy English model is available, installing if necessary"""
+    try:
+        import spacy
+        try:
+            spacy.load("en_core_web_sm")
+            return spacy.load("en_core_web_sm")
+        except OSError:
+            print("spaCy English model not found, attempting to install...")
+            try:
+                # Try to install the model
+                subprocess.run([
+                    sys.executable, "-m", "spacy", "download", "en_core_web_sm"
+                ], check=True, capture_output=True, text=True, timeout=300)
+                
+                # Reload spacy and try to load the model
+                importlib.reload(spacy)
+                return spacy.load("en_core_web_sm")
+            except Exception as e:
+                print(f"Failed to install/load spaCy model: {e}")
+                return None
+    except Exception as e:
+        print(f"Error with spaCy: {e}")
+        return None
+
 class ATSScorer:
     def __init__(self):
         """Initialize the ATS scoring engine with NLP models"""
-        try:
-            self.nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            print("Warning: spaCy model not found. Running without advanced NLP features.")
-            self.nlp = None
+        self.nlp = ensure_spacy_model()
+        
+        if self.nlp is not None:
+            print("spaCy English model loaded successfully")
+        else:
+            print("spaCy English model not available. Running with limited NLP features.")
+            print("To install the model, run: python -m spacy download en_core_web_sm")
         
         self.tfidf_vectorizer = TfidfVectorizer(
             max_features=1000,
