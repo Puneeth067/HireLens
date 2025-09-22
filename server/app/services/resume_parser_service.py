@@ -26,17 +26,28 @@ def ensure_spacy_model():
         except OSError:
             logger.info("spaCy English model not found, attempting to install...")
             try:
-                # Try to install the model
+                # Use direct pip installation as the primary method to avoid URL issues
                 subprocess.run([
-                    sys.executable, "-m", "spacy", "download", "en_core_web_sm"
+                    sys.executable, "-m", "pip", "install", 
+                    "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"
                 ], check=True, capture_output=True, text=True, timeout=300)
                 
                 # Reload spacy and try to load the model
                 importlib.reload(spacy)
                 return spacy.load("en_core_web_sm")
             except Exception as e:
-                logger.warning(f"Failed to install/load spaCy model: {e}")
-                return None
+                # Fallback to spacy download
+                try:
+                    subprocess.run([
+                        sys.executable, "-m", "spacy", "download", "en_core_web_sm"
+                    ], check=True, capture_output=True, text=True, timeout=300)
+                    
+                    # Reload spacy and try to load the model
+                    importlib.reload(spacy)
+                    return spacy.load("en_core_web_sm")
+                except Exception as e2:
+                    logger.warning(f"Failed to install/load spaCy model: {e2}")
+                    return None
     except Exception as e:
         logger.error(f"Error with spaCy: {e}")
         return None

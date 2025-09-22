@@ -30,34 +30,34 @@ logger = logging.getLogger(__name__)
 def install_spacy_model():
     """Install spaCy English model at runtime with robust error handling"""
     try:
-        logger.info("Attempting to install spaCy English model...")
+        logger.info("Attempting to install spaCy English model via pip...")
         
-        # Method 1: Direct spacy download command
+        # Use direct pip installation as the primary method to avoid URL issues
         result = subprocess.run([
-            sys.executable, "-m", "spacy", "download", "en_core_web_sm"
+            sys.executable, "-m", "pip", "install", 
+            "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"
         ], check=True, capture_output=True, text=True, timeout=300)  # 5 minute timeout
         
-        logger.info("spaCy English model installed successfully")
-        logger.debug(f"spaCy download output: {result.stdout}")
+        logger.info("spaCy English model installed via pip successfully")
+        logger.debug(f"Pip install output: {result.stdout}")
         return True
         
     except subprocess.TimeoutExpired:
         logger.error("spaCy model installation timed out")
         return False
     except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to install spaCy model via spacy download: {e}")
+        logger.error(f"Failed to install spaCy model via pip: {e}")
         logger.error(f"Error output: {e.stderr}")
         
-        # Method 2: Try pip install directly from GitHub (fallback)
+        # Fallback method: Try spacy download command
         try:
-            logger.info("Trying alternative installation method...")
+            logger.info("Trying alternative installation method (spacy download)...")
             result = subprocess.run([
-                sys.executable, "-m", "pip", "install", 
-                "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"
+                sys.executable, "-m", "spacy", "download", "en_core_web_sm"
             ], check=True, capture_output=True, text=True, timeout=300)
             
-            logger.info("spaCy English model installed via pip successfully")
-            logger.debug(f"Pip install output: {result.stdout}")
+            logger.info("spaCy English model installed successfully via spacy download")
+            logger.debug(f"Spacy download output: {result.stdout}")
             return True
             
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e2:
