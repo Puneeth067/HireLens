@@ -6,9 +6,11 @@ Test script to verify runtime spaCy model installation in services
 import sys
 import os
 
-# Change to the server directory
-server_path = os.path.join(os.path.dirname(__file__), 'server')
-os.chdir(server_path)
+# Get the directory of this script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Add the server directory to Python path
+server_path = os.path.join(script_dir, 'server')
 sys.path.insert(0, server_path)
 
 def test_resume_parser_service():
@@ -16,6 +18,7 @@ def test_resume_parser_service():
     print("Testing ResumeParserService...")
     
     try:
+        # pyright: ignore[reportMissingImports]
         from app.services.resume_parser_service import ResumeParserService
         service = ResumeParserService()
         
@@ -37,6 +40,7 @@ def test_ats_scorer():
     print("Testing ATSScorer...")
     
     try:
+        # pyright: ignore[reportMissingImports]
         from app.services.ats_scoring_service import ATSScorer
         scorer = ATSScorer()
         
