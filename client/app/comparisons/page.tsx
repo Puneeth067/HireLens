@@ -3,14 +3,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ComparisonsPageSkeleton, 
-  ComparisonCardSkeleton, 
-  DashboardSkeleton 
-} from '@/components/ui/skeleton';
+// ComparisonsPageSkeleton import removed - not used
 import ErrorBoundary from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// Card imports removed - not used
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -20,11 +16,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { 
   Users, BarChart3, Trophy, Clock, Search, Filter, 
-  Download, XCircle, Trash2, AlertTriangle, CheckCircle, ArrowLeft, RefreshCw
+  Download, XCircle, Trash2, ArrowLeft, RefreshCw
 } from 'lucide-react';
 import apiService from '@/lib/api';
 import { logger, useLogger } from '@/lib/logger';
@@ -343,7 +338,19 @@ function ComparisonsPageContent() {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <ComparisonsPageSkeleton />
+          <div className="space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-24 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );

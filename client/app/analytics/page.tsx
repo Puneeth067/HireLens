@@ -2,12 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  AnalyticsPageSkeleton, 
-  AnalyticsCardSkeleton, 
-  DashboardSkeleton, 
-  ChartSkeleton 
-} from '@/components/ui/skeleton';
 import ErrorBoundary from '@/components/error-boundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -157,7 +151,15 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <ErrorBoundary errorBoundaryName="AnalyticsPageLoading">
-        <AnalyticsPageSkeleton />
+        <div className="p-4 space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </div>
+          <div className="h-64 bg-gray-200 rounded animate-pulse" />
+        </div>
       </ErrorBoundary>
     );
   }

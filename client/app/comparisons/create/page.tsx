@@ -64,7 +64,6 @@ export default function CreateComparisonPage() {
       
       // Further validate that each resume actually exists and is accessible
       const validatedResumes = [];
-      const validationErrors = [];
       
       for (const resume of resumesRes) {
         try {
@@ -73,12 +72,7 @@ export default function CreateComparisonPage() {
           validatedResumes.push(resume);
         } catch (error) {
           console.warn(`Resume ${resume.id} failed validation:`, error);
-          validationErrors.push(resume.id);
         }
-      }
-      
-      if (validationErrors.length > 0) {
-        console.log(`Filtered out ${validationErrors.length} invalid resumes`);
       }
       
       setJobs(jobsRes.jobs);

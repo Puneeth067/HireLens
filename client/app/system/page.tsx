@@ -58,7 +58,7 @@ function SystemPageContent() {
       clearInterval(interval);
       logger.lifecycle('unmount');
     };
-  }, []); // Empty dependency array to prevent infinite loop
+  }, [fetchSystemData, logger]);
 
   const fetchSystemData = useCallback(async () => {
     setRefreshing(true);
@@ -91,13 +91,13 @@ function SystemPageContent() {
       stopLoading();
       setRefreshing(false);
     }
-  }, []); // Remove dependencies to prevent infinite loop
+  }, [clearError, health, logger, setError, startLoading, stopLoading, systemInfo]);
 
   // Enhanced refresh handler with logging
   const handleRefresh = useCallback(() => {
     LoggerUtils.logButtonClick('refresh_system');
     fetchSystemData();
-  }, []); // Remove dependency to prevent infinite loop
+  }, [fetchSystemData]);
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {

@@ -9,7 +9,7 @@ import { getJob, deleteJob } from '@/lib/api';
 import ErrorBoundary from '@/components/error-boundary';
 import { useLogger, logger } from '@/lib/logger';
 import { jobsCache, CacheKeys, CacheInvalidation } from '@/lib/cache';
-import { CardSkeleton, DashboardSkeleton } from '@/components/ui/skeleton';
+import { CardSkeleton } from '@/components/ui/skeleton';
 import { XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -453,11 +453,13 @@ function JobDetailPageContent() {
                 <button
                   onClick={() => {
                     componentLogger.userAction('share_job_clicked', { jobId: job.id });
-                    navigator.share && navigator.share({
-                      title: job.title,
-                      text: `${job.title} at ${job.company}`,
-                      url: window.location.href
-                    });
+                    if (navigator.share) {
+                      navigator.share({
+                        title: job.title,
+                        text: `${job.title} at ${job.company}`,
+                        url: window.location.href
+                      });
+                    }
                   }}
                   className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:ring-2 focus:ring-gray-500"
                 >

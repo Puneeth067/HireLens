@@ -1,7 +1,7 @@
 // client/src/components/forms/job-form.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Job, CreateJobRequest, JobType, ExperienceLevel, JobStatus } from '@/lib/types';
 import { apiService } from '@/lib/api';

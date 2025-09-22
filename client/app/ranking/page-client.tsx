@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Search, Users, TrendingUp, Award, Plus, ArrowLeft, Trash2, Loader2 } from 'lucide-react'
 import { 
   Job,
@@ -17,7 +17,6 @@ import {
   RankingListResponse, 
   RankingStatisticsResponse,
   CandidateRanking,
-  RankedCandidate,
   RankingCriteria
 } from '@/lib/types'
 import {
@@ -169,7 +168,7 @@ export default function RankingPage() {
     }
   }, [selectedJob]);
 
-  const fetchRankings = async () => {
+  const fetchRankings = useCallback(async () => {
     if (!selectedJob) return
     
     setLoading(true)
@@ -216,9 +215,9 @@ export default function RankingPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedJob, setCurrentRanking]);
 
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     if (!selectedJob) return
     
     try {
@@ -233,51 +232,51 @@ export default function RankingPage() {
     } catch (error) {
       console.error('Failed to fetch statistics:', error)
     }
-  }
+  }, [selectedJob, setStatistics]);
 
   useEffect(() => {
     if (selectedJob) {
       fetchRankings()
       fetchStatistics()
     }
-  }, [selectedJob])
+  }, [selectedJob, fetchRankings, fetchStatistics])
 
-  const generateShortlist = async () => {
-    if (!selectedJob) return
-    
-    setLoading(true)
-    try {
-      const response = await cachedApiService.getShortlistSuggestions(selectedJob, 10)
-      if (response.success) {
-        // Create a temporary ranking display for shortlist
-        const shortlistRanking: CandidateRanking = {
-          id: 'shortlist',
-          job_id: selectedJob,
-          criteria: {
-            skills_weight: 0.4,
-            experience_weight: 0.3,
-            education_weight: 0.2,
-            keyword_weight: 0.1,
-            require_degree: false,
-            required_skills: [],
-            preferred_skills: []
-          },
-          candidates: response.suggestions || [],
-          total_candidates: response.suggestions?.length || 0,
-          created_at: new Date().toISOString(),
-          average_score: 0,
-          median_score: 0,
-          top_score: 0,
-          candidates_meeting_requirements: 0
-        }
-        setCurrentRanking(shortlistRanking)
-      }
-    } catch (error) {
-      console.error('Failed to generate shortlist:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // const generateShortlist = async () => {
+  //   if (!selectedJob) return
+  //   
+  //   setLoading(true)
+  //   try {
+  //     const response = await cachedApiService.getShortlistSuggestions(selectedJob, 10)
+  //     if (response.success) {
+  //       // Create a temporary ranking display for shortlist
+  //       const shortlistRanking: CandidateRanking = {
+  //         id: 'shortlist',
+  //         job_id: selectedJob,
+  //         criteria: {
+  //           skills_weight: 0.4,
+  //           experience_weight: 0.3,
+  //           education_weight: 0.2,
+  //           keyword_weight: 0.1,
+  //           require_degree: false,
+  //           required_skills: [],
+  //           preferred_skills: []
+  //         },
+  //         candidates: response.suggestions || [],
+  //         total_candidates: response.suggestions?.length || 0,
+  //         created_at: new Date().toISOString(),
+  //         average_score: 0,
+  //         median_score: 0,
+  //         top_score: 0,
+  //         candidates_meeting_requirements: 0
+  //       }
+  //       setCurrentRanking(shortlistRanking)
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to generate shortlist:', error)
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
 
   const handleJobSelection = (jobId: string) => {
     setSelectedJob(jobId);
@@ -389,29 +388,7 @@ export default function RankingPage() {
     }
   }
 
-  useEffect(() => {
-    // Component update logic if needed
-  });
 
-  useEffect(() => {
-    // Current ranking change logic if needed
-  }, [currentRanking]);
-
-  useEffect(() => {
-    // Search term change logic if needed
-  }, [searchTerm]);
-
-  useEffect(() => {
-    // Filter requirements change logic if needed
-  }, [filterRequirements]);
-
-  useEffect(() => {
-    // Sort by change logic if needed
-  }, [sortBy]);
-
-  useEffect(() => {
-    // Selected job change logic if needed
-  }, [selectedJob]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">

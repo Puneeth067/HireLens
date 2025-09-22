@@ -19,7 +19,6 @@ import {
   CheckCircle,
   AlertCircle,
   ArrowRight,
-  Zap,
   Brain,
   Search,
   Settings,
@@ -124,7 +123,6 @@ export default function DashboardPage() {
   })
   
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
-  const [systemHealth, setSystemHealth] = useState<'healthy' | 'degraded' | 'error'>('healthy')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -297,8 +295,7 @@ export default function DashboardPage() {
 
       setRecentActivity(activities)
 
-      // Update system health
-      setSystemHealth(healthCheck.status as 'healthy' | 'degraded' | 'error')
+      // System health status is available in healthCheck.status
 
       setLoading(false)
     } catch (err) {

@@ -11,7 +11,7 @@ import { Slider } from '@/components/ui/slider'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Plus, X, Loader2, ArrowLeft, Award } from 'lucide-react'
-import { Job, JobDescriptionResponse, RankingCriteria } from '@/lib/types'
+import { Job, RankingCriteria } from '@/lib/types'
 import { toast } from 'sonner'
 
 export default function CreateRankingPageContent() {
