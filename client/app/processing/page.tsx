@@ -182,7 +182,7 @@ function ProcessingPageContent() {
       clearInterval(interval);
       logger.endPerformanceTimer('processing_page_load');
     };
-  }, [loadFiles, loadStats]);
+  }, [loadFiles, loadStats, componentLogger]);
 
   const parseFile = useCallback(async (fileId: string) => {
     try {

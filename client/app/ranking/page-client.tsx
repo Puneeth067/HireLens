@@ -148,26 +148,7 @@ export default function RankingPage() {
     }
   }
 
-  useEffect(() => {
-    fetchJobs()
-  }, [])
-
-  // Effect to handle job selection from query parameters
-  useEffect(() => {
-    const jobId = searchParams.get('job');
-    if (jobId && !selectedJob) {
-      setSelectedJob(jobId);
-    }
-  }, [searchParams, selectedJob]);
   
-  // Modified effect to automatically create ranking when job is selected
-  useEffect(() => {
-    if (selectedJob) {
-      fetchRankings();
-      fetchStatistics();
-    }
-  }, [selectedJob]);
-
   const fetchRankings = useCallback(async () => {
     if (!selectedJob) return
     
@@ -233,6 +214,27 @@ export default function RankingPage() {
       console.error('Failed to fetch statistics:', error)
     }
   }, [selectedJob, setStatistics]);
+
+  useEffect(() => {
+    fetchJobs()
+  }, [])
+
+  // Effect to handle job selection from query parameters
+  useEffect(() => {
+    const jobId = searchParams.get('job');
+    if (jobId && !selectedJob) {
+      setSelectedJob(jobId);
+    }
+  }, [searchParams, selectedJob, fetchRankings, fetchStatistics]);
+  
+  // Modified effect to automatically create ranking when job is selected
+  useEffect(() => {
+    if (selectedJob) {
+      fetchRankings();
+      fetchStatistics();
+    }
+  }, [selectedJob, fetchRankings, fetchStatistics]);
+
 
   useEffect(() => {
     if (selectedJob) {

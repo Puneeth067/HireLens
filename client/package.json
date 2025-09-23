@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "node prebuild.js && next build",
+    "vercel-build": "next build",
     "start": "next start",
     "lint": "eslint"
   },

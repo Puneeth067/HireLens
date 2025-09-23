@@ -5,5 +5,7 @@
       "src": "client/package.json",
       "use": "@vercel/next"
     }
-  ]
+  ],
+  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm install"
 }

@@ -108,12 +108,6 @@ interface AnalyticsSummary {
   top_performing_jobs: Array<{ job_id: string; job_title: string; score: number }> | Array<{ job_id: string; title: string; score: number }>
 }
 
-interface HealthCheck {
-  status: string
-  timestamp: string | number
-  version: string
-}
-
 export default function DashboardPage() {
   const [stats, setStats] = useState<SystemStats>({
     files: { total_files: 0, parsed_files: 0, processing_files: 0, failed_files: 0 },
@@ -181,14 +175,6 @@ export default function DashboardPage() {
             recent_activity: 0,
             trending_skills: [],
             top_performing_jobs: []
-          }
-        }),
-        cachedApiService.healthCheck().catch((err: Error) => {
-          console.warn('Failed to fetch health check:', err)
-          return {
-            status: 'degraded',
-            timestamp: new Date().toISOString(),
-            version: 'unknown'
           }
         })
       ])

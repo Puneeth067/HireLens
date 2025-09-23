@@ -266,7 +266,7 @@ export function withErrorBoundary<T extends Record<string, unknown>>(
 
 // Hook for manually triggering error boundary
 export function useErrorHandler() {
-  return React.useCallback((error: Error, errorInfo?: ErrorInfo) => {
+  return React.useCallback((error: Error) => {
     // This will be caught by the nearest error boundary
     throw error;
   }, []);

@@ -295,14 +295,14 @@ export const CacheInvalidation = {
     systemCache.clear();
   },
   
-  onJobUpdate: (_jobId: string) => {
+  onJobUpdate: () => {
     // Clear all job-related caches immediately
     jobsCache.clear();
     // Also clear analytics caches that might be affected
     apiCache.clear();
   },
   
-  onJobDelete: (jobId: string) => {
+  onJobDelete: () => {
     // Clear all job-related caches immediately
     jobsCache.clear();
     // Also clear analytics caches that might be affected
@@ -319,7 +319,7 @@ export const CacheInvalidation = {
     apiCache.clear();
   },
   
-  onComparisonUpdate: (_comparisonId: string) => {
+  onComparisonUpdate: () => {
     // Clear comparison caches
     comparisonsCache.clear();
     // Clear job stats cache as comparisons might affect job analytics

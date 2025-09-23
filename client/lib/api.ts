@@ -356,55 +356,7 @@ class ApiService {
     const response = await this.fetchWithAuth(`/api/parse/parsed-resumes/${id}`);
     const server = await response.json();
 
-    // Define proper types instead of using 'any'
-    interface ServerParsedData {
-      personal_info?: Partial<{
-        name?: string;
-        email?: string;
-        phone?: string;
-        linkedin?: string;
-        location?: string;
-        github?: string;
-        portfolio?: string;
-      }>;
-      skills?: {
-        technical?: string[];
-        soft?: string[];
-        tools?: string[];
-        frameworks?: string[];
-        languages?: string[];
-      };
-      experience?: Array<{
-        position?: string;
-        job_title?: string;
-        company?: string;
-        start_date?: string;
-        end_date?: string;
-        description?: string | string[];
-        location?: string;
-        is_current?: boolean;
-        achievements?: string[];
-        technologies?: string[];
-      }>;
-      education?: Array<{
-        degree?: string;
-        field_of_study?: string;
-        institution?: string;
-        graduation_year?: string | number;
-        gpa?: string;
-        achievements?: string[];
-      }>;
-    }
 
-    interface ServerResume {
-      id: string;
-      filename: string;
-      raw_text: string;
-      parsed_data?: ServerParsedData;
-      status?: string;
-      parsed_at?: string;
-      file_id?: string; // Add file_id field
-    }
 
     const personal = server.parsed_data?.personal_info || {};
     const skills = server.parsed_data?.skills || {};
@@ -1207,8 +1159,9 @@ async getAnalyticsSummary(): Promise<{
       trending_skills,
       top_performing_jobs
     };
-  } catch (error) {
+  } catch {
     // Return default values instead of raising an error
+
     return {
       total_candidates: 0,
       total_jobs: 0,
@@ -1218,6 +1171,7 @@ async getAnalyticsSummary(): Promise<{
       trending_skills: [],
       top_performing_jobs: []
     };
+    
   }
 }
 

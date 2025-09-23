@@ -210,19 +210,19 @@ export default function JobsPageContent() {
       }
       // clearInterval(pollingInterval); // This line can also be removed since we're not using polling
     };
-  }, [loadCompanies, loadStats, logger]); // Run only once on mount
+  }, [loadCompanies, loadStats,loadJobs, logger]); // Run only once on mount
   
   // Effect to handle route changes and search param changes
   useEffect(() => {
     // This will run when pathname or searchParams change
     loadJobs();
     loadStats();
-  }, [pathname, searchParams, loadJobs, loadStats]);
+  }, [pathname, searchParams, loadJobs, loadStats, logger]);
 
   // Separate effect for jobs (run when filters change)
   useEffect(() => {
     loadJobs();
-  }, [loadJobs]);
+  }, [loadJobs, logger]);
 
   // Add effect to handle window focus to refresh data when user returns to the page
   useEffect(() => {
@@ -243,7 +243,7 @@ export default function JobsPageContent() {
         window.removeEventListener('focus', handleWindowFocus);
       }
     };
-  }, [loadJobs, loadStats]);
+  }, [loadJobs, loadStats, logger]);
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
