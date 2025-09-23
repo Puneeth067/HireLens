@@ -6,6 +6,7 @@
       "use": "@vercel/next"
     }
   ],
-  "buildCommand": "npm run vercel-build",
-  "installCommand": "npm install"
+  "buildCommand": "npm install && npm run build --workspace=@hirelens/shared-types && npm run build --workspace=@hirelens/config && npm run build --workspace=client",
+  "installCommand": "npm install",
+  "outputDirectory": "client/.next"
 }
