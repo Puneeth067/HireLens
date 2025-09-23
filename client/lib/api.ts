@@ -61,7 +61,8 @@ class ApiService {
 
     // Create abort controller for timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    // Reduced timeout to 10 seconds to prevent gateway timeouts
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const config: RequestInit = {
       headers: {
@@ -137,7 +138,7 @@ class ApiService {
       
       // Handle timeout errors
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Request timeout: The server took too long to respond.`);
+        throw new Error(`Request timeout: The server took too long to respond. Please try again later.`);
       }
       
       // Re-throw the original error if it's already formatted
