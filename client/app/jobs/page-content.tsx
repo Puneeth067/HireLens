@@ -36,7 +36,7 @@ import {
 export default function JobsPageContent() {
   const router = useRouter();
   const logger = useLogger('JobsPage');
-  const { loading, error, startLoading, stopLoading, setError, clearError } = useLoadingState('JobsPage');
+  const { error, startLoading, stopLoading, setError, clearError } = useLoadingState('JobsPage');
   const pathname = usePathname();
   // Only use useSearchParams inside a client component
   const searchParams = useSearchParams();
@@ -100,7 +100,7 @@ export default function JobsPageContent() {
     } finally {
       loadingFunctionsRef.current.stopLoading();
     }
-  }, [currentPage, searchTerm, statusFilter, companyFilter]);
+  }, [currentPage, searchTerm, statusFilter, companyFilter, logger]);
 
   // Use ref to ensure stable reference for one-time load
   const hasLoadedStatsRef = useRef(false);
@@ -210,7 +210,6 @@ export default function JobsPageContent() {
       }
       // clearInterval(pollingInterval); // This line can also be removed since we're not using polling
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadCompanies, loadStats, logger]); // Run only once on mount
   
   // Effect to handle route changes and search param changes

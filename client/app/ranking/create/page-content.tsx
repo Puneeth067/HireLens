@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cachedApiService } from '@/lib/cached-api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, Loader2, ArrowLeft, Award } from 'lucide-react'
+import { Plus, X, Loader2, ArrowLeft } from 'lucide-react'
 import { Job, RankingCriteria } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -34,16 +34,7 @@ export default function CreateRankingPageContent() {
   const [newRequiredSkill, setNewRequiredSkill] = useState('')
   const [newPreferredSkill, setNewPreferredSkill] = useState('')
 
-  useEffect(() => {
-    if (jobId) {
-      fetchJobDetails(jobId)
-    } else {
-      toast.error('No job ID provided for ranking creation.')
-      router.push('/ranking')
-    }
-  }, [jobId, router])
-
-  const fetchJobDetails = async (id: string) => {
+  const fetchJobDetails = useCallback(async (id: string) => {
     try {
       const data = await cachedApiService.getJob(id)
       setJob(data)
@@ -53,7 +44,16 @@ export default function CreateRankingPageContent() {
       toast.error('Failed to load job details. Please try again.')
       router.push('/ranking')
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    if (jobId) {
+      fetchJobDetails(jobId)
+    } else {
+      toast.error('No job ID provided for ranking creation.')
+      router.push('/ranking')
+    }
+  }, [jobId, router, fetchJobDetails])
 
   const handleWeightChange = (key: keyof RankingCriteria, value: number[]) => {
     setCriteria(prev => {

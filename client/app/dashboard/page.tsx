@@ -193,7 +193,7 @@ export default function DashboardPage() {
         })
       ])
 
-      const [parsingStatsResult, jobStatsResult, comparisonStatsResult, analyticsSummaryResult, healthCheckResult] = results
+      const [parsingStatsResult, jobStatsResult, comparisonStatsResult, analyticsSummaryResult] = results
 
       // Extract data or use defaults
       const parsingStats: ParsingStats = parsingStatsResult.status === 'fulfilled' ? parsingStatsResult.value : {
@@ -235,12 +235,6 @@ export default function DashboardPage() {
         top_performing_jobs: []
       }
       
-      const healthCheck: HealthCheck = healthCheckResult.status === 'fulfilled' ? healthCheckResult.value : {
-        status: 'degraded',
-        timestamp: new Date().toISOString(),
-        version: 'unknown'
-      }
-
       // Find the top score from top performing jobs
       let topScore = 0
       if (analyticsSummary.top_performing_jobs && analyticsSummary.top_performing_jobs.length > 0) {
@@ -294,8 +288,6 @@ export default function DashboardPage() {
       // In a real implementation, we would fetch recent jobs and add them here
 
       setRecentActivity(activities)
-
-      // System health status is available in healthCheck.status
 
       setLoading(false)
     } catch (err) {

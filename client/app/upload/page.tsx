@@ -8,7 +8,7 @@ import { UploadedFile } from '@/lib/types';
 import { apiService } from '@/lib/api';
 import ErrorBoundary from '@/components/error-boundary';
 import { useLogger, logger } from '@/lib/logger';
-import { apiCache, CacheInvalidation } from '@/lib/cache';
+import { CacheInvalidation } from '@/lib/cache';
 import { CardSkeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 
@@ -339,7 +339,7 @@ function UploadPageContent() {
 export default function UploadPage() {
   useEffect(() => {
     logger.pageView('/upload');
-  }, [logger]);
+  }, []);
 
   return (
     <ErrorBoundary

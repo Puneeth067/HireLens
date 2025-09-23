@@ -91,7 +91,7 @@ function SystemPageContent() {
       clearInterval(interval);
       logger.lifecycle('unmount');
     };
-  }, [fetchSystemData]);
+  }, [fetchSystemData, logger]);
 
   // Enhanced refresh handler with logging
   const handleRefresh = useCallback(() => {
@@ -909,6 +909,11 @@ function SystemPageContent() {
 
 // Main SystemPage component with error boundary
 export default function SystemPage() {
+  useEffect(() => {
+    // Remove the logger call since it's not available in this scope
+    // This useEffect is just for the error boundary wrapper
+  }, []);
+
   return (
     <ErrorBoundary
       errorBoundaryName="SystemPage"

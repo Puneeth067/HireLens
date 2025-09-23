@@ -10,15 +10,14 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Search, Users, TrendingUp, Award, Plus, ArrowLeft, Trash2, Loader2 } from 'lucide-react'
+import { Search, Users, TrendingUp, Plus, ArrowLeft, Trash2, Loader2 } from 'lucide-react'
 import { 
   Job,
   JobDescriptionResponse, 
   RankingListResponse, 
   RankingStatisticsResponse,
   CandidateRanking,
-  RankingCriteria,
-  RankedCandidate
+  RankingCriteria
 } from '@/lib/types'
 import {
   AlertDialog,
@@ -237,10 +236,10 @@ export default function RankingPage() {
 
   useEffect(() => {
     if (selectedJob) {
-      fetchRankings()
-      fetchStatistics()
+      fetchRankings();
+      fetchStatistics();
     }
-  }, [selectedJob, fetchRankings, fetchStatistics])
+  }, [selectedJob, fetchRankings, fetchStatistics]);
 
   // const generateShortlist = async () => {
   //   if (!selectedJob) return
@@ -465,7 +464,7 @@ export default function RankingPage() {
                   {loading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <Award className="h-4 w-4 mr-2" />
+                    <TrendingUp className="h-4 w-4 mr-2" />
                   )}
                   {loading ? 'Creating...' : <span className="hidden xs:inline">Refresh Ranking</span>}
                 </Button>
@@ -506,7 +505,7 @@ export default function RankingPage() {
             <Card className="bg-white hover:shadow-md transition-shadow duration-200">
               <CardContent className="pt-4">
                 <div className="flex items-center">
-                  <Award className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
+                  <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
                   <div className="ml-3">
                     <p className="text-xs font-medium text-gray-500">Average Score</p>
                     <p className="text-lg sm:text-2xl font-bold text-gray-900">
@@ -772,7 +771,7 @@ export default function RankingPage() {
                           {loading ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           ) : (
-                            <Award className="h-4 w-4 mr-2" />
+                            <TrendingUp className="h-4 w-4 mr-2" />
                           )}
                           {loading ? 'Creating...' : 'Create Automatic Ranking'}
                         </Button>

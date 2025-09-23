@@ -182,7 +182,7 @@ function ProcessingPageContent() {
       clearInterval(interval);
       logger.endPerformanceTimer('processing_page_load');
     };
-  }, [loadFiles, loadStats, componentLogger]);
+  }, [loadFiles, loadStats]);
 
   const parseFile = useCallback(async (fileId: string) => {
     try {
@@ -883,7 +883,7 @@ function ResumeViewer({ resume }: { resume: ParsedResume }) {
 export default function ProcessingPage() {
   useEffect(() => {
     logger.pageView('/processing');
-  }, [logger]);
+  }, []);
 
   return (
     <ErrorBoundary
