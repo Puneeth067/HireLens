@@ -458,6 +458,8 @@ function JobDetailPageContent() {
                         title: job.title,
                         text: `${job.title} at ${job.company}`,
                         url: window.location.href
+                      }).catch(err => {
+                        console.warn('Sharing failed:', err);
                       });
                     }
                   }}

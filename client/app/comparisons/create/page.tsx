@@ -70,8 +70,8 @@ export default function CreateComparisonPage() {
           // Try to fetch the individual resume to ensure it's accessible
           await apiService.getParsedResume(resume.id);
           validatedResumes.push(resume);
-        } catch (error) {
-          console.warn(`Resume ${resume.id} failed validation:`, error);
+        } catch {
+          console.warn(`Resume ${resume.id} failed validation`);
         }
       }
       
@@ -81,8 +81,8 @@ export default function CreateComparisonPage() {
       // Clean up selected resumes that no longer exist
       const validResumeIds = new Set(validatedResumes.map(r => r.id));
       setSelectedResumeIds(prev => prev.filter(id => validResumeIds.has(id)));
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch {
+      console.error('Error loading data');
       setError('Failed to load jobs or resumes. Please try again.');
     } finally {
       setLoading(false);
@@ -117,8 +117,8 @@ export default function CreateComparisonPage() {
         try {
           await apiService.getParsedResume(resumeId);
           validResumeIds.push(resumeId);
-        } catch (error) {
-          console.warn(`Resume ${resumeId} is no longer available:`, error);
+        } catch {
+          console.warn(`Resume ${resumeId} is no longer available`);
           invalidResumeIds.push(resumeId);
         }
       }
@@ -141,7 +141,8 @@ export default function CreateComparisonPage() {
         // Double-check the single resume still exists
         try {
           await apiService.getParsedResume(validResumeIds[0]);
-        } catch (error) {
+        } catch {
+          console.warn('Resume validation failed');
           await loadData();
           throw new Error('The selected resume is no longer available. The resume list has been refreshed.');
         }
@@ -186,24 +187,10 @@ export default function CreateComparisonPage() {
 
         checkProgress();
       }
-    } catch (error) {
-      console.error('Error creating comparisons:', error);
+    } catch {
+      console.error('Error creating comparisons');
       // Handle specific error cases
-      if (error instanceof Error) {
-        if (error.message.includes('Resume not found')) {
-          // Refresh the resume list since some resumes may have been deleted
-          await loadData();
-          setError('Some selected resumes are no longer available. The resume list has been refreshed. Please select resumes again.');
-        } else if (error.message.includes('Job not found')) {
-          // Refresh the job list since the job may have been deleted
-          await loadData();
-          setError('The selected job is no longer available. The job list has been refreshed. Please select a job again.');
-        } else {
-          setError(error.message);
-        }
-      } else {
-        setError('Failed to create comparisons. Please try again.');
-      }
+      setError('Failed to create comparisons. Please try again.');
       setCreating(false);
     }
   };

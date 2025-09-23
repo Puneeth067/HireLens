@@ -211,7 +211,7 @@ export default function JobsPageContent() {
       // clearInterval(pollingInterval); // This line can also be removed since we're not using polling
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  }, [loadCompanies, loadStats, logger]); // Run only once on mount
   
   // Effect to handle route changes and search param changes
   useEffect(() => {

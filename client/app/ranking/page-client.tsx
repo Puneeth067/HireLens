@@ -17,7 +17,8 @@ import {
   RankingListResponse, 
   RankingStatisticsResponse,
   CandidateRanking,
-  RankingCriteria
+  RankingCriteria,
+  RankedCandidate
 } from '@/lib/types'
 import {
   AlertDialog,

@@ -61,7 +61,7 @@ function PageWrapperInternal({
       const loadTime = performance.now() - startTime;
       logger.lifecycle('unmount', { pageName, loadTime });
     };
-  }, [pageName]); // Remove logger dependency
+  }, [logger, pageName]); // Remove logger dependency
 
   return (
     <ErrorBoundary
@@ -175,23 +175,23 @@ export function useLoadingState(componentName: string) {
     logger.debug('Started loading');
     setLoading(true);
     setError(null);
-  }, []); // Remove logger dependency
+  }, [logger]); // Remove logger dependency
 
   const stopLoading = React.useCallback(() => {
     logger.debug('Stopped loading');
     setLoading(false);
-  }, []); // Remove logger dependency
+  }, [logger]); // Remove logger dependency
 
   const setErrorState = React.useCallback((errorMessage: string) => {
     logger.error('Error occurred', { error: errorMessage });
     setError(errorMessage);
     setLoading(false);
-  }, []); // Remove logger dependency
+  }, [logger]); // Remove logger dependency
 
   const clearError = React.useCallback(() => {
     logger.debug('Cleared error');
     setError(null);
-  }, []); // Remove logger dependency
+  }, [logger]); // Remove logger dependency
 
   return {
     loading,

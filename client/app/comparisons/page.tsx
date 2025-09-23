@@ -3,10 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-// ComparisonsPageSkeleton import removed - not used
 import ErrorBoundary from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
-// Card imports removed - not used
 import { 
   AlertDialog,
   AlertDialogAction,

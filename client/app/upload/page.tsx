@@ -339,7 +339,7 @@ function UploadPageContent() {
 export default function UploadPage() {
   useEffect(() => {
     logger.pageView('/upload');
-  }, []);
+  }, [logger]);
 
   return (
     <ErrorBoundary

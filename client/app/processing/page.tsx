@@ -64,24 +64,6 @@ function ProcessingPageContent() {
     };
   }, [componentLogger]);
 
-  useEffect(() => {
-    loadFiles();
-    loadStats();
-    
-    // Set up polling for processing files - reduced frequency to prevent UI disruption
-    const interval = setInterval(() => {
-      if (processingFilesRef.current.size > 0) {
-        componentLogger.debug('Polling for processing files update', { processingCount: processingFilesRef.current.size });
-        loadFiles();
-      }
-    }, 10000); // Increased from 3s to 10s to reduce UI disruption
-
-    return () => {
-      clearInterval(interval);
-      logger.endPerformanceTimer('processing_page_load');
-    };
-  }, []); // Dependencies are handled in the useCallback hooks
-
   const loadFiles = useCallback(async () => {
     try {
       setError(null);
@@ -183,6 +165,24 @@ function ProcessingPageContent() {
       setStats(fallbackStats);
     }
   }, [componentLogger]);
+
+  useEffect(() => {
+    loadFiles();
+    loadStats();
+    
+    // Set up polling for processing files - reduced frequency to prevent UI disruption
+    const interval = setInterval(() => {
+      if (processingFilesRef.current.size > 0) {
+        componentLogger.debug('Polling for processing files update', { processingCount: processingFilesRef.current.size });
+        loadFiles();
+      }
+    }, 10000); // Increased from 3s to 10s to reduce UI disruption
+
+    return () => {
+      clearInterval(interval);
+      logger.endPerformanceTimer('processing_page_load');
+    };
+  }, [loadFiles, loadStats, componentLogger]);
 
   const parseFile = useCallback(async (fileId: string) => {
     try {
@@ -883,7 +883,7 @@ function ResumeViewer({ resume }: { resume: ParsedResume }) {
 export default function ProcessingPage() {
   useEffect(() => {
     logger.pageView('/processing');
-  }, []);
+  }, [logger]);
 
   return (
     <ErrorBoundary

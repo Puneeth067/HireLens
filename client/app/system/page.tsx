@@ -45,21 +45,6 @@ function SystemPageContent() {
     setIsClient(true)
   }, [])
 
-  useEffect(() => {
-    logger.lifecycle('mount');
-    LoggerUtils.logPageChange('', 'system');
-    fetchSystemData();
-    
-    const interval = setInterval(() => {
-      fetchSystemData();
-    }, 60000); // Update every 60 seconds to reduce UI disruption
-    
-    return () => {
-      clearInterval(interval);
-      logger.lifecycle('unmount');
-    };
-  }, [fetchSystemData, logger]);
-
   const fetchSystemData = useCallback(async () => {
     setRefreshing(true);
     if (!health && !systemInfo) {
@@ -92,6 +77,21 @@ function SystemPageContent() {
       setRefreshing(false);
     }
   }, [clearError, health, logger, setError, startLoading, stopLoading, systemInfo]);
+
+  useEffect(() => {
+    logger.lifecycle('mount');
+    LoggerUtils.logPageChange('', 'system');
+    fetchSystemData();
+    
+    const interval = setInterval(() => {
+      fetchSystemData();
+    }, 60000); // Update every 60 seconds to reduce UI disruption
+    
+    return () => {
+      clearInterval(interval);
+      logger.lifecycle('unmount');
+    };
+  }, [fetchSystemData]);
 
   // Enhanced refresh handler with logging
   const handleRefresh = useCallback(() => {
