@@ -3,32 +3,28 @@
   "version": "1.0.0",
   "description": "AI-powered resume parsing and ATS scoring platform",
   "private": true,
-  "workspaces": {
-    "packages": [
-      "client",
-      "packages/*"
-    ]
-  },
+  "workspaces": [
+    "client",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "./scripts/dev.sh",
     "dev:client": "npm run dev --workspace=client",
     "dev:server": "npm run dev --workspace=server",
-    "build": "cd packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && npm run build",
-    "build:client": "cd client && npm run build",
-    "build:server": "cd server && npm run build",
-    "start": "cd client && npm run start & cd server && npm run start",
-    "lint": "cd client && npm run lint",
-    "install-deps": "npm install --legacy-peer-deps && cd server && npm install",
-    "clean": "cd client && npm run clean && cd server && npm run clean",
-    "vercel-build": "npm install --legacy-peer-deps && cd packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && npm run build",
-    "postinstall": "cd packages/shared-types && npm run build && cd ../config && npm run build"
+    "build": "npm run build --workspace=client && npm run build --workspace=server",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "start": "npm run start --workspace=client & npm run start --workspace=server",
+    "lint": "npm run lint --workspace=client",
+    "type-check": "npm run type-check --workspace=packages/shared-types",
+    "install-deps": "npm install && npm run install-deps --workspace=server",
+    "clean": "npm run clean --workspace=client && npm run clean --workspace=server",
+    "vercel-build": "npm run build --workspace=packages/shared-types && npm run build --workspace=packages/config && npm run build --workspace=client"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0",
-    "concurrently": "^8.0.0",
-    "eslint": "9.10.0",
-    "eslint-config-next": "^14.2.20"
+    "concurrently": "^8.0.0"
   },
   "engines": {
     "node": ">=18.0.0",
