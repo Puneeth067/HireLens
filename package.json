@@ -16,9 +16,9 @@
     "build:server": "npm run build --workspace=server",
     "start": "npm run start --workspace=client & npm run start --workspace=server",
     "lint": "npm run lint --workspace=client",
-    "install-deps": "npm install && npm run install-deps --workspace=server",
+    "install-deps": "npm install --legacy-peer-deps && npm run install-deps --workspace=server",
     "clean": "npm run clean --workspace=client && npm run clean --workspace=server",
-    "vercel-build": "npm run build --workspace=@hirelens/shared-types && npm run build --workspace=@hirelens/config && npm run build --workspace=client"
+    "vercel-build": "npm install --legacy-peer-deps && npm run build --workspace=@hirelens/shared-types && npm run build --workspace=@hirelens/config && npm run build --workspace=client"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

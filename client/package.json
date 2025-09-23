@@ -7,7 +7,8 @@
     "build": "node prebuild.js && next build",
     "vercel-build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "install": "npm install --legacy-peer-deps"
   },
   "dependencies": {
     "@hirelens/config": "*",
