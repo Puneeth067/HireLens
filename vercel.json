@@ -6,7 +6,7 @@
       "use": "@vercel/next"
     }
   ],
-  "buildCommand": "npm install --legacy-peer-deps && npm run build --workspace=@hirelens/shared-types && npm run build --workspace=@hirelens/config && npm run build --workspace=client",
+  "buildCommand": "npm run vercel-build",
   "installCommand": "npm install --legacy-peer-deps",
   "outputDirectory": "client/.next"
 }
