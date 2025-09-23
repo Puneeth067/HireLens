@@ -20,7 +20,18 @@ export default function ComparisonDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Validate comparison ID parameter
   useEffect(() => {
+    if (params.id && typeof params.id !== 'string') {
+      setLoading(false);
+      return;
+    }
+    
+    if (params.id && params.id.toString().length > 100) {
+      setLoading(false);
+      return;
+    }
+    
     if (params.id) {
       loadComparison(params.id as string);
     }

@@ -8,7 +8,6 @@ try {
   // Build shared-types package
   console.log('Building @hirelens/shared-types...');
   const sharedTypesPath = join(process.cwd(), '..', 'packages', 'shared-types');
-  execSync('npm run build', { cwd: sharedTypesPath, stdio: 'inherit' });
   
   if (existsSync(sharedTypesPath)) {
     execSync('npm run build', { cwd: sharedTypesPath, stdio: 'inherit' });
@@ -19,7 +18,6 @@ try {
   // Build config package
   console.log('Building @hirelens/config...');
   const configPath = join(process.cwd(), '..', 'packages', 'config');
-  execSync('npm run build', { cwd: configPath, stdio: 'inherit' });
   
   if (existsSync(configPath)) {
     execSync('npm run build', { cwd: configPath, stdio: 'inherit' });

@@ -23,6 +23,21 @@ function JobDetailPageContent() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Validate job ID parameter
+  useEffect(() => {
+    if (params.id && typeof params.id !== 'string') {
+      setError('Invalid job ID');
+      setLoading(false);
+      return;
+    }
+    
+    if (params.id && params.id.toString().length > 100) {
+      setError('Invalid job ID');
+      setLoading(false);
+      return;
+    }
+  }, [params.id]);
+
   // Performance tracking
   useEffect(() => {
     componentLogger.lifecycle('mount');
