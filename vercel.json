@@ -6,6 +6,6 @@
       "use": "@vercel/next"
     }
   ],
-  "buildCommand": "npm run vercel-build",
+  "buildCommand": "cd packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && npm run build",
   "installCommand": "npm install"
 }

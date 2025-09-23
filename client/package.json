@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "node prebuild.js && next build",
-    "vercel-build": "npm run build --workspace=packages/shared-types && npm run build --workspace=packages/config && next build",
+    "vercel-build": "cd ../packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && next build",
     "start": "next start",
     "lint": "eslint"
   },

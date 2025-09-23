@@ -19,7 +19,7 @@
     "type-check": "npm run type-check --workspace=packages/shared-types",
     "install-deps": "npm install && npm run install-deps --workspace=server",
     "clean": "npm run clean --workspace=client && npm run clean --workspace=server",
-    "vercel-build": "npm run build --workspace=packages/shared-types && npm run build --workspace=packages/config && npm run build --workspace=client"
+    "vercel-build": "cd packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && npm run build"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
