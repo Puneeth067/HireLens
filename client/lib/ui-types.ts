@@ -4,7 +4,7 @@ import type {
   JobDescription,
   ComparisonResult,
   ParseStatus
-} from '@hirelens/shared-types';
+} from './types';
 
 export interface UploadedFile {
   file: File;

@@ -4,6 +4,12 @@ import { existsSync } from 'fs';
 
 console.log('Prebuilding shared packages...');
 
+// Skip prebuild in Vercel environment since packages are built separately
+if (process.env.VERCEL) {
+  console.log('Skipping prebuild in Vercel environment');
+  process.exit(0);
+}
+
 try {
   // Build shared-types package
   console.log('Building @hirelens/shared-types...');
