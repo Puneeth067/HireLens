@@ -6,12 +6,16 @@
       "use": "@vercel/next",
       "config": {
         "includeFiles": [
-          "packages/**"
+          "client/next.config.js",
+          "client/next.config.ts"
         ]
       }
     }
   ],
-  "buildCommand": "npm run vercel-build",
-  "installCommand": "npm install --legacy-peer-deps",
-  "outputDirectory": "client/.next"
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "client/$1"
+    }
+  ]
 }
