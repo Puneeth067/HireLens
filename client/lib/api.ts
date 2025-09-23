@@ -42,9 +42,7 @@ import {
 } from './types';
 
 // Updated API_BASE_URL to work with Vercel deployments
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
-                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') || 
-                    'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 class ApiService {
   private async fetchWithAuth(
