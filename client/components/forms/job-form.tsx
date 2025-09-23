@@ -140,7 +140,7 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
           // Also dispatch a general refresh event
           window.dispatchEvent(new CustomEvent('jobListRefresh'));
           // Force cache invalidation
-          CacheInvalidation.onJobUpdate(result.id);
+          CacheInvalidation.onJobUpdate();
         }
       } else {
         console.log('Creating new job');

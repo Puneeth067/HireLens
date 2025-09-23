@@ -190,7 +190,7 @@ class CachedApiService {
     const job = await this.originalApi.updateJob(jobId, jobData);
     
     // Invalidate related caches
-    CacheInvalidation.onJobUpdate(jobId);
+    CacheInvalidation.onJobUpdate();
     
     // Cache the updated job
     jobsCache.set(CacheKeys.JOB_DETAIL(jobId), job);
@@ -202,7 +202,7 @@ class CachedApiService {
     const result = await this.originalApi.deleteJob(jobId);
     
     // Invalidate related caches
-    CacheInvalidation.onJobDelete(jobId);
+    CacheInvalidation.onJobDelete();
     
     return result;
   }
@@ -277,7 +277,7 @@ class CachedApiService {
     const comparison = await this.originalApi.updateComparison(id, data);
     
     // Invalidate related caches
-    CacheInvalidation.onComparisonUpdate(id);
+    CacheInvalidation.onComparisonUpdate();
     
     // Cache the updated comparison
     comparisonsCache.set(CacheKeys.COMPARISON_DETAIL(id), comparison);
