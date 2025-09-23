@@ -8,5 +8,22 @@
   ],
   "buildCommand": "npm run vercel-build",
   "installCommand": "npm install --legacy-peer-deps",
-  "outputDirectory": "client/.next"
+  "outputDirectory": "client/.next",
+  "engines": {
+    "node": "22.x"
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/client/api/$1"
+    },
+    {
+      "src": "/_next/static/(.*)",
+      "dest": "/client/_next/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/client/$1"
+    }
+  ]
 }
