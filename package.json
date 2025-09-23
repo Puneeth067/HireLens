@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "description": "AI-powered resume parsing and ATS scoring platform",
   "private": true,
-  "workspaces": [
-    "client",
-    "packages/*"
-  ],
+  "workspaces": {
+    "packages": [
+      "client",
+      "packages/*"
+    ]
+  },
   "scripts": {
     "dev": "./scripts/dev.sh",
     "dev:client": "npm run dev --workspace=client",
@@ -18,12 +20,15 @@
     "lint": "cd client && npm run lint",
     "install-deps": "npm install --legacy-peer-deps && cd server && npm install",
     "clean": "cd client && npm run clean && cd server && npm run clean",
-    "vercel-build": "npm install --legacy-peer-deps && cd packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && npm run build"
+    "vercel-build": "npm install --legacy-peer-deps && cd packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && npm run build",
+    "postinstall": "cd packages/shared-types && npm run build && cd ../config && npm run build"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0",
-    "concurrently": "^8.0.0"
+    "concurrently": "^8.0.0",
+    "eslint": "9.10.0",
+    "eslint-config-next": "^14.2.20"
   },
   "engines": {
     "node": ">=18.0.0",

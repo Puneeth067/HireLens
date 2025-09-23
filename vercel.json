@@ -3,7 +3,12 @@
   "builds": [
     {
       "src": "client/package.json",
-      "use": "@vercel/next"
+      "use": "@vercel/next",
+      "config": {
+        "includeFiles": [
+          "packages/**"
+        ]
+      }
     }
   ],
   "buildCommand": "npm run vercel-build",
