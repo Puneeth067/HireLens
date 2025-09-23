@@ -2,10 +2,11 @@
   "name": "client",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "node prebuild.js && next build",
-    "vercel-build": "cd ../packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && next build",
+    "vercel-build": "next build",
     "start": "next start",
     "lint": "eslint"
   },

@@ -16,10 +16,10 @@
     "build:server": "npm run build --workspace=server",
     "start": "npm run start --workspace=client & npm run start --workspace=server",
     "lint": "npm run lint --workspace=client",
-    "type-check": "npm run type-check --workspace=packages/shared-types",
+    "type-check": "npm run type-check --workspace=@hirelens/shared-types",
     "install-deps": "npm install && npm run install-deps --workspace=server",
     "clean": "npm run clean --workspace=client && npm run clean --workspace=server",
-    "vercel-build": "cd packages/shared-types && npm run build && cd ../config && npm run build && cd ../../client && npm run build"
+    "vercel-build": "npm run build --workspace=@hirelens/shared-types && npm run build --workspace=@hirelens/config && npm run build --workspace=client"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
