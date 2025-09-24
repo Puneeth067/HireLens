@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-  // Ensure transpilation of workspace packages
+  reactStrictMode: true,          // optional but recommended
+  experimental: {
+    appDir: true,                 // enable App Router
+  },
+  // Transpile your shared packages
   transpilePackages: ['@hirelens/shared-types', '@hirelens/config'],
-
 };
 
 export default nextConfig;
