@@ -24,5 +24,7 @@ services:
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: https://hirelens-api.onrender.com  # This will be updated with your actual backend URL
+      - key: NEXT_PUBLIC_LOGGING_ENDPOINT
+        value: https://hirelens-api.onrender.com/api
       - key: PORT
         value: 3000

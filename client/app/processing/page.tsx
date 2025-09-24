@@ -30,7 +30,8 @@ import {
 
 function ProcessingPageContent() {
   const router = useRouter();
-  const componentLogger = useLogger('ProcessingPage');
+  const componentLoggerRef = useRef(useLogger('ProcessingPage'));
+  const componentLogger = componentLoggerRef.current;
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [stats, setStats] = useState<ProcessingStats | null>(null);
   const [selectedResume, setSelectedResume] = useState<ParsedResume | null>(null);
@@ -116,7 +117,7 @@ function ProcessingPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [componentLogger]);
+  }, []);
 
   const loadStats = useCallback(async () => {
     try {
@@ -164,7 +165,7 @@ function ProcessingPageContent() {
       };
       setStats(fallbackStats);
     }
-  }, [componentLogger]);
+  }, []);
 
   useEffect(() => {
     loadFiles();
@@ -182,7 +183,7 @@ function ProcessingPageContent() {
       clearInterval(interval);
       logger.endPerformanceTimer('processing_page_load');
     };
-  }, [loadFiles, loadStats, componentLogger]);
+  }, [loadFiles, loadStats]);
 
   const parseFile = useCallback(async (fileId: string) => {
     try {
@@ -207,7 +208,7 @@ function ProcessingPageContent() {
       });
       setError('Failed to parse file. Please try again.');
     }
-  }, [loadFiles, loadStats, componentLogger]);
+  }, [loadFiles, loadStats]);
 
   const viewParsedResume = useCallback(async (fileId: string) => {
     try {
@@ -234,7 +235,7 @@ function ProcessingPageContent() {
       componentLogger.error('Error loading parsed resume', { error, fileId });
       setError('Failed to load resume. Please try again.');
     }
-  }, [componentLogger]);
+  }, []);
 
   const deleteFile = useCallback(async (fileId: string, filename: string) => {
     // Debug log to see which file is being deleted
@@ -297,7 +298,7 @@ function ProcessingPageContent() {
       setDeleteConfirmationOpen(false);
       setFileToDelete(null);
     }
-  }, [fileToDelete, loadFiles, loadStats, componentLogger]);
+  }, [fileToDelete, loadFiles, loadStats]);
 
   // Add state for cleanup loading
   const [isCleaningUp, setIsCleaningUp] = useState(false);
@@ -331,7 +332,7 @@ function ProcessingPageContent() {
       setIsCleaningUp(false);
       setShowCleanupConfirmation(false); // Close the dialog
     }
-  }, [loadFiles, loadStats, componentLogger]);
+  }, [loadFiles, loadStats]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -1,4 +1,5 @@
 // lib/logger.ts - Comprehensive frontend logging system
+import appConfig from './config';
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
@@ -59,11 +60,15 @@ class Logger {
   };
 
   constructor(config: Partial<LoggerConfig> = {}) {
+    // Determine the base URL for logging endpoint
+    const loggingBaseUrl = process.env.NEXT_PUBLIC_LOGGING_ENDPOINT || 
+                          `${appConfig.apiUrl || '/api'}`;
+    
     this.config = {
       level: 'info',
       enableConsole: process.env.NODE_ENV === 'development',
       enableRemote: process.env.NODE_ENV === 'production',
-      remoteUrl: process.env.NEXT_PUBLIC_LOGGING_ENDPOINT || '/api/logging/frontend',
+      remoteUrl: `${loggingBaseUrl}/logging/frontend`,
       bufferSize: 50,
       flushInterval: 30000, // 30 seconds
       enablePerformanceTracking: true,

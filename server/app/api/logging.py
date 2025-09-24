@@ -48,8 +48,3 @@ async def log_frontend_messages(log_request: LogRequest):
     except Exception as e:
         logger.error(f"Failed to process frontend logs: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process logs")
-
-@router.options("/frontend")
-async def preflight_handler(request: Request):
-    """Handle CORS preflight requests for logging endpoint"""
-    return {"message": "CORS preflight successful"}
