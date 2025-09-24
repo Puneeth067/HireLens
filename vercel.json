@@ -12,9 +12,6 @@
       }
     }
   ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "buildCommand": "npm run vercel-build",
-  "installCommand": "npm install --legacy-peer-deps"
+  "installCommand": "cd client && npm install --legacy-peer-deps",
+  "buildCommand": "cd client && npm run vercel-build"
 }
