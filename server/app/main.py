@@ -22,6 +22,7 @@ from app.api.jobs import router as jobs
 from app.api.comparisons import router as comparisons
 from app.api.analytics import router as analytics 
 from app.api.ranking import router as ranking  
+from app.api.logging import router as logging_router  # Add this import
 
 # Configure logging
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
@@ -483,6 +484,7 @@ app.include_router(jobs)
 app.include_router(comparisons)
 app.include_router(analytics)  
 app.include_router(ranking)
+app.include_router(logging_router)  # Add this line
 
 # Global exception handlers
 ## @app.exception_handler(404)
