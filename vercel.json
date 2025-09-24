@@ -13,5 +13,5 @@
     }
   ],
   "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "cd client && npm run vercel-build"
+  "buildCommand": "npm run vercel-build"
 }
