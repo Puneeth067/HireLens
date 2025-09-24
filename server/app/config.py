@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Resume Parser and ATS Scoring API"  # Updated name
     VERSION: str = "1.0.0"
     DESCRIPTION: str = "API for parsing resumes, managing jobs, and ATS scoring"  # Updated description
+    PORT: int = 8000
     
     # CORS Settings
     BACKEND_CORS_ORIGINS: List[str] = [
@@ -19,8 +20,15 @@ class Settings(BaseSettings):
         "http://localhost:3001", 
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        "http://localhost:4200",  # Common Angular dev server
+        "http://localhost:8080",  # Common Vue dev server
         "http://hirelens.vercel.app",
-        "https://recruvizz.vercel.app"  # Add your actual Vercel URL here
+        "https://hirelens.vercel.app",
+        "https://recruvizz.vercel.app",
+        "https://*.vercel.app",  # Wildcard for all Vercel apps
+        "https://*.onrender.com",  # Wildcard for Render deployments
+        "https://hirelens-api.onrender.com",  # Your production API URL
+        "*"  # Allow all origins as a fallback (less secure but more permissive)
     ]
     
     # For backward compatibility with new services
@@ -29,8 +37,15 @@ class Settings(BaseSettings):
         "http://localhost:3001", 
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        "http://localhost:4200",
+        "http://localhost:8080",
         "http://hirelens.vercel.app",
-        "https://recruvizz.vercel.app"  # Add your actual Vercel URL here
+        "https://hirelens.vercel.app",
+        "https://recruvizz.vercel.app",
+        "https://*.vercel.app",
+        "https://*.onrender.com",
+        "https://hirelens-api.onrender.com",
+        "*"
     ]
     
     # File Upload Settings

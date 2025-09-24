@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from typing import List, Optional, Dict, Any
 import statistics
 from ..models.ranking import (
@@ -10,6 +11,7 @@ from ..services.ranking_service import RankingService
 from ..services.job_service import JobService
 
 router = APIRouter(prefix="/api/ranking", tags=["ranking"])
+
 # Use singleton instance of JobService
 job_service = JobService()
 ranking_service = RankingService(job_service_instance=job_service)

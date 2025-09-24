@@ -8,7 +8,7 @@ import uuid
 import logging
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -34,6 +34,7 @@ class ParseStatusResponse(BaseModel):
     message: str = ""
     parsed_at: Optional[datetime] = None
     filename: str = ""
+
 def get_resume_parser() -> ResumeParserService:
     return ResumeParserService()
 
@@ -325,23 +326,25 @@ async def get_parsing_stats(
     try:
         all_files = file_service.get_all_files()
         
-        stats = {
-            'total_files': len(all_files),
+        # Initialize counters
+        status_counts = {
             'completed': 0,
             'processing': 0,
             'pending': 0,
-            'error': 0,
-            'recent_activity': []
+            'error': 0
         }
+        recent_activity = []
         
         # Count by status and get recent activity
         for file_data in all_files:
             status = file_data.get('status', 'pending')
-            stats[status] = stats.get(status, 0) + 1
+            # Only increment known status counts
+            if status in status_counts:
+                status_counts[status] += 1
             
             # Add to recent activity if processed recently
             if file_data.get('parsed_at'):
-                stats['recent_activity'].append({
+                recent_activity.append({
                     'file_id': file_data['file_id'],
                     'filename': file_data.get('original_filename', ''),
                     'status': status,
@@ -349,11 +352,22 @@ async def get_parsing_stats(
                 })
         
         # Sort recent activity by date
-        stats['recent_activity'].sort(
-            key=lambda x: x.get('parsed_at', ''), 
-            reverse=True
-        )
-        stats['recent_activity'] = stats['recent_activity'][:10]  # Last 10 activities
+        if recent_activity:  # Check if list is not empty
+            recent_activity.sort(
+                key=lambda x: x.get('parsed_at', ''), 
+                reverse=True
+            )
+            recent_activity = recent_activity[:10]  # Last 10 activities
+        
+        # Combine into final stats object
+        stats = {
+            'total_files': len(all_files),
+            'completed': status_counts['completed'],
+            'processing': status_counts['processing'],
+            'pending': status_counts['pending'],
+            'error': status_counts['error'],
+            'recent_activity': recent_activity
+        }
         
         return stats
         

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
+from fastapi.responses import JSONResponse
 from typing import Optional, List
 import io
 import csv
@@ -301,4 +302,3 @@ async def analytics_health_check():
             "error": str(e),
             "analytics_service": "error"
         }
-    

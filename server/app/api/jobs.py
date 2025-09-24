@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
+from fastapi.responses import JSONResponse
 from typing import List, Optional, Dict, Any
 
 from ..models.job import (

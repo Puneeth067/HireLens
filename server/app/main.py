@@ -159,14 +159,33 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# Simple CORS middleware configuration to allow all origins
+# This is less secure but should resolve the CORS preflight issues
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    max_age=3600  # Cache preflight requests for 1 hour
 )
+
+# Add a global OPTIONS handler to catch all preflight requests
+from fastapi import Request
+from fastapi.responses import Response
+
+@app.options("/{full_path:path}")
+async def preflight_handler(request: Request):
+    """Global handler for CORS preflight requests"""
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "3600"
+        }
+    )
 
 # Create uploads directory structure matching your config
 uploads_dir = Path(settings.UPLOAD_DIR)
