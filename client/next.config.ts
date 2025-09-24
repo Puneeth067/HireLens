@@ -1,9 +1,7 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    appDir: true,
-  },
   transpilePackages: ['@hirelens/shared-types', '@hirelens/config'],
 };
 
