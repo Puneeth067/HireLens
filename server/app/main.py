@@ -171,23 +171,6 @@ app.add_middleware(
     max_age=3600  # Cache preflight requests for 1 hour
 )
 
-# Add a global OPTIONS handler to catch all preflight requests
-from fastapi import Request
-from fastapi.responses import Response
-
-@app.options("/{full_path:path}")
-async def preflight_handler(request: Request):
-    """Global handler for CORS preflight requests"""
-    return Response(
-        content="",
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Max-Age": "3600"
-        }
-    )
-
 # Create uploads directory structure matching your config
 uploads_dir = Path(settings.UPLOAD_DIR)
 uploads_dir.mkdir(exist_ok=True)
