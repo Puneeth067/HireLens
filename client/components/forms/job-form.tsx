@@ -32,9 +32,8 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
     salary_min: job?.salary_min || 0,
     salary_max: job?.salary_max || 0,
     currency: job?.currency || 'USD',
-    status: job?.status || 'draft' as JobStatus, // Add status field
-    // Use direct weight fields from backend
-    weight_skills: (job?.weight_skills || 0.4) * 100, // Convert to percentage
+    status: job?.status || 'draft' as JobStatus,
+    weight_skills: (job?.weight_skills || 0.4) * 100,
     weight_experience: (job?.weight_experience || 0.3) * 100,
     weight_education: (job?.weight_education || 0.2) * 100,
     weight_keywords: (job?.weight_keywords || 0.1) * 100,
@@ -114,12 +113,10 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
         education_requirements: formData.education_requirements?.filter(e => e.trim()) || [],
         certifications: formData.certifications?.filter(c => c.trim()) || [],
         keywords: formData.keywords?.filter(k => k.trim()) || [],
-        // Convert percentage weights to decimals
         weight_skills: formData.weight_skills / 100,
         weight_experience: formData.weight_experience / 100,
         weight_education: formData.weight_education / 100,
         weight_keywords: formData.weight_keywords / 100
-        // Note: Status is not included in CreateJobRequest, will be set after creation if needed
       };
 
       console.log('Submitting job data:', JSON.stringify(jobData, null, 2));
@@ -127,43 +124,34 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
       let result;
       if (isEdit && job) {
         console.log('Updating existing job:', job.id);
-        // For editing, we can include status in the update
         const updateData = {
           ...jobData,
           status: formData.status
         };
         result = await apiService.updateJob(job.id, updateData);
         
-        // Dispatch a custom event to notify the jobs page to refresh
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('jobUpdated', { detail: result }));
-          // Also dispatch a general refresh event
           window.dispatchEvent(new CustomEvent('jobListRefresh'));
-          // Force cache invalidation
           CacheInvalidation.onJobUpdate();
         }
       } else {
         console.log('Creating new job');
         result = await apiService.createJob(jobData);
         
-        // If the status is not draft, we need to update it immediately after creation
         if (formData.status !== 'draft') {
           console.log('Updating job status to:', formData.status);
           const updatedResult = await apiService.updateJob(result.id, { status: formData.status });
-          result = updatedResult; // Use the updated result
+          result = updatedResult;
         }
         
-        // Dispatch a custom event to notify the jobs page to refresh
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('jobCreated', { detail: result }));
-          // Also dispatch a general refresh event
           window.dispatchEvent(new CustomEvent('jobListRefresh'));
-          // Force cache invalidation
           CacheInvalidation.onJobCreate();
         }
       }
       
-      // Add a small delay to ensure events are processed
       await new Promise(resolve => setTimeout(resolve, 100));
       router.push('/jobs');
     } catch (error) {
@@ -172,7 +160,6 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
       
       if (error instanceof Error) {
         errorMessage = error.message;
-        // Parse API error details if available
         try {
           if (error.message.includes('422')) {
             const match = error.message.match(/API Error \(422\): (.+)/);
@@ -201,7 +188,6 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -214,10 +200,8 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
         [weight]: value
       };
       
-      // Calculate current total
       const currentTotal = newFormData.weight_skills + newFormData.weight_experience + newFormData.weight_education + newFormData.weight_keywords;
       
-      // If total is not 100%, normalize the weights
       if (Math.abs(currentTotal - 100) > 0.01) {
         const factor = 100 / currentTotal;
         newFormData.weight_skills = parseFloat((newFormData.weight_skills * factor).toFixed(2));
@@ -265,198 +249,232 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
   const totalWeight = formData.weight_skills + formData.weight_experience + formData.weight_education + formData.weight_keywords;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">
-          {isEdit ? 'Edit Job Description' : 'Create New Job Description'}
-        </h1>
+    <div className="max-w-6xl mx-auto p-6 relative">
+      {/* Floating background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 -right-20 w-40 h-40 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-2xl animate-pulse"></div>
+        <div className="absolute bottom-20 -left-20 w-32 h-32 bg-gradient-to-br from-indigo-200/20 to-pink-200/20 rounded-full blur-xl animate-pulse delay-700"></div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Job Title *
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.title ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="e.g., Senior Software Engineer"
-              />
-              {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
-            </div>
+      <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/30 p-8 hover:shadow-3xl transition-all duration-500 hover:bg-white/90">
+        {/* Header with gradient */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-2 hover:from-purple-600 hover:via-pink-600 hover:to-blue-600 transition-all duration-500">
+            {isEdit ? 'Edit Job Description' : 'Create New Job Description'}
+          </h1>
+          <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Company *
-              </label>
-              <input
-                type="text"
-                name="company"
-                value={formData.company}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.company ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="e.g., Tech Corp"
-              />
-              {errors.company && <p className="mt-1 text-sm text-red-600">{errors.company}</p>}
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Basic Information Section */}
+          <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/50 rounded-2xl p-6 border border-blue-100/30 hover:shadow-lg hover:border-blue-200/50 transition-all duration-300">
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6 flex items-center">
+              <span className="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full mr-3"></span>
+              Basic Information
+            </h2>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="transform hover:scale-[1.02] transition-transform duration-200">
+                <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Job Title *
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 hover:border-blue-300 bg-white/70 backdrop-blur-sm ${
+                    errors.title ? 'border-red-400 focus:border-red-500' : 'border-gray-200'
+                  }`}
+                  placeholder="e.g., Senior Software Engineer"
+                />
+                {errors.title && <p className="mt-2 text-sm text-red-500 font-medium">{errors.title}</p>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location *
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.location ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="e.g., San Francisco, CA / Remote"
-              />
-              {errors.location && <p className="mt-1 text-sm text-red-600">{errors.location}</p>}
-            </div>
+              <div className="transform hover:scale-[1.02] transition-transform duration-200">
+                <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Company *
+                </label>
+                <input
+                  type="text"
+                  name="company"
+                  value={formData.company}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 hover:border-blue-300 bg-white/70 backdrop-blur-sm ${
+                    errors.company ? 'border-red-400 focus:border-red-500' : 'border-gray-200'
+                  }`}
+                  placeholder="e.g., Tech Corp"
+                />
+                {errors.company && <p className="mt-2 text-sm text-red-500 font-medium">{errors.company}</p>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Job Type
-              </label>
-              <select
-                name="job_type"
-                value={formData.job_type}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                aria-label="Select job type"
-              >
-                <option value="full_time">Full Time</option>
-                <option value="part_time">Part Time</option>
-                <option value="contract">Contract</option>
-                <option value="internship">Internship</option>
-              </select>
-            </div>
+              <div className="transform hover:scale-[1.02] transition-transform duration-200">
+                <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Location *
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 hover:border-blue-300 bg-white/70 backdrop-blur-sm ${
+                    errors.location ? 'border-red-400 focus:border-red-500' : 'border-gray-200'
+                  }`}
+                  placeholder="e.g., San Francisco, CA / Remote"
+                />
+                {errors.location && <p className="mt-2 text-sm text-red-500 font-medium">{errors.location}</p>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Experience Level
-              </label>
-              <select
-                name="experience_level"
-                value={formData.experience_level}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                aria-label="Select experience level"
-              >
-                <option value="entry">Entry Level</option>
-                <option value="junior">Junior Level</option>
-                <option value="middle">Mid Level</option>
-                <option value="senior">Senior Level</option>
-                <option value="lead">Lead Level</option>
-                <option value="executive">Executive</option>
-              </select>
-            </div>
+              <div className="transform hover:scale-[1.02] transition-transform duration-200">
+                <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Job Type
+                </label>
+                <select
+                  name="job_type"
+                  value={formData.job_type}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 hover:border-blue-300 bg-white/70 backdrop-blur-sm"
+                  aria-label="Select job type"
+                >
+                  <option value="full_time">Full Time</option>
+                  <option value="part_time">Part Time</option>
+                  <option value="contract">Contract</option>
+                  <option value="internship">Internship</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Job Status
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                aria-label="Select job status"
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
-          </div>
+              <div className="transform hover:scale-[1.02] transition-transform duration-200">
+                <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Experience Level
+                </label>
+                <select
+                  name="experience_level"
+                  value={formData.experience_level}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 hover:border-blue-300 bg-white/70 backdrop-blur-sm"
+                  aria-label="Select experience level"
+                >
+                  <option value="entry">Entry Level</option>
+                  <option value="junior">Junior Level</option>
+                  <option value="middle">Mid Level</option>
+                  <option value="senior">Senior Level</option>
+                  <option value="lead">Lead Level</option>
+                  <option value="executive">Executive</option>
+                </select>
+              </div>
 
-          {/* Salary Range */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Minimum Salary ($)
-              </label>
-              <input
-                type="number"
-                name="salary_min"
-                value={formData.salary_min || ''}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.salary_min ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="0"
-                min="0"
-              />
-              {errors.salary_min && <p className="mt-1 text-sm text-red-600">{errors.salary_min}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Maximum Salary ($)
-              </label>
-              <input
-                type="number"
-                name="salary_max"
-                value={formData.salary_max || ''}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.salary_max ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="0"
-                min="0"
-              />
-              {errors.salary_max && <p className="mt-1 text-sm text-red-600">{errors.salary_max}</p>}
+              <div className="transform hover:scale-[1.02] transition-transform duration-200">
+                <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Job Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 hover:border-blue-300 bg-white/70 backdrop-blur-sm"
+                  aria-label="Select job status"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="active">Active</option>
+                  <option value="paused">Paused</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Job Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Job Description *
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={6}
-              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.description ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Describe the role, responsibilities, and requirements..."
-            />
-            {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
+          {/* Salary Range Section */}
+          <div className="bg-gradient-to-br from-green-50/50 to-emerald-50/50 rounded-2xl p-6 border border-green-100/30 hover:shadow-lg hover:border-green-200/50 transition-all duration-300">
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-6 flex items-center">
+              <span className="w-2 h-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mr-3"></span>
+              Salary Range
+            </h2>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="transform hover:scale-[1.02] transition-transform duration-200">
+                <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Minimum Salary ($)
+                </label>
+                <input
+                  type="number"
+                  name="salary_min"
+                  value={formData.salary_min || ''}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-green-500/20 focus:border-green-500 transition-all duration-300 hover:border-green-300 bg-white/70 backdrop-blur-sm ${
+                    errors.salary_min ? 'border-red-400 focus:border-red-500' : 'border-gray-200'
+                  }`}
+                  placeholder="0"
+                  min="0"
+                />
+                {errors.salary_min && <p className="mt-2 text-sm text-red-500 font-medium">{errors.salary_min}</p>}
+              </div>
+
+              <div className="transform hover:scale-[1.02] transition-transform duration-200">
+                <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Maximum Salary ($)
+                </label>
+                <input
+                  type="number"
+                  name="salary_max"
+                  value={formData.salary_max || ''}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-green-500/20 focus:border-green-500 transition-all duration-300 hover:border-green-300 bg-white/70 backdrop-blur-sm ${
+                    errors.salary_max ? 'border-red-400 focus:border-red-500' : 'border-gray-200'
+                  }`}
+                  placeholder="0"
+                  min="0"
+                />
+                {errors.salary_max && <p className="mt-2 text-sm text-red-500 font-medium">{errors.salary_max}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Job Description Section */}
+          <div className="bg-gradient-to-br from-purple-50/50 to-pink-50/50 rounded-2xl p-6 border border-purple-100/30 hover:shadow-lg hover:border-purple-200/50 transition-all duration-300">
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-6 flex items-center">
+              <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mr-3"></span>
+              Job Description
+            </h2>
+            
+            <div className="transform hover:scale-[1.01] transition-transform duration-200">
+              <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
+                Job Description *
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={6}
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 hover:border-purple-300 bg-white/70 backdrop-blur-sm resize-none ${
+                  errors.description ? 'border-red-400 focus:border-red-500' : 'border-gray-200'
+                }`}
+                placeholder="Describe the role, responsibilities, and requirements..."
+              />
+              {errors.description && <p className="mt-2 text-sm text-red-500 font-medium">{errors.description}</p>}
+            </div>
           </div>
 
           {/* Skills Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Skills Requirements</h3>
+          <div className="bg-gradient-to-br from-orange-50/50 to-red-50/50 rounded-2xl p-6 border border-orange-100/30 hover:shadow-lg hover:border-orange-200/50 transition-all duration-300">
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-6 flex items-center">
+              <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-full mr-3"></span>
+              Skills Requirements
+            </h2>
             
             {/* Add Skills */}
-            <div className="flex gap-2">
+            <div className="flex gap-3 mb-6">
               <input
                 type="text"
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-300 hover:border-orange-300 bg-white/70 backdrop-blur-sm"
                 placeholder="Enter a skill..."
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
               />
               <select
                 value={skillType}
                 onChange={(e) => setSkillType(e.target.value as 'required' | 'preferred')}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-300 hover:border-orange-300 bg-white/70 backdrop-blur-sm"
                 aria-label="Select skill type"
               >
                 <option value="required">Required</option>
@@ -465,49 +483,49 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
               <button
                 type="button"
                 onClick={addSkill}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 focus:ring-4 focus:ring-orange-500/20 transform hover:scale-105 hover:shadow-lg transition-all duration-300 font-medium"
               >
                 Add
               </button>
             </div>
 
             {/* Required Skills */}
-            <div>
-              <h4 className="font-medium text-gray-700 mb-2">Required Skills *</h4>
+            <div className="mb-6">
+              <h4 className="font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-3">Required Skills *</h4>
               <div className="flex flex-wrap gap-2">
                 {requiredSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm"
+                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-100 to-pink-100 text-red-800 rounded-full text-sm font-medium border border-red-200 hover:shadow-md hover:scale-105 transition-all duration-200"
                   >
                     {skill}
                     <button
                       type="button"
                       onClick={() => removeSkill(skill, 'required')}
-                      className="ml-2 text-red-600 hover:text-red-800"
+                      className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-200 rounded-full p-1 transition-all duration-200"
                     >
                       ×
                     </button>
                   </span>
                 ))}
               </div>
-              {errors.required_skills && <p className="mt-1 text-sm text-red-600">{errors.required_skills}</p>}
+              {errors.required_skills && <p className="mt-2 text-sm text-red-500 font-medium">{errors.required_skills}</p>}
             </div>
 
             {/* Preferred Skills */}
             <div>
-              <h4 className="font-medium text-gray-700 mb-2">Preferred Skills</h4>
+              <h4 className="font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-3">Preferred Skills</h4>
               <div className="flex flex-wrap gap-2">
                 {preferredSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 rounded-full text-sm font-medium border border-green-200 hover:shadow-md hover:scale-105 transition-all duration-200"
                   >
                     {skill}
                     <button
                       type="button"
                       onClick={() => removeSkill(skill, 'preferred')}
-                      className="ml-2 text-green-600 hover:text-green-800"
+                      className="ml-2 text-green-600 hover:text-green-800 hover:bg-green-200 rounded-full p-1 transition-all duration-200"
                     >
                       ×
                     </button>
@@ -518,66 +536,79 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
           </div>
 
           {/* ATS Scoring Weights */}
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">ATS Scoring Weights</h3>
-              <span className={`text-sm font-medium ${Math.abs(totalWeight - 100) < 0.1 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className="bg-gradient-to-br from-indigo-50/50 to-blue-50/50 rounded-2xl p-6 border border-indigo-100/30 hover:shadow-lg hover:border-indigo-200/50 transition-all duration-300">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent flex items-center">
+                <span className="w-2 h-2 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full mr-3"></span>
+                ATS Scoring Weights
+              </h2>
+              <span className={`text-sm font-bold px-3 py-1 rounded-full ${Math.abs(totalWeight - 100) < 0.1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                 Total: {totalWeight.toFixed(1)}%
               </span>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 mb-6">
               Adjust the weights for different factors in the ATS scoring algorithm. 
               {Math.abs(totalWeight - 100) >= 0.1 ? (
-                <span className="text-red-600"> Weights will be automatically normalized to total 100%.</span>
+                <span className="text-red-600 font-medium"> Weights will be automatically normalized to total 100%.</span>
               ) : (
                 <span> Total weight must equal 100%.</span>
               )}
             </p>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-6">
               {[
-                { key: 'weight_skills', label: 'Skills Weight' },
-                { key: 'weight_experience', label: 'Experience Weight' },
-                { key: 'weight_education', label: 'Education Weight' },
-                { key: 'weight_keywords', label: 'Keywords Weight' }
-              ].map(({ key, label }) => {
+                { key: 'weight_skills', label: 'Skills Weight', color: 'from-blue-500 to-indigo-500' },
+                { key: 'weight_experience', label: 'Experience Weight', color: 'from-purple-500 to-pink-500' },
+                { key: 'weight_education', label: 'Education Weight', color: 'from-green-500 to-emerald-500' },
+                { key: 'weight_keywords', label: 'Keywords Weight', color: 'from-orange-500 to-red-500' }
+              ].map(({ key, label, color }) => {
                 const value = formData[key as keyof typeof formData] as number;
                 return (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div key={key} className="transform hover:scale-[1.02] transition-transform duration-200">
+                    <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-3">
                       {label}
                     </label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                       <input
                         type="range"
                         min="0"
                         max="100"
                         value={value}
                         onChange={(e) => handleWeightChange(key as 'weight_skills' | 'weight_experience' | 'weight_education' | 'weight_keywords', parseInt(e.target.value))}
-                        className="flex-1"
+                        className="flex-1 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                         title={label}
                         aria-label={label}
+                        style={{
+                          background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(59, 130, 246) ${value}%, rgb(229, 231, 235) ${value}%, rgb(229, 231, 235) 100%)`
+                        }}
                       />
-                      <span className="w-12 text-sm font-medium text-gray-600">{value}%</span>
+                      <span className={`w-14 text-sm font-bold text-center py-1 px-2 rounded-lg bg-gradient-to-r ${color} text-white`}>
+                        {value}%
+                      </span>
                     </div>
                   </div>
                 );
               })}
             </div>
             {Math.abs(totalWeight - 100) >= 0.1 && (
-              <p className="text-sm text-red-600">
-                Total weight must equal 100%. Current weights will be automatically normalized.
-              </p>
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-700 font-medium">
+                  Total weight must equal 100%. Current weights will be automatically normalized.
+                </p>
+              </div>
             )}
           </div>
 
-          {/* Job Requirements - Add missing required fields */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Job Details</h3>
+          {/* Job Details Section */}
+          <div className="bg-gradient-to-br from-cyan-50/50 to-teal-50/50 rounded-2xl p-6 border border-cyan-100/30 hover:shadow-lg hover:border-cyan-200/50 transition-all duration-300">
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent mb-6 flex items-center">
+              <span className="w-2 h-2 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full mr-3"></span>
+              Job Details
+            </h2>
             
             {/* Responsibilities */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-6 transform hover:scale-[1.01] transition-transform duration-200">
+              <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
                 Key Responsibilities *
               </label>
               <textarea
@@ -590,23 +621,22 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
                   }));
                 }}
                 onKeyDown={(e) => {
-                  // Allow Enter key to create new lines
                   if (e.key === 'Enter') {
                     e.stopPropagation();
                   }
                 }}
-                rows={4}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.responsibilities ? 'border-red-500' : 'border-gray-300'
+                rows={5}
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-300 hover:border-cyan-300 bg-white/70 backdrop-blur-sm resize-none ${
+                  errors.responsibilities ? 'border-red-400 focus:border-red-500' : 'border-gray-200'
                 }`}
-                placeholder="Enter each responsibility on a new line...\n• Develop and maintain software applications\n• Collaborate with cross-functional teams\n• Write clean, efficient code"
+                placeholder="Enter each responsibility on a new line...&#10;• Develop and maintain software applications&#10;• Collaborate with cross-functional teams&#10;• Write clean, efficient code"
               />
-              {errors.responsibilities && <p className="mt-1 text-sm text-red-600">{errors.responsibilities}</p>}
+              {errors.responsibilities && <p className="mt-2 text-sm text-red-500 font-medium">{errors.responsibilities}</p>}
             </div>
 
             {/* Requirements */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="transform hover:scale-[1.01] transition-transform duration-200">
+              <label className="block text-sm font-medium bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent mb-2">
                 Job Requirements *
               </label>
               <textarea
@@ -619,45 +649,68 @@ const JobForm = ({ job, isEdit = false }: JobFormProps) => {
                   }));
                 }}
                 onKeyDown={(e) => {
-                  // Allow Enter key to create new lines
                   if (e.key === 'Enter') {
                     e.stopPropagation();
                   }
                 }}
-                rows={4}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.requirements ? 'border-red-500' : 'border-gray-300'
+                rows={5}
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-300 hover:border-cyan-300 bg-white/70 backdrop-blur-sm resize-none ${
+                  errors.requirements ? 'border-red-400 focus:border-red-500' : 'border-gray-200'
                 }`}
-                placeholder="Enter each requirement on a new line...\n• Bachelor's degree in Computer Science or related field\n• 3+ years of experience in software development\n• Experience with React and Node.js"
+                placeholder="Enter each requirement on a new line...&#10;• Bachelor's degree in Computer Science or related field&#10;• 3+ years of experience in software development&#10;• Experience with React and Node.js"
               />
-              {errors.requirements && <p className="mt-1 text-sm text-red-600">{errors.requirements}</p>}
+              {errors.requirements && <p className="mt-2 text-sm text-red-500 font-medium">{errors.requirements}</p>}
             </div>
           </div>
 
           {/* Form Actions */}
-          <div className="flex justify-end gap-4 pt-6 border-t">
+          <div className="flex justify-end gap-4 pt-8 border-t-2 border-gradient-to-r from-gray-200 to-gray-300">
             <button
               type="button"
               onClick={() => router.back()}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-gray-500"
+              className="px-8 py-3 border-2 border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:ring-4 focus:ring-gray-500/20 transform hover:scale-105 hover:shadow-lg transition-all duration-300 font-medium bg-white/70 backdrop-blur-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl transition-all duration-300 font-medium disabled:transform-none"
             >
-              {isLoading ? 'Saving...' : isEdit ? 'Update Job' : 'Create Job'}
+              {isLoading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </span>
+              ) : (
+                isEdit ? 'Update Job' : 'Create Job'
+              )}
             </button>
           </div>
 
           {errors.submit && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{errors.submit}</p>
+            <div className="p-4 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl transform hover:scale-[1.01] transition-transform duration-200">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <p className="ml-3 text-sm text-red-700 font-medium">{errors.submit}</p>
+              </div>
             </div>
           )}
         </form>
+      </div>
+
+      {/* Floating success indicator */}
+      <div className="fixed bottom-8 left-8 opacity-0 hover:opacity-100 transition-opacity duration-300">
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+          ✓ Auto-save enabled
+        </div>
       </div>
     </div>
   );

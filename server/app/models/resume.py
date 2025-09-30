@@ -23,24 +23,26 @@ class PersonalInfo(BaseModel):
     github: Optional[str] = None
     portfolio: Optional[str] = None
 
-class Education(BaseModel):
-    institution: str
-    degree: str
-    field_of_study: str
-    graduation_date: Optional[str] = None
-    gpa: Optional[str] = None
-    achievements: List[str] = Field(default_factory=list)
-
 class Experience(BaseModel):
     company: str
     position: str
     location: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    duration: Optional[str] = None  # Added duration field
     is_current: bool = False
     description: List[str] = Field(default_factory=list)
     achievements: List[str] = Field(default_factory=list)
     technologies: List[str] = Field(default_factory=list)
+
+class Education(BaseModel):
+    institution: str
+    degree: str
+    field_of_study: str
+    graduation_date: Optional[str] = None
+    duration: Optional[str] = None  # Added duration field
+    gpa: Optional[str] = None
+    achievements: List[str] = Field(default_factory=list)
 
 class Skills(BaseModel):
     technical: List[str] = Field(default_factory=list)

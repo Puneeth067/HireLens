@@ -47,7 +47,8 @@ function SystemPageContent() {
 
   const fetchSystemData = useCallback(async () => {
     setRefreshing(true);
-    if (!health && !systemInfo) {
+    // Only show loading spinner on initial load, not on refresh
+    if (!health || !systemInfo) {
       startLoading();
     }
     clearError();
@@ -56,12 +57,23 @@ function SystemPageContent() {
       logger.info('Fetching system data');
       const startTime = performance.now();
       
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout: System data fetch took too long')), 15000)
+      );
+      
       // Use cached API service for better performance
-      const healthData = await cachedApiService.healthCheck();
+      const healthData = await Promise.race([
+        cachedApiService.healthCheck(),
+        timeoutPromise
+      ]) as SystemHealth;
       setHealth(healthData);
 
       // Fetch detailed system info
-      const infoData = await cachedApiService.getSystemInfo();
+      const infoData = await Promise.race([
+        cachedApiService.getSystemInfo(),
+        timeoutPromise
+      ]) as SystemInfo;
       setSystemInfo(infoData);
 
       const loadTime = performance.now() - startTime;
@@ -69,14 +81,14 @@ function SystemPageContent() {
       
       setLastUpdated(new Date());
     } catch (err) {
-      const errorMessage = 'Failed to fetch system data';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch system data';
       logger.error(errorMessage, { error: err });
       setError(errorMessage);
     } finally {
       stopLoading();
       setRefreshing(false);
     }
-  }, [clearError, health, logger, setError, startLoading, stopLoading, systemInfo]);
+  }, [clearError, logger, setError, startLoading, stopLoading]);
 
   useEffect(() => {
     logger.lifecycle('mount');

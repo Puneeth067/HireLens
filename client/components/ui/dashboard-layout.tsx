@@ -61,7 +61,7 @@ export default function DashboardLayout({
     { name: 'Ranking', href: '/ranking', icon: Award },
     { name: 'Analytics', href: '/analytics', icon: TrendingUp },
     { name: 'Processing', href: '/processing', icon: FileText },
-    { name: 'System', href: '/system', icon: Settings },
+    // { name: 'System', href: '/system', icon: Settings },
   ];
 
   const getStatusColor = (status: string) => {
@@ -85,7 +85,7 @@ export default function DashboardLayout({
   const derivedTitle = title || 
     navigationItems.find(item => pathname === item.href)?.name || 
     navigationItems.find(item => pathname?.startsWith(item.href + '/'))?.name || 
-    'Dashboard';
+    'Homepage';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -115,6 +115,7 @@ export default function DashboardLayout({
             <div className="flex items-center">
               {/* Use favicon*/}
               <div className="w-9 h-9 flex items-center justify-center">
+                <Link href="/">
                 <Image
                   src="/favicon-32x32.png" // or "/android-chrome-192x192.png" for higher res
                   alt="Recruvizz Logo"
@@ -122,6 +123,7 @@ export default function DashboardLayout({
                   height={36}
                   className="rounded-lg"
                 />
+                </Link>
               </div>
 
               {isSidebarExpanded && (
